@@ -38,6 +38,7 @@ export type ActiveTab =
   | 'new-transaction'
   | 'estimates'
   | 'new-estimate'
+  | 'edit-estimate'
   | 'estimate-details'
   | 'settlements'
   | 'new-settlement'

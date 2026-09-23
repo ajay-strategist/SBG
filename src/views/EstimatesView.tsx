@@ -11,6 +11,7 @@ import {
   Gem,
   Coins,
   FileText,
+  Edit3,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -251,12 +252,21 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
                       className="py-4 px-4 text-center"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <button
-                        onClick={() => onNavigate('estimate-details', est.id)}
-                        className="px-3 py-1 rounded-xl bg-white border border-[#DCE5E3] hover:bg-[#FAF9F6] text-xs font-semibold text-[#0F5C5B] cursor-pointer"
-                      >
-                        Details
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => onNavigate('edit-estimate', est.id)}
+                          className="px-2.5 py-1 rounded-xl bg-[#FAF6EE] hover:bg-[#F3ECE0] border border-[#D9B76C]/40 text-xs font-semibold text-[#8C6D23] flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => onNavigate('estimate-details', est.id)}
+                          className="px-2.5 py-1 rounded-xl bg-white border border-[#DCE5E3] hover:bg-[#FAF9F6] text-xs font-semibold text-[#0F5C5B] cursor-pointer transition-all"
+                        >
+                          Details
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

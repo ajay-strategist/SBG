@@ -33,87 +33,101 @@ import { ActiveTab } from '../components/layout/AppShell';
 
 interface NewEstimateViewProps {
   preselectedCustomerId?: string;
+  targetId?: string;
+  isEditMode?: boolean;
   onNavigate: (tab: ActiveTab, entityId?: string) => void;
 }
 
 export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   preselectedCustomerId,
+  targetId,
+  isEditMode,
   onNavigate,
 }) => {
-  const { customers, orders, goldMarketRate, defaultGSTRate, addEstimate } = useSBG();
+  const { customers, orders, estimates, goldMarketRate, defaultGSTRate, addEstimate, updateEstimate } = useSBG();
 
-  const [customerId, setCustomerId] = useState(preselectedCustomerId || customers[0]?.id || '');
-  const [orderId, setOrderId] = useState('');
-  const [estimateNo, setEstimateNo] = useState(`EST-2026-${Math.floor(100 + Math.random() * 900)}`);
-  const [estimateDate, setEstimateDate] = useState(new Date().toISOString().split('T')[0]);
-  const [customerRef, setCustomerRef] = useState('');
-  const [touchFixed, setTouchFixed] = useState(true);
-  const [isGold, setIsGold] = useState(true);
-  const [goldRate, setGoldRate] = useState<number>(goldMarketRate);
-  const [goldRatePurity, setGoldRatePurity] = useState<number>(99.5);
-  const [unfixGoldRate, setUnfixGoldRate] = useState<number>(0);
-  const [remarks, setRemarks] = useState('');
+  // Find if editing an existing estimate
+  const existingEstimate = targetId ? estimates.find((e) => e.id === targetId) : undefined;
+  const isEditing = Boolean(isEditMode || existingEstimate);
+
+  const [customerId, setCustomerId] = useState(
+    existingEstimate?.customerId || preselectedCustomerId || customers[0]?.id || ''
+  );
+  const [orderId, setOrderId] = useState(existingEstimate?.orderId || '');
+  const [estimateNo, setEstimateNo] = useState(
+    existingEstimate?.estimateNo || `EST-2026-${Math.floor(100 + Math.random() * 900)}`
+  );
+  const [estimateDate, setEstimateDate] = useState(
+    existingEstimate?.estimateDate || new Date().toISOString().split('T')[0]
+  );
+  const [customerRef, setCustomerRef] = useState(existingEstimate?.customerRef || '');
+  const [touchFixed, setTouchFixed] = useState(existingEstimate?.touchFixed ?? true);
+  const [isGold, setIsGold] = useState(existingEstimate?.isGold ?? true);
+  const [goldRate, setGoldRate] = useState<number>(existingEstimate?.goldRate || goldMarketRate);
+  const [goldRatePurity, setGoldRatePurity] = useState<number>(existingEstimate?.goldRatePurity || 99.5);
+  const [unfixGoldRate, setUnfixGoldRate] = useState<number>(existingEstimate?.unfixGoldRate || 0);
+  const [remarks, setRemarks] = useState(existingEstimate?.remarks || '');
+
+  // Load existing line items or fresh defaults
+  const [items, setItems] = useState<Partial<EstimateLineItem>[]>(() => {
+    if (existingEstimate && existingEstimate.items && existingEstimate.items.length > 0) {
+      return existingEstimate.items;
+    }
+    return [
+      {
+        id: `line-${Date.now()}-1`,
+        sl: 1,
+        item: '22ct Gold Handcrafted Ornament',
+        category: 'GOLD',
+        nos: 1,
+        grossWT: 12.500,
+        stoneWT: 0.500,
+        touch: 91.6,
+        rate: goldMarketRate,
+        rateUnit: 'PER_G',
+      },
+      {
+        id: `line-${Date.now()}-2`,
+        sl: 2,
+        item: 'Craftsmanship & Making Charge',
+        category: 'MAKING_CHARGE',
+        nos: 1,
+        grossWT: 0,
+        stoneWT: 0,
+        touch: 0,
+        rate: 850.0,
+        rateUnit: 'PER_G',
+      },
+    ];
+  });
+
+  // Re-sync if existingEstimate changes
+  useEffect(() => {
+    if (existingEstimate) {
+      setCustomerId(existingEstimate.customerId);
+      setOrderId(existingEstimate.orderId || '');
+      setEstimateNo(existingEstimate.estimateNo);
+      setEstimateDate(existingEstimate.estimateDate);
+      setCustomerRef(existingEstimate.customerRef || '');
+      setTouchFixed(existingEstimate.touchFixed ?? true);
+      setIsGold(existingEstimate.isGold ?? true);
+      setGoldRate(existingEstimate.goldRate || goldMarketRate);
+      setGoldRatePurity(existingEstimate.goldRatePurity || 99.5);
+      setUnfixGoldRate(existingEstimate.unfixGoldRate || 0);
+      setRemarks(existingEstimate.remarks || '');
+      if (existingEstimate.items && existingEstimate.items.length > 0) {
+        setItems(existingEstimate.items);
+      }
+    }
+  }, [existingEstimate?.id]);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const customerOrders = orders.filter((o) => o.customerId === customerId);
 
-  // Dynamic Line Items Initial State
-  const [items, setItems] = useState<Partial<EstimateLineItem>[]>([
-    {
-      id: 'line-1',
-      sl: 1,
-      item: '18ct Gold Casting Body',
-      category: 'GOLD',
-      nos: 22,
-      grossWT: 18.476,
-      stoneWT: 0.906,
-      touch: 76.0,
-      rate: goldMarketRate,
-      rateUnit: 'PER_G',
-    },
-    {
-      id: 'line-2',
-      sl: 2,
-      item: 'VVS Diamond Embellishment',
-      category: 'DIAMOND',
-      nos: 44,
-      grossWT: 0.266,
-      stoneWT: 0.266,
-      stoneWTCarats: 1.33,
-      touch: 0,
-      rate: 70443.61,
-      rateUnit: 'PER_CT',
-    },
-    {
-      id: 'line-3',
-      sl: 3,
-      item: 'Natural Precious Rubies',
-      category: 'PRECIOUS_STONE',
-      nos: 8,
-      grossWT: 0.64,
-      stoneWT: 0.64,
-      stoneWTCarats: 3.2,
-      touch: 0,
-      rate: 4375.0,
-      rateUnit: 'PER_CT',
-    },
-    {
-      id: 'line-4',
-      sl: 4,
-      item: 'Making Charges (Craftsmanship)',
-      category: 'MAKING_CHARGE',
-      nos: 22,
-      grossWT: 0,
-      stoneWT: 0,
-      touch: 0,
-      rate: 948.98,
-      rateUnit: 'PER_G',
-    },
-  ]);
-
   // Live Calculated Estimate via Calculation Engine
   const calculatedEstimate = calculateEstimateSheet(
     {
+      id: existingEstimate ? existingEstimate.id : `est-${Date.now()}`,
       estimateNo,
       estimateDate,
       customerId,
@@ -159,14 +173,14 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
     setItems((prev) => [
       ...prev,
       {
-        id: `line-${Date.now()}`,
+        id: `line-${Date.now()}-${prev.length + 1}`,
         sl: prev.length + 1,
-        item: `New ${category} item`,
+        item: `New ${category.replace('_', ' ')} item`,
         category,
         nos: 1,
         grossWT: 0,
         stoneWT: 0,
-        touch: category === 'GOLD' ? 76.0 : 0,
+        touch: category === 'GOLD' ? 91.6 : 0,
         rate: defaultRate,
         rateUnit: defaultUnit,
       },
@@ -186,7 +200,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         ...itemToDup,
         id: `line-${Date.now()}`,
         sl: prev.length + 1,
-        item: `${itemToDup.item} (Copy)`,
+        item: `${itemToDup?.item || 'Item'} (Copy)`,
       },
       ...prev.slice(index + 1),
     ]);
@@ -194,15 +208,42 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
 
   const handleSaveEstimate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerId) return;
+    if (!customerId) {
+      alert('Please select a customer account first.');
+      return;
+    }
 
-    addEstimate(calculatedEstimate);
-    onNavigate('estimate-details', calculatedEstimate.id);
+    if (existingEstimate) {
+      updateEstimate(existingEstimate.id, {
+        ...calculatedEstimate,
+        id: existingEstimate.id,
+        status: existingEstimate.status || 'DRAFT',
+      });
+      onNavigate('estimate-details', existingEstimate.id);
+    } else {
+      addEstimate(calculatedEstimate);
+      onNavigate('estimate-details', calculatedEstimate.id);
+    }
+  };
+
+  const handleSaveAsNewCopy = () => {
+    if (!customerId) return;
+    const newEstNo = `EST-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const newEst = {
+      ...calculatedEstimate,
+      id: `est-${Date.now()}`,
+      estimateNo: newEstNo,
+      status: 'DRAFT' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    addEstimate(newEst);
+    onNavigate('estimate-details', newEst.id);
   };
 
   return (
     <div className="space-y-6">
-      {/* Top Bar */}
+      {/* Top Navigation & Save Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button
           onClick={() => onNavigate('estimates')}
@@ -211,7 +252,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           <ArrowLeft className="w-4 h-4" /> Back to Estimates List
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <SBGButton
             variant="outline"
             size="sm"
@@ -219,13 +260,25 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           >
             Cancel
           </SBGButton>
+
+          {isEditing && (
+            <SBGButton
+              variant="secondary"
+              size="sm"
+              icon={<Copy className="w-4 h-4" />}
+              onClick={handleSaveAsNewCopy}
+            >
+              Save as New Copy
+            </SBGButton>
+          )}
+
           <SBGButton
             variant="gold"
             size="sm"
             icon={<Save className="w-4 h-4" />}
             onClick={handleSaveEstimate}
           >
-            Save & Finalize Estimate
+            {isEditing ? 'Re-Update & Save Cost Sheet' : 'Save & Finalize Estimate'}
           </SBGButton>
         </div>
       </div>
@@ -233,10 +286,22 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       {/* Header Parameters Card */}
       <SBGCard variant="glass" className="p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-[#DCE5E3] pb-3">
-          <h2 className="text-lg font-bold text-[#0F5C5B] flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5" /> SBG Estimate Cost Sheet Generator
-          </h2>
-          <span className="text-xs font-mono font-bold text-[#D9B76C] bg-[#D9B76C]/15 px-2.5 py-1 rounded">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#0F5C5B]/10 flex items-center justify-center">
+              <FileSpreadsheet className="w-4 h-4 text-[#0F5C5B]" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-[#0F5C5B]">
+                {isEditing ? 'Edit & Re-Update Costing Sheet' : 'SBG Estimate Cost Sheet Generator'}
+              </h2>
+              <p className="text-[11px] text-[#647777]">
+                {isEditing
+                  ? `Editing live sheet parameters and line items for ${estimateNo}`
+                  : 'Multi-tier dynamic item rates, making charge formulas, and automatic balance reconciliation'}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-mono font-bold text-[#D9B76C] bg-[#D9B76C]/15 px-3 py-1.5 rounded-lg border border-[#D9B76C]/30">
             {estimateNo}
           </span>
         </div>

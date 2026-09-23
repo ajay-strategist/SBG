@@ -16,6 +16,7 @@ import {
   FileCheck,
   Building,
   User,
+  Edit3,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -65,7 +66,16 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
           <ArrowLeft className="w-4 h-4" /> Back to Estimates
         </button>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <SBGButton
+            variant="gold"
+            size="sm"
+            icon={<Edit3 className="w-4 h-4" />}
+            onClick={() => onNavigate('edit-estimate', estimate.id)}
+          >
+            Edit Cost Sheet
+          </SBGButton>
+
           <SBGButton
             variant="glass"
             size="sm"
@@ -74,6 +84,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
           >
             Print Cost Sheet
           </SBGButton>
+
           {estimate.status === 'DRAFT' && (
             <SBGButton
               variant="primary"

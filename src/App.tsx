@@ -67,9 +67,10 @@ const MainApp: React.FC = () => {
         />
       )}
       {currentTab === 'estimates' && <EstimatesView onNavigate={handleNavigate} />}
-      {currentTab === 'new-estimate' && (
+      {(currentTab === 'new-estimate' || currentTab === 'edit-estimate') && (
         <NewEstimateView
-          preselectedCustomerId={selectedEntityId}
+          targetId={selectedEntityId}
+          isEditMode={currentTab === 'edit-estimate'}
           onNavigate={handleNavigate}
         />
       )}
