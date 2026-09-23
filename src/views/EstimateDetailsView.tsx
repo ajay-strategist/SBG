@@ -128,8 +128,8 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
         {/* Top Invoice Header */}
         <div className="flex flex-col md:flex-row justify-between items-start border-b border-[#DCE5E3] pb-6 gap-6">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-full border border-[#D9B76C]/60 p-0.5 shadow-sm shrink-0">
-              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain rounded-full" />
+            <div className="w-12 h-12 flex items-center justify-center shrink-0">
+              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2">

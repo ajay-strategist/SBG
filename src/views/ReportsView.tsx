@@ -171,8 +171,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate }) => {
         {/* Printable Report Header */}
         <div className="flex justify-between items-center border-b border-[#E2E8E6] pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full border border-[#D9B76C]/50 p-0.5 shadow-xs">
-              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain rounded-full" />
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
             </div>
             <div>
               <h3 className="text-base font-bold text-[#0F5C5B]">SREE BALAJI GOLD — COMMERCIAL STATEMENT</h3>

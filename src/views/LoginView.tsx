@@ -126,8 +126,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       <header className="relative z-20 px-8 lg:px-14 py-6 flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-full bg-white/10 p-1 border border-[#D9B76C]/60 flex items-center justify-center shadow-lg shadow-[#D9B76C]/20 ring-1 ring-[#D9B76C]/40">
-            <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain rounded-full" />
+          <div className="w-11 h-11 flex items-center justify-center shrink-0">
+            <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain drop-shadow-md" />
           </div>
           <div>
             <div className="flex items-center gap-2">
