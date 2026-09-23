@@ -1,26 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="goldGradient" x1="60" y1="60" x2="452" y2="452" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stopColor="#E9CA7C" />
-      <stop offset="28%" stopColor="#F9EDCE" />
-      <stop offset="65%" stopColor="#D4A347" />
-      <stop offset="100%" stopColor="#BD8B2E" />
+    <linearGradient id="sbgGold" x1="80" y1="60" x2="432" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#E7CD82" />
+      <stop offset="30%" stopColor="#F8ECCB" />
+      <stop offset="65%" stopColor="#D6A648" />
+      <stop offset="100%" stopColor="#BA872C" />
     </linearGradient>
   </defs>
 
-  <!-- Only One Outer Circle -->
-  <circle cx="256" cy="256" r="215" stroke="url(#goldGradient)" stroke-width="26" />
+  <!-- Single Outer Gold Ring -->
+  <circle cx="256" cy="256" r="228" stroke="url(#sbgGold)" stroke-width="20" />
 
-  <!-- Sacred Balaji U Motif -->
+  <!-- Slender Balaji U Motif with Flat Top Caps -->
   <path
-    d="M 184 152 V 275 C 184 315 216 348 256 348 C 296 348 328 315 328 275 V 152"
-    stroke="url(#goldGradient)"
-    stroke-width="27"
-    stroke-linecap="round"
+    d="M 195 138 L 195 313 A 61 61 0 0 0 317 313 L 317 138"
+    stroke="url(#sbgGold)"
+    stroke-width="21"
+    stroke-linecap="butt"
     stroke-linejoin="round"
     fill="none"
   />
 
-  <!-- Central Dot / Tilak -->
-  <circle cx="256" cy="295" r="16" fill="url(#goldGradient)" />
+  <!-- Sacred Center Tilak Dot (Floating Elegantly in U) -->
+  <circle cx="256" cy="301" r="15.5" fill="url(#sbgGold)" />
 </svg>
