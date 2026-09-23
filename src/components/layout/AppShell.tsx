@@ -110,12 +110,12 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* Mobile Top Bar */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#093E3C] text-white sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#D9B76C] to-[#B8923F] flex items-center justify-center text-[#093E3C] font-black text-sm shadow-sm">
-            <Gem className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 rounded-full bg-white/10 p-0.5 border border-[#D9B76C]/40 flex items-center justify-center shadow-sm">
+            <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain rounded-full" />
           </div>
           <div>
             <span className="font-cinzel font-bold tracking-wider text-sm block">SBG ERP</span>
-            <span className="text-[9px] text-[#E7CCA0] tracking-widest uppercase">Jewellery Suite</span>
+            <span className="text-[9px] text-[#E7CCA0] tracking-widest uppercase">Sree Balaji Gold</span>
           </div>
         </div>
         <button
@@ -135,8 +135,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         {/* Brand Header */}
         <div className={`p-4 border-b border-white/10 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D9B76C] via-[#F4E8C8] to-[#C7A250] flex items-center justify-center shadow-md shrink-0">
-              <Gem className="w-6 h-6 text-[#073331]" />
+            <div className="w-10 h-10 rounded-full bg-white/10 p-1 border border-[#D9B76C]/50 flex items-center justify-center shadow-md shrink-0 ring-1 ring-[#D9B76C]/30">
+              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain rounded-full" />
             </div>
             {!sidebarCollapsed && (
               <div className="animate-fadeIn">
@@ -147,7 +147,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   </span>
                 </div>
                 <p className="text-[9px] text-[#D9B76C] font-medium tracking-wider uppercase whitespace-nowrap">
-                  Jewellery Suite
+                  Sree Balaji Gold
                 </p>
               </div>
             )}

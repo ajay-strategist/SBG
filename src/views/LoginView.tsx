@@ -125,9 +125,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       {/* Top Header Bar */}
       <header className="relative z-20 px-8 lg:px-14 py-6 flex items-center justify-between">
         {/* Brand Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D9B76C] via-[#F4E8C8] to-[#C7A250] flex items-center justify-center shadow-lg shadow-[#D9B76C]/20">
-            <Gem className="w-6 h-6 text-[#083837]" />
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-full bg-white/10 p-1 border border-[#D9B76C]/60 flex items-center justify-center shadow-lg shadow-[#D9B76C]/20 ring-1 ring-[#D9B76C]/40">
+            <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain rounded-full" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -136,8 +136,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 ERP
               </span>
             </div>
-            <p className="text-[10px] font-medium tracking-widest text-[#E7CCA0]/80 uppercase">
-              Jewellery Commercial Suite
+            <p className="text-[10px] font-medium tracking-widest text-[#E7CCA0]/90 uppercase">
+              Sree Balaji Gold • Handcrafted 22ct
             </p>
           </div>
         </div>

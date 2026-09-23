@@ -127,14 +127,19 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
       <div className="glass-panel p-6 sm:p-10 space-y-8 bg-white/90 shadow-lg">
         {/* Top Invoice Header */}
         <div className="flex flex-col md:flex-row justify-between items-start border-b border-[#DCE5E3] pb-6 gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold tracking-wider text-[#0F5C5B]">SBG JEWELLERY</span>
-              <SBGBadge variant="gold">COST SHEET</SBGBadge>
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-full border border-[#D9B76C]/60 p-0.5 shadow-sm shrink-0">
+              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain rounded-full" />
             </div>
-            <p className="text-xs text-[#647777]">
-              Commercial Jewellery Manufacturing, Diamond Mountings & Precision Refining
-            </p>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold tracking-wider text-[#0F5C5B]">SREE BALAJI GOLD</span>
+                <SBGBadge variant="gold">COST SHEET</SBGBadge>
+              </div>
+              <p className="text-xs text-[#647777]">
+                Makers of 22carat Handcrafted Gold Ornaments & Commercial Jewellery
+              </p>
+            </div>
           </div>
 
           <div className="text-left md:text-right space-y-1 text-xs">

@@ -170,14 +170,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate }) => {
       <div className="rounded-3xl bg-white/95 border border-[#E2E8E6] p-6 sm:p-8 space-y-6 shadow-xs">
         {/* Printable Report Header */}
         <div className="flex justify-between items-center border-b border-[#E2E8E6] pb-4">
-          <div>
-            <h3 className="text-base font-bold text-[#0F5C5B]">SBG JEWELLERY COMMERCIAL STATEMENT</h3>
-            <p className="text-xs text-[#647777] mt-0.5">
-              Report: <strong>{reportType.replace('_', ' ')}</strong> | Period: {startDate} to {endDate}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full border border-[#D9B76C]/50 p-0.5 shadow-xs">
+              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain rounded-full" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#0F5C5B]">SREE BALAJI GOLD — COMMERCIAL STATEMENT</h3>
+              <p className="text-xs text-[#647777] mt-0.5">
+                Report: <strong>{reportType.replace('_', ' ')}</strong> | Period: {startDate} to {endDate}
+              </p>
+            </div>
           </div>
           <div className="text-right text-xs font-mono">
-            <div className="font-bold text-[#173333]">SBG COMMERCIAL SUITE</div>
+            <div className="font-bold text-[#173333]">SREE BALAJI GOLD ERP</div>
             <div className="text-[#647777] text-[10px]">CONFIDENTIAL FINANCIAL REPORT</div>
           </div>
         </div>
