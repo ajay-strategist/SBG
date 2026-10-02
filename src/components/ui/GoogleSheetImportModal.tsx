@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSBG } from '../../store/sbgStore';
 import { SBGModal, SBGButton } from './index';
-import { FileSpreadsheet, Upload, CheckCircle2, AlertCircle, RefreshCw, FileText } from 'lucide-react';
+import { FileSpreadsheet, Upload, CheckCircle2, AlertCircle, RefreshCw, FileText, Download } from 'lucide-react';
 import { LedgerTransaction, TransactionDirection, ParticularsType } from '../../core/calculations/types';
 
 interface GoogleSheetImportModalProps {
@@ -44,6 +44,31 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [parseError, setParseError] = useState<string | null>(null);
+
+  const downloadTemplateCSV = () => {
+    const csvContent = `Date,Column1,Particulars,Description,Nos,Gross WT,Stone WT,Touch,Stone Amount,MC Amount
+29-05-26,RECEIPT,PURCHASE,RD/BB/031/26-27,50,23.085,1.478,76.00%,222583,0
+03-06-26,ISSUE,PR,DN/003/26-27,1,0.344,0.012,76.00%,4063,0
+03-06-26,ISSUE,sale,SBG/BB/047,0,16.510,0.000,99.90%,0,0
+10-06-26,ISSUE,PAYMENT,PAYMENT,0,0.000,0.000,0.00%,100000,0
+19-06-26,ISSUE,PAYMENT,PAYMENT,0,0.000,0.000,0.00%,112155,0
+07-07-26,ISSUE,ISSUE,JWI/148/26-27,1,2.036,0.018,92.00%,0,0
+07-07-26,ISSUE,ISSUE,JWI/148/26-27,1,3.734,0.050,75.00%,0,0
+19-08-26,RECEIPT,PURCHASE,RD/BB/087/26-27,2,2.225,0.132,76.00%,15494,0
+02-09-26,RECEIPT,PURCHASE,RD/BB/094/26-27,22,18.476,0.906,76.00%,128094.51,0
+02-09-26,RECEIPT,PURCHASE,RD/BB/097/26-27,0,0.100,0.000,76.00%,0,0
+04-09-26,ISSUE,sale,SBG/BB/088/26-27,0,14.770,0.000,99.50%,0,0
+05-09-26,ISSUE,PAYMENT,PAYMENT,0,0.000,0.000,0.00%,146223,0
+11-09-26,RECEIPT,PURCHASE,RD/BB/104/26-27,1,0.403,0.018,76.00%,1533,0`;
+
+    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `SBG_Customer_Ledger_Bulk_Import_Template.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Helper to convert DD-MM-YY or DD/MM/YYYY to YYYY-MM-DD
   const formatDateString = (rawDate: string): string => {
@@ -256,13 +281,21 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={downloadTemplateCSV}
+                className="text-[11px] font-bold text-[#0F5C5B] bg-white hover:bg-[#0F5C5B]/5 px-2.5 py-1.5 rounded-lg border border-[#0F5C5B]/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Download className="w-3 h-3 text-[#0F5C5B]" /> Download Template CSV
+              </button>
+
               <button
                 type="button"
                 onClick={loadTIKVAHSampleData}
                 className="text-[11px] font-bold text-[#0F5C5B] hover:bg-[#0F5C5B]/10 px-2.5 py-1.5 rounded-lg border border-[#0F5C5B]/30 flex items-center gap-1.5 cursor-pointer"
               >
-                <RefreshCw className="w-3 h-3" /> Load TIKVAH Google Sheet
+                <RefreshCw className="w-3 h-3" /> Load TIKVAH Preset
               </button>
 
               <label className="text-[11px] font-bold text-white bg-[#0F5C5B] hover:bg-[#093D3C] px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs">
