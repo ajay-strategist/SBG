@@ -203,6 +203,8 @@ export interface UserAccount {
   email: string;
   role: 'ADMIN' | 'STAFF' | 'CLIENT';
   status: 'ACTIVE' | 'DISABLED';
+  password?: string;
+  customerId?: string;
   avatarColor?: string;
   permissions: {
     customers: boolean;

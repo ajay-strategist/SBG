@@ -41,6 +41,9 @@ interface SBGContextType {
   setCurrentUser: (user: UserAccount) => void;
   availableUsers: UserAccount[];
   switchUserRole: (role: UserAccount['role']) => void;
+  addUser: (user: Omit<UserAccount, 'id'>) => UserAccount;
+  updateUser: (id: string, updates: Partial<UserAccount>) => void;
+  deleteUser: (id: string) => void;
 
   // Loading & Sync Status
   isLoading: boolean;
@@ -121,6 +124,7 @@ const defaultUsers: UserAccount[] = [
     email: 'rajesh@sbgjewels.com',
     role: 'ADMIN',
     status: 'ACTIVE',
+    password: 'password',
     avatarColor: '#0F5C5B',
     permissions: {
       customers: true,
@@ -140,6 +144,7 @@ const defaultUsers: UserAccount[] = [
     email: 'sunita@sbgjewels.com',
     role: 'STAFF',
     status: 'ACTIVE',
+    password: 'password',
     avatarColor: '#23827F',
     permissions: {
       customers: true,
@@ -159,7 +164,9 @@ const defaultUsers: UserAccount[] = [
     email: 'vikram@sbgjewels.com',
     role: 'CLIENT',
     status: 'ACTIVE',
+    password: 'password',
     avatarColor: '#D9B76C',
+    customerId: 'cust-101',
     permissions: {
       customers: true,
       orders: true,
@@ -181,10 +188,46 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved !== null ? JSON.parse(saved) : true;
   });
 
+  const [availableUsers, setAvailableUsers] = useState<UserAccount[]>(() => {
+    const saved = localStorage.getItem('sbg_users');
+    return saved ? JSON.parse(saved) : defaultUsers;
+  });
+
   const [currentUser, setCurrentUser] = useState<UserAccount>(() => {
     const saved = localStorage.getItem('sbg_user');
     return saved ? JSON.parse(saved) : defaultUsers[0];
   });
+
+  useEffect(() => {
+    localStorage.setItem('sbg_users', JSON.stringify(availableUsers));
+  }, [availableUsers]);
+
+  const addUser = (userData: Omit<UserAccount, 'id'>): UserAccount => {
+    const newUser: UserAccount = {
+      ...userData,
+      id: `usr-${Date.now()}`,
+      password: userData.password || 'password',
+      avatarColor: userData.avatarColor || (userData.role === 'ADMIN' ? '#0F5C5B' : userData.role === 'STAFF' ? '#23827F' : '#D9B76C'),
+    };
+    setAvailableUsers((prev) => [...prev, newUser]);
+    logAudit('CREATE_USER', 'USERS', newUser.id, `Created user ${newUser.name} (${newUser.role})`);
+    return newUser;
+  };
+
+  const updateUser = (id: string, updates: Partial<UserAccount>) => {
+    setAvailableUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
+    );
+    if (currentUser.id === id) {
+      setCurrentUser((prev) => ({ ...prev, ...updates }));
+    }
+    logAudit('UPDATE_USER', 'USERS', id, `Updated user ${id}`);
+  };
+
+  const deleteUser = (id: string) => {
+    setAvailableUsers((prev) => prev.filter((u) => u.id !== id));
+    logAudit('DELETE_USER', 'USERS', id, `Deleted user ${id}`);
+  };
 
   // Live Database States (Initial empty, populated via Supabase)
   const [customers, setCustomers] = useState<Customer[]>(() => {
@@ -960,8 +1003,11 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         currentUser,
         setCurrentUser,
-        availableUsers: defaultUsers,
+        availableUsers,
         switchUserRole,
+        addUser,
+        updateUser,
+        deleteUser,
         isLoading,
         syncStatus,
         customers,
