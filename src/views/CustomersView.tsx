@@ -20,7 +20,7 @@ import {
   Check,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
-import { SBGModal, SBGInput, SBGButton } from '../components/ui';
+import { SBGModal, SBGInput, SBGButton, TransactionModal } from '../components/ui';
 
 interface CustomersViewProps {
   onNavigate: (tab: ActiveTab, customerId?: string) => void;
@@ -34,6 +34,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [selectedTxCustId, setSelectedTxCustId] = useState<string | undefined>();
 
   // Form State for Add Customer
   const [formData, setFormData] = useState({
@@ -141,13 +143,26 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
               <span className="text-xs font-bold text-[#C69234] block">Lasting Value</span>
             </div>
 
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setSelectedTxCustId(undefined);
+                setIsTxModalOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#D9B76C] to-[#C7A250] text-[#173333] font-bold text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all hover:brightness-105 active:scale-[0.98]"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ New Transaction</span>
+            </button>
+
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-5 py-2.5 rounded-2xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs shadow-md shadow-[#0F5C5B]/20 flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+              className="px-4 py-2.5 rounded-2xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs shadow-md shadow-[#0F5C5B]/20 flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
             >
               <Plus className="w-4 h-4" />
               <span>Add New Customer</span>
             </button>
+          </div>
           </div>
         </div>
       </div>
@@ -628,6 +643,14 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
           </div>
         </form>
       </SBGModal>
+
+      {/* Transaction Modal (Purchase/Sale Cost Sheet or Gold/Cash Receipt/Payment) */}
+      <TransactionModal
+        isOpen={isTxModalOpen}
+        onClose={() => setIsTxModalOpen(false)}
+        defaultCustomerId={selectedTxCustId}
+        onSuccess={(targetId) => onNavigate('customer-profile', targetId)}
+      />
     </div>
   );
 };

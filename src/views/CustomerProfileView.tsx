@@ -7,6 +7,7 @@ import {
   SBGCurrency,
   SBGWeight,
   SBGBalanceCard,
+  TransactionModal,
 } from '../components/ui';
 import {
   Users,
@@ -44,6 +45,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   } = useSBG();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'ledger' | 'estimates' | 'settlements'>('ledger');
+  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
 
   const customer = customers.find((c) => c.id === customerId) || customers[0];
 
@@ -95,7 +97,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             variant="primary"
             size="sm"
             icon={<PlusCircle className="w-4 h-4" />}
-            onClick={() => onNavigate('new-transaction', customer.id)}
+            onClick={() => setIsTxModalOpen(true)}
           >
             Add Transaction
           </SBGButton>
@@ -471,6 +473,13 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Transaction Modal (Purchase/Sale Cost Sheet or Gold/Cash Receipt/Payment) */}
+      <TransactionModal
+        isOpen={isTxModalOpen}
+        onClose={() => setIsTxModalOpen(false)}
+        defaultCustomerId={customer.id}
+      />
     </div>
   );
 };

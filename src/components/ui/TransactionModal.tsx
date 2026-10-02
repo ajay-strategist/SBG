@@ -1,0 +1,470 @@
+import React, { useState, useEffect } from 'react';
+import { useSBG } from '../../store/sbgStore';
+import { SBGModal, SBGInput, SBGSelect, SBGButton } from './index';
+import {
+  calculateNetWT,
+  calculatePureWT,
+  calculateTotalAmount,
+  stoneCaratsToGrams,
+} from '../../core/calculations';
+import { ShoppingBag, Coins, Calculator, CheckCircle2 } from 'lucide-react';
+
+interface TransactionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  defaultCustomerId?: string;
+  onSuccess?: (customerId: string) => void;
+}
+
+export const TransactionModal: React.FC<TransactionModalProps> = ({
+  isOpen,
+  onClose,
+  defaultCustomerId,
+  onSuccess,
+}) => {
+  const { customers, addTransaction } = useSBG();
+
+  // Mode: 'COST_SHEET' (Purchase/Sale) vs 'RECEIPT_PAYMENT' (Gold/Cash Receipt/Payment)
+  const [mode, setMode] = useState<'COST_SHEET' | 'RECEIPT_PAYMENT'>('COST_SHEET');
+
+  // Common Fields
+  const [customerId, setCustomerId] = useState(defaultCustomerId || customers[0]?.id || '');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [description, setDescription] = useState('');
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // --- Mode 1: Cost Sheet (Purchase / Sale) Fields ---
+  const [costSheetType, setCostSheetType] = useState<'SALE' | 'PURCHASE'>('SALE');
+  const [nos, setNos] = useState<number>(1);
+  const [grossWT, setGrossWT] = useState<number>(0);
+  const [stoneWT, setStoneWT] = useState<number>(0);
+  const [stoneWTCarats, setStoneWTCarats] = useState<number>(0);
+  const [touch, setTouch] = useState<number>(91.6);
+  const [mcRate, setMcRate] = useState<number>(0);
+  const [mcAmount, setMcAmount] = useState<number>(0);
+  const [stoneAmount, setStoneAmount] = useState<number>(0);
+
+  // --- Mode 2: Receipt / Payment (Gold & Cash) Fields ---
+  const [voucherType, setVoucherType] = useState<'RECEIPT' | 'PAYMENT'>('RECEIPT');
+  const [goldGrams, setGoldGrams] = useState<number>(0);
+  const [goldTouch, setGoldTouch] = useState<number>(99.5);
+  const [cashAmount, setCashAmount] = useState<number>(0);
+
+  useEffect(() => {
+    if (defaultCustomerId) {
+      setCustomerId(defaultCustomerId);
+    } else if (customers.length > 0 && !customerId) {
+      setCustomerId(customers[0].id);
+    }
+  }, [defaultCustomerId, customers]);
+
+  // Handle Carats to Grams conversion in Cost Sheet mode
+  const handleCaratChange = (carats: number) => {
+    setStoneWTCarats(carats);
+    setStoneWT(stoneCaratsToGrams(carats));
+  };
+
+  // Recalculate MC Amount when grossWT or mcRate changes in Cost Sheet mode
+  const handleMcRateChange = (rate: number) => {
+    setMcRate(rate);
+    if (grossWT > 0 && rate > 0) {
+      setMcAmount(Number((grossWT * rate).toFixed(2)));
+    }
+  };
+
+  const handleGrossWTChange = (wt: number) => {
+    setGrossWT(wt);
+    if (wt > 0 && mcRate > 0) {
+      setMcAmount(Number((wt * mcRate).toFixed(2)));
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerId) return;
+
+    if (mode === 'COST_SHEET') {
+      const direction = costSheetType === 'SALE' ? 'ISSUE' : 'RECEIPT';
+      const particulars = costSheetType === 'SALE' ? 'SALE' : 'PURCHASE';
+
+      const netWT = calculateNetWT(grossWT, stoneWT, direction);
+      const pureWT = calculatePureWT(netWT, touch);
+
+      const mcAmountCal = direction === 'RECEIPT' ? -Math.abs(mcAmount) : Math.abs(mcAmount);
+      const stoneAmountCal = direction === 'RECEIPT' ? -Math.abs(stoneAmount) : Math.abs(stoneAmount);
+      const totalAmount = calculateTotalAmount(stoneAmountCal, mcAmountCal);
+
+      addTransaction({
+        customerId,
+        date,
+        direction,
+        particulars,
+        description: description || `${costSheetType} - ${nos} Pcs Ornaments (${grossWT}g, ${touch}%)`,
+        nos,
+        grossWT,
+        stoneWT,
+        stoneWTCarat: stoneWTCarats,
+        netWT,
+        touch,
+        pureWT,
+        stoneAmount,
+        stoneAmountCal,
+        mcRate,
+        mcAmount,
+        mcAmountCal,
+        totalAmount,
+        status: 'CONFIRMED',
+      });
+    } else {
+      // Voucher Mode (Receipt / Payment)
+      const isReceipt = voucherType === 'RECEIPT';
+      const direction = isReceipt ? 'RECEIPT' : 'ISSUE';
+      const particulars = isReceipt ? 'PAYMENT_RECEIVED' : 'PAYMENT_PAID';
+
+      // Pure Gold Weight calculation for received/paid metal
+      const rawPureGold = (goldGrams * (goldTouch / 100));
+      const pureWT = isReceipt ? -Math.abs(rawPureGold) : Math.abs(rawPureGold);
+
+      // Amount calculation for cash received/paid
+      const totalAmount = isReceipt ? -Math.abs(cashAmount) : Math.abs(cashAmount);
+
+      addTransaction({
+        customerId,
+        date,
+        direction,
+        particulars,
+        description:
+          description ||
+          `${voucherType === 'RECEIPT' ? 'Received from Customer' : 'Paid to Customer'}: ${
+            goldGrams > 0 ? `${goldGrams}g Gold (${goldTouch}%)` : ''
+          } ${cashAmount > 0 ? `₹${cashAmount.toLocaleString('en-IN')}` : ''}`.trim(),
+        nos: 0,
+        grossWT: goldGrams,
+        stoneWT: 0,
+        netWT: isReceipt ? -Math.abs(goldGrams) : Math.abs(goldGrams),
+        touch: goldTouch,
+        pureWT: Number(pureWT.toFixed(3)),
+        stoneAmount: 0,
+        stoneAmountCal: 0,
+        mcRate: 0,
+        mcAmount: cashAmount,
+        mcAmountCal: totalAmount,
+        totalAmount: Number(totalAmount.toFixed(2)),
+        status: 'CONFIRMED',
+      });
+    }
+
+    setSavedSuccess(true);
+    setTimeout(() => {
+      setSavedSuccess(false);
+      onClose();
+      if (onSuccess) onSuccess(customerId);
+    }, 600);
+  };
+
+  const selectedCust = customers.find((c) => c.id === customerId);
+
+  return (
+    <SBGModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Record Customer Transaction"
+    >
+      {savedSuccess ? (
+        <div className="py-8 text-center space-y-3">
+          <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
+          <h3 className="text-base font-bold text-[#0F5C5B]">Transaction Recorded Successfully!</h3>
+          <p className="text-xs text-[#647777]">Customer ledger balance has been updated in real-time.</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-[#F2FAF8] rounded-xl border border-[#DCE5E3]">
+            <button
+              type="button"
+              onClick={() => setMode('COST_SHEET')}
+              className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                mode === 'COST_SHEET'
+                  ? 'bg-[#0F5C5B] text-white shadow-xs'
+                  : 'text-[#647777] hover:text-[#173333]'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" /> 1. Purchase / Sale (Cost Sheet)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode('RECEIPT_PAYMENT')}
+              className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                mode === 'RECEIPT_PAYMENT'
+                  ? 'bg-[#0F5C5B] text-white shadow-xs'
+                  : 'text-[#647777] hover:text-[#173333]'
+              }`}
+            >
+              <Coins className="w-3.5 h-3.5 text-[#D9B76C]" /> 2. Receipt / Payment (Gold & Cash)
+            </button>
+          </div>
+
+          {/* Customer Selection & Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <SBGSelect
+              label="Customer Account"
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              options={customers.map((c) => ({
+                label: `${c.name} (${c.code})`,
+                value: c.id,
+              }))}
+              required
+            />
+
+            <SBGInput
+              label="Transaction Date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+            />
+          </div>
+
+          {/* Selected Customer Current Balance Pill */}
+          {selectedCust && (
+            <div className="p-2.5 rounded-xl bg-white border border-[#DCE5E3] flex items-center justify-between text-xs">
+              <span className="text-[#647777] font-medium">Current Balance:</span>
+              <div className="flex items-center gap-3">
+                <span className={`font-mono font-bold ${selectedCust.currentWT >= 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  {selectedCust.currentWT >= 0 ? `+${selectedCust.currentWT.toFixed(3)}g Due` : `${selectedCust.currentWT.toFixed(3)}g Adv`}
+                </span>
+                <span className={`font-mono font-bold ${selectedCust.currentMC >= 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                  ₹ {selectedCust.currentMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* MODE 1: COST SHEET (PURCHASE / SALE) */}
+          {mode === 'COST_SHEET' && (
+            <div className="space-y-3.5 pt-2 border-t border-[#DCE5E3]">
+              {/* Type Select: Sale (Issue) vs Purchase (Receipt) */}
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-bold text-[#173333] uppercase">Transaction Type:</label>
+                <div className="flex items-center gap-2">
+                  <label className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${costSheetType === 'SALE' ? 'bg-rose-100 border-rose-300 text-rose-800' : 'bg-white border-gray-200 text-gray-600'}`}>
+                    <input
+                      type="radio"
+                      name="costSheetType"
+                      checked={costSheetType === 'SALE'}
+                      onChange={() => setCostSheetType('SALE')}
+                      className="sr-only"
+                    />
+                    SALE (Issue to Customer +)
+                  </label>
+                  <label className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${costSheetType === 'PURCHASE' ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-gray-200 text-gray-600'}`}>
+                    <input
+                      type="radio"
+                      name="costSheetType"
+                      checked={costSheetType === 'PURCHASE'}
+                      onChange={() => setCostSheetType('PURCHASE')}
+                      className="sr-only"
+                    />
+                    PURCHASE (Receipt from Customer −)
+                  </label>
+                </div>
+              </div>
+
+              <SBGInput
+                label="Item Description / Particulars"
+                placeholder="e.g. 22K Gold Bangles / Casting Items"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <SBGInput
+                  label="Nos (Pcs)"
+                  type="number"
+                  min="1"
+                  value={nos}
+                  onChange={(e) => setNos(parseInt(e.target.value) || 0)}
+                />
+
+                <SBGInput
+                  label="Gross Wt (g)"
+                  type="number"
+                  step="0.001"
+                  value={grossWT || ''}
+                  onChange={(e) => handleGrossWTChange(parseFloat(e.target.value) || 0)}
+                  required
+                />
+
+                <SBGInput
+                  label="Stone Wt (g)"
+                  type="number"
+                  step="0.001"
+                  value={stoneWT || ''}
+                  onChange={(e) => setStoneWT(parseFloat(e.target.value) || 0)}
+                />
+
+                <SBGInput
+                  label="Touch (%)"
+                  type="number"
+                  step="0.1"
+                  value={touch || ''}
+                  onChange={(e) => setTouch(parseFloat(e.target.value) || 0)}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <SBGInput
+                  label="Stone Wt (Carats)"
+                  type="number"
+                  step="0.01"
+                  value={stoneWTCarats || ''}
+                  onChange={(e) => handleCaratChange(parseFloat(e.target.value) || 0)}
+                />
+
+                <SBGInput
+                  label="MC Rate (₹/g)"
+                  type="number"
+                  step="0.01"
+                  value={mcRate || ''}
+                  onChange={(e) => handleMcRateChange(parseFloat(e.target.value) || 0)}
+                />
+
+                <SBGInput
+                  label="Making Charge (₹)"
+                  type="number"
+                  step="0.01"
+                  value={mcAmount || ''}
+                  onChange={(e) => setMcAmount(parseFloat(e.target.value) || 0)}
+                />
+              </div>
+
+              {/* Dynamic Calculation Live Summary */}
+              <div className="p-3 bg-[#0F5C5B]/5 rounded-xl border border-[#0F5C5B]/20 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-[10px] text-[#647777] block uppercase font-bold">Calculated Pure Gold WT</span>
+                  <span className="text-sm font-mono font-bold text-[#0F5C5B]">
+                    {((grossWT - stoneWT) * (touch / 100)).toFixed(3)} g
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-[#647777] block uppercase font-bold">Calculated Total Amount</span>
+                  <span className="text-sm font-mono font-bold text-[#0F5C5B]">
+                    ₹ {mcAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODE 2: RECEIPT / PAYMENT (GOLD & CASH) */}
+          {mode === 'RECEIPT_PAYMENT' && (
+            <div className="space-y-3.5 pt-2 border-t border-[#DCE5E3]">
+              {/* Voucher Direction Select */}
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-bold text-[#173333] uppercase">Payment Direction:</label>
+                <div className="flex items-center gap-2">
+                  <label className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${voucherType === 'RECEIPT' ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-gray-200 text-gray-600'}`}>
+                    <input
+                      type="radio"
+                      name="voucherType"
+                      checked={voucherType === 'RECEIPT'}
+                      onChange={() => setVoucherType('RECEIPT')}
+                      className="sr-only"
+                    />
+                    RECEIPT (Received from Customer −)
+                  </label>
+                  <label className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${voucherType === 'PAYMENT' ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-white border-gray-200 text-gray-600'}`}>
+                    <input
+                      type="radio"
+                      name="voucherType"
+                      checked={voucherType === 'PAYMENT'}
+                      onChange={() => setVoucherType('PAYMENT')}
+                      className="sr-only"
+                    />
+                    PAYMENT (Paid to Customer +)
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-amber-500/5 rounded-xl border border-amber-500/20">
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-[#0F5C5B] flex items-center gap-1">
+                    <Coins className="w-3.5 h-3.5 text-[#D9B76C]" /> Gold Payment (grams)
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <SBGInput
+                      label="Gold Weight (g)"
+                      type="number"
+                      step="0.001"
+                      placeholder="0.000"
+                      value={goldGrams || ''}
+                      onChange={(e) => setGoldGrams(parseFloat(e.target.value) || 0)}
+                    />
+                    <SBGInput
+                      label="Touch / Purity (%)"
+                      type="number"
+                      step="0.1"
+                      placeholder="99.5"
+                      value={goldTouch || ''}
+                      onChange={(e) => setGoldTouch(parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-[#0F5C5B] flex items-center gap-1">
+                    <Calculator className="w-3.5 h-3.5 text-[#0F5C5B]" /> Cash Payment (₹)
+                  </span>
+                  <SBGInput
+                    label="Cash / Bank Amount (₹)"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={cashAmount || ''}
+                    onChange={(e) => setCashAmount(parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+
+              <SBGInput
+                label="Transaction Notes / Reference"
+                placeholder="e.g. Received via Bank Transfer / Physical Fine Gold bar"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+
+              {/* Dynamic Calculation Summary */}
+              <div className="p-3 bg-[#0F5C5B]/5 rounded-xl border border-[#0F5C5B]/20 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-[10px] text-[#647777] block uppercase font-bold">Pure Gold Effect</span>
+                  <span className={`text-sm font-mono font-bold ${voucherType === 'RECEIPT' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {voucherType === 'RECEIPT' ? '-' : '+'}{(goldGrams * (goldTouch / 100)).toFixed(3)} g
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-[#647777] block uppercase font-bold">Cash Amount Effect</span>
+                  <span className={`text-sm font-mono font-bold ${voucherType === 'RECEIPT' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {voucherType === 'RECEIPT' ? '-' : '+'}₹ {cashAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Form Actions */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DCE5E3]">
+            <SBGButton variant="outline" type="button" onClick={onClose}>
+              Cancel
+            </SBGButton>
+            <SBGButton variant="primary" type="submit">
+              Post Transaction to Ledger
+            </SBGButton>
+          </div>
+        </form>
+      )}
+    </SBGModal>
+  );
+};
