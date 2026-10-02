@@ -8,6 +8,7 @@ import {
   SBGWeight,
   SBGBalanceCard,
   TransactionModal,
+  GoogleSheetImportModal,
 } from '../components/ui';
 import {
   Users,
@@ -24,6 +25,9 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownLeft,
+  Download,
+  Trash2,
+  Palette,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -42,10 +46,13 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     getCustomerTransactions,
     estimates,
     settlements,
+    deleteTransaction,
   } = useSBG();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'ledger' | 'estimates' | 'settlements'>('ledger');
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
+  const [useSheetTheme, setUseSheetTheme] = useState(true);
 
   const customer = customers.find((c) => c.id === customerId) || customers[0];
 
@@ -65,6 +72,59 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const customerEstimates = estimates.filter((e) => e.customerId === customer.id);
   const customerSettlements = settlements.filter((s) => s.customerId === customer.id);
 
+  const handleExportCSV = () => {
+    const headers = [
+      'Date',
+      'Column1',
+      'Particulars',
+      'Description',
+      'Nos',
+      'Gross WT',
+      'Gross WT Cal',
+      'Stone WT',
+      'Net WT',
+      'Touch',
+      'Pure WT',
+      'Stone Amount',
+      'Stone Amount Cal',
+      'MC Amount',
+      'MC Amount Cal',
+      'Total Amount',
+      'Balance MC',
+      'Balance WT',
+    ];
+
+    const rows = customerLedger.map((tx) => [
+      tx.date,
+      tx.direction,
+      tx.particulars,
+      `"${tx.description.replace(/"/g, '""')}"`,
+      tx.nos,
+      tx.grossWT,
+      tx.direction === 'RECEIPT' ? -tx.grossWT : tx.grossWT,
+      tx.stoneWT,
+      tx.netWT,
+      `${tx.touch}%`,
+      tx.pureWT,
+      tx.stoneAmount,
+      tx.stoneAmountCal,
+      tx.mcAmount,
+      tx.mcAmountCal,
+      tx.totalAmount,
+      tx.balanceMC,
+      tx.balanceWT,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_GoogleSheet_Ledger.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Back Navigation & Action Buttons */}
@@ -76,22 +136,30 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
           <ArrowLeft className="w-4 h-4" /> Back to Customer Master
         </button>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <SBGButton
+            variant="outline"
+            size="sm"
+            icon={<FileSpreadsheet className="w-4 h-4 text-[#0F5C5B]" />}
+            onClick={() => setIsGoogleSheetModalOpen(true)}
+          >
+            Import / Sync Sheet
+          </SBGButton>
           <SBGButton
             variant="glass"
             size="sm"
-            icon={<Coins className="w-4 h-4 text-[#D9B76C]" />}
-            onClick={() => onNavigate('new-settlement', customer.id)}
+            icon={<Download className="w-4 h-4 text-[#0F5C5B]" />}
+            onClick={handleExportCSV}
           >
-            Settle Account
+            Export Sheet
           </SBGButton>
           <SBGButton
             variant="gold"
             size="sm"
-            icon={<FileSpreadsheet className="w-4 h-4" />}
-            onClick={() => onNavigate('new-estimate', customer.id)}
+            icon={<Coins className="w-4 h-4" />}
+            onClick={() => onNavigate('new-settlement', customer.id)}
           >
-            New Estimate
+            Settle Account
           </SBGButton>
           <SBGButton
             variant="primary"
@@ -99,7 +167,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             icon={<PlusCircle className="w-4 h-4" />}
             onClick={() => setIsTxModalOpen(true)}
           >
-            Add Transaction
+            + New Transaction
           </SBGButton>
         </div>
       </div>
@@ -133,37 +201,15 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                   <MapPin className="w-3.5 h-3.5 text-[#0F5C5B]" /> {customer.city}
                 </span>
               )}
-              {customer.gstin && (
-                <span className="font-mono text-[11px] bg-black/5 px-2 py-0.5 rounded text-[#173333]">
-                  GST: {customer.gstin}
-                </span>
-              )}
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Live Dual Balance Widgets */}
-            <div className="bg-white/80 p-4 rounded-xl border border-white/80 shadow-sm min-w-[180px]">
-              <span className="text-[10px] font-bold text-[#647777] uppercase tracking-wider block">
-                Pure Gold Balance
-              </span>
-              <div className="text-xl font-bold tracking-tight mt-1">
-                <span className={customer.currentWT < 0 ? 'text-[#B85C5C]' : 'text-[#0F5C5B]'}>
-                  <SBGWeight value={customer.currentWT} />
-                </span>
-              </div>
-              <span className="text-[10px] text-[#647777] block mt-0.5">Opening: {customer.openingWT.toFixed(3)}g</span>
-            </div>
-
-            <div className="bg-white/80 p-4 rounded-xl border border-white/80 shadow-sm min-w-[180px]">
-              <span className="text-[10px] font-bold text-[#647777] uppercase tracking-wider block">
-                MC Balance (Cash)
-              </span>
-              <div className="text-xl font-bold text-[#173333] tracking-tight mt-1">
-                <SBGCurrency value={customer.currentMC} />
-              </div>
-              <span className="text-[10px] text-[#647777] block mt-0.5">Opening: ₹{customer.openingMC.toLocaleString('en-IN')}</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <SBGBalanceCard
+              pureWT={customer.currentWT}
+              mcBalance={customer.currentMC}
+              subtitle="Real-time Account Balances"
+            />
           </div>
         </div>
 
@@ -207,21 +253,38 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
         {/* Tab 1: Ledger Tab */}
         {activeTab === 'ledger' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
-                Transaction History & Running Balances
-              </h3>
-              <span className="text-xs text-[#647777]">
-                Calculated strictly via SBG Engine (ISSUE = + / RECEIPT = -)
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
+                  Transaction History & Running Balances
+                </h3>
+                <p className="text-[11px] text-[#647777]">
+                  ISSUE = Customer Debit (+) | RECEIPT = Customer Credit (-)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setUseSheetTheme(!useSheetTheme)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-1.5 transition-all cursor-pointer ${
+                    useSheetTheme
+                      ? 'bg-[#0F5C5B]/10 text-[#0F5C5B] border-[#0F5C5B]/30'
+                      : 'bg-white text-[#647777] border-[#DCE5E3]'
+                  }`}
+                >
+                  <Palette className="w-3.5 h-3.5" />
+                  {useSheetTheme ? 'Google Sheet Colors: ON' : 'Default Colors'}
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-x-auto bg-white/70 rounded-xl border border-[#DCE5E3]">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#0F5C5B]/5 text-[#647777] border-b border-[#DCE5E3] uppercase font-bold text-[10px] tracking-wider">
+            <div className="overflow-x-auto bg-white/80 rounded-xl border border-[#DCE5E3] shadow-xs">
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-[#0F5C5B]/10 text-[#0F5C5B] border-b border-[#DCE5E3] uppercase font-bold text-[10px] tracking-wider">
                   <tr>
                     <th className="py-3 px-3">Date</th>
-                    <th className="py-3 px-3">Dir</th>
+                    <th className="py-3 px-3">Column1</th>
                     <th className="py-3 px-3">Particulars</th>
                     <th className="py-3 px-3">Description</th>
                     <th className="py-3 px-3 text-right">Nos</th>
@@ -230,81 +293,105 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <th className="py-3 px-3 text-right">Net WT</th>
                     <th className="py-3 px-3 text-right">Touch</th>
                     <th className="py-3 px-3 text-right">Pure WT</th>
-                    <th className="py-3 px-3 text-right">Total MC</th>
-                    <th className="py-3 px-3 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/5">Bal Pure WT</th>
-                    <th className="py-3 px-3 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/5">Bal MC</th>
-                    <th className="py-3 px-3 text-center">Status</th>
+                    <th className="py-3 px-3 text-right">Stone / Total Amt</th>
+                    <th className="py-3 px-3 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/10">Balance MC (₹)</th>
+                    <th className="py-3 px-3 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/10">Balance WT (g)</th>
+                    <th className="py-3 px-3 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#DCE5E3]/60">
+                <tbody className="divide-y divide-[#DCE5E3]/60 font-mono">
                   {/* Opening Balance Row */}
-                  <tr className="bg-[#0F5C5B]/5 font-semibold text-[#0F5C5B]">
-                    <td className="py-2.5 px-3 font-mono">-</td>
+                  <tr className="bg-amber-50/70 font-semibold text-[#173333]">
+                    <td className="py-2.5 px-3">-</td>
                     <td className="py-2.5 px-3">OPEN</td>
-                    <td className="py-2.5 px-3">OPENING BALANCE</td>
-                    <td className="py-2.5 px-3 text-[#647777]">Opening Account Ledger Balance</td>
+                    <td className="py-2.5 px-3 font-bold text-[#0F5C5B]">OPENING</td>
+                    <td className="py-2.5 px-3 font-sans text-[#647777]">Opening Account Ledger Balance</td>
                     <td className="py-2.5 px-3 text-right">-</td>
                     <td className="py-2.5 px-3 text-right">-</td>
                     <td className="py-2.5 px-3 text-right">-</td>
+                    <td className="py-2.5 px-3 text-right">0.000</td>
                     <td className="py-2.5 px-3 text-right">-</td>
+                    <td className="py-2.5 px-3 text-right font-bold">0.000</td>
                     <td className="py-2.5 px-3 text-right">-</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{customer.openingWT.toFixed(3)}g</td>
-                    <td className="py-2.5 px-3 text-right font-mono">₹{customer.openingMC.toLocaleString('en-IN')}</td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold bg-[#0F5C5B]/10">{customer.openingWT.toFixed(3)}g</td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold bg-[#0F5C5B]/10">₹{customer.openingMC.toLocaleString('en-IN')}</td>
-                    <td className="py-2.5 px-3 text-center">
-                      <SBGBadge variant="teal" size="sm">OPEN</SBGBadge>
+                    <td className="py-2.5 px-3 text-right font-bold bg-[#0F5C5B]/5 text-[#173333]">
+                      ₹{customer.openingMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
+                    <td className="py-2.5 px-3 text-right font-bold bg-[#0F5C5B]/5 text-[#173333]">
+                      {customer.openingWT.toFixed(3)}
+                    </td>
+                    <td className="py-2.5 px-3 text-center">-</td>
                   </tr>
 
-                  {customerLedger.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-white/90 transition-colors">
-                      <td className="py-3 px-3 font-mono font-semibold">{tx.date}</td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`font-bold text-[10px] px-1.5 py-0.5 rounded ${
-                            tx.direction === 'ISSUE'
-                              ? 'bg-[#0F5C5B]/10 text-[#0F5C5B]'
-                              : 'bg-[#D9B76C]/25 text-[#8C6A23]'
-                          }`}
-                        >
-                          {tx.direction}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-semibold text-[#173333]">{tx.particulars}</td>
-                      <td className="py-3 px-3 text-[#647777] max-w-xs truncate">{tx.description}</td>
-                      <td className="py-3 px-3 text-right font-mono">{tx.nos}</td>
-                      <td className="py-3 px-3 text-right font-mono">{tx.grossWT.toFixed(3)}</td>
-                      <td className="py-3 px-3 text-right font-mono text-[#647777]">{tx.stoneWT.toFixed(3)}</td>
-                      <td className="py-3 px-3 text-right font-mono font-medium">
-                        <span className={tx.netWT < 0 ? 'text-[#B85C5C]' : 'text-[#0F5C5B]'}>
-                          {tx.netWT.toFixed(3)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono">{tx.touch.toFixed(2)}%</td>
-                      <td className="py-3 px-3 text-right font-mono font-bold">
-                        <span className={tx.pureWT < 0 ? 'text-[#B85C5C]' : 'text-[#0F5C5B]'}>
-                          {tx.pureWT.toFixed(3)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-semibold">
-                        <SBGCurrency value={tx.totalAmount} />
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold bg-[#0F5C5B]/5">
-                        <span className={tx.balanceWT < 0 ? 'text-[#B85C5C]' : 'text-[#0F5C5B]'}>
-                          {tx.balanceWT.toFixed(3)} g
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold bg-[#0F5C5B]/5">
-                        <SBGCurrency value={tx.balanceMC} />
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <SBGBadge variant={tx.status === 'CONFIRMED' ? 'success' : 'neutral'} size="sm">
-                          {tx.status}
-                        </SBGBadge>
-                      </td>
-                    </tr>
-                  ))}
+                  {customerLedger.map((tx) => {
+                    const isReceipt = tx.direction === 'RECEIPT';
+                    const rowBgClass = useSheetTheme
+                      ? isReceipt
+                        ? 'bg-[#FCE8E6] text-[#900C3F]' // Soft Pink matching Google Sheet RECEIPT
+                        : 'bg-[#D9EAD3] text-[#1E4620]' // Soft Light Green matching Google Sheet ISSUE
+                      : 'hover:bg-white/90 transition-colors';
+
+                    return (
+                      <tr key={tx.id} className={`${rowBgClass} transition-colors border-b border-black/5`}>
+                        <td className="py-2.5 px-3 font-semibold">{tx.date}</td>
+                        <td className="py-2.5 px-3 font-bold">
+                          <span
+                            className={`font-bold text-[10px] px-1.5 py-0.5 rounded ${
+                              isReceipt
+                                ? 'bg-red-200/80 text-red-800'
+                                : 'bg-emerald-200/80 text-emerald-900'
+                            }`}
+                          >
+                            {tx.direction}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-bold uppercase">{tx.particulars}</td>
+                        <td className="py-2.5 px-3 font-sans max-w-xs truncate font-medium">{tx.description}</td>
+                        <td className="py-2.5 px-3 text-right font-semibold">{tx.nos || '-'}</td>
+                        <td className="py-2.5 px-3 text-right">{tx.grossWT > 0 ? tx.grossWT.toFixed(3) : '-'}</td>
+                        <td className="py-2.5 px-3 text-right opacity-80">{tx.stoneWT > 0 ? tx.stoneWT.toFixed(3) : '-'}</td>
+                        <td className="py-2.5 px-3 text-right font-semibold">
+                          {tx.netWT !== 0 ? tx.netWT.toFixed(3) : '0.000'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-medium">
+                          {tx.touch > 0 ? `${tx.touch.toFixed(2)}%` : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold">
+                          {tx.pureWT !== 0 ? tx.pureWT.toFixed(3) : '0.000'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-semibold">
+                          {tx.stoneAmount > 0
+                            ? `₹${tx.stoneAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                            : tx.totalAmount !== 0
+                            ? `₹${Math.abs(tx.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                            : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold bg-amber-50/50">
+                          <span className={tx.balanceMC < 0 ? 'text-red-700 font-bold' : 'text-emerald-800 font-bold'}>
+                            ₹{tx.balanceMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold bg-amber-50/50">
+                          <span className={tx.balanceWT < 0 ? 'text-red-700 font-bold' : 'text-emerald-800 font-bold'}>
+                            {tx.balanceWT.toFixed(3)}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <button
+                            type="button"
+                            title="Delete transaction"
+                            onClick={() => {
+                              if (window.confirm(`Delete transaction from ${tx.date} (${tx.particulars})?`)) {
+                                deleteTransaction(tx.id);
+                              }
+                            }}
+                            className="p-1 rounded text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -479,6 +566,14 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
         defaultCustomerId={customer.id}
+      />
+
+      {/* Google Sheet Copy-Paste / CSV Import Modal */}
+      <GoogleSheetImportModal
+        isOpen={isGoogleSheetModalOpen}
+        onClose={() => setIsGoogleSheetModalOpen(false)}
+        customerId={customer.id}
+        customerName={customer.name}
       />
     </div>
   );

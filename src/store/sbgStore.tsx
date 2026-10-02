@@ -67,6 +67,11 @@ interface SBGContextType {
   addTransaction: (tx: Omit<LedgerTransaction, 'id' | 'createdAt' | 'updatedAt' | 'balanceWT' | 'balanceMC'>) => Promise<LedgerTransaction>;
   updateTransaction: (id: string, updates: Partial<LedgerTransaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  importCustomerTransactions: (
+    customerId: string,
+    txs: Omit<LedgerTransaction, 'id' | 'createdAt' | 'updatedAt' | 'balanceWT' | 'balanceMC'>[],
+    replaceExisting?: boolean
+  ) => Promise<void>;
   getCustomerTransactions: (customerId: string) => LedgerTransaction[];
   getOrderTransactions: (orderId: string) => LedgerTransaction[];
 
@@ -1201,6 +1206,48 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const importCustomerTransactions = async (
+    customerId: string,
+    txDataList: Omit<LedgerTransaction, 'id' | 'createdAt' | 'updatedAt' | 'balanceWT' | 'balanceMC'>[],
+    replaceExisting: boolean = false
+  ) => {
+    const customer = customers.find((c) => c.id === customerId);
+    if (!customer) return;
+
+    const formattedList: LedgerTransaction[] = txDataList.map((txData, index) => {
+      const netWT = calculateNetWT(txData.grossWT, txData.stoneWT, txData.direction);
+      const pureWT = calculatePureWT(netWT, txData.touch);
+      const totalAmount = calculateTotalAmount(txData.stoneAmountCal, txData.mcAmountCal);
+
+      return {
+        ...txData,
+        id: `tx-imp-${Date.now()}-${index}`,
+        netWT,
+        pureWT,
+        totalAmount,
+        balanceWT: 0,
+        balanceMC: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    let baseTxList = transactions;
+    if (replaceExisting) {
+      baseTxList = transactions.filter((t) => t.customerId !== customerId);
+    }
+
+    const updatedTxList = [...baseTxList, ...formattedList];
+    await recalculateAndSaveCustomerBalances(customerId, updatedTxList);
+
+    logAudit(
+      'IMPORT_TRANSACTIONS',
+      'LEDGER',
+      customerId,
+      `Imported ${txDataList.length} transactions from sheet for ${customer.name}`
+    );
+  };
+
   const getCustomerTransactions = (customerId: string) =>
     transactions.filter((tx) => tx.customerId === customerId);
 
@@ -1372,6 +1419,7 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addTransaction,
         updateTransaction,
         deleteTransaction,
+        importCustomerTransactions,
         getCustomerTransactions,
         getOrderTransactions,
         estimates,
