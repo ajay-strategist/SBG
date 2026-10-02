@@ -17,7 +17,7 @@ interface UsersViewProps {
   onNavigate: (tab: ActiveTab, entityId?: string) => void;
 }
 
-export const UsersView: React.FC<UsersViewProps> = ({ onNavigate }) => {
+export const UsersView: React.FC<UsersViewProps> = () => {
   const { availableUsers, currentUser, switchUserRole } = useSBG();
 
   const permissionList = [
@@ -27,9 +27,10 @@ export const UsersView: React.FC<UsersViewProps> = ({ onNavigate }) => {
     { key: 'estimates', label: 'Estimates & Cost Sheets' },
     { key: 'settlements', label: 'Gold & Cash Settlements' },
     { key: 'reports', label: 'Commercial Reports' },
-    { key: 'erp', label: 'ERP Reconciliation' },
     { key: 'users', label: 'User & Access Admin' },
   ];
+
+  const rolesList: Array<'ADMIN' | 'STAFF' | 'CLIENT'> = ['ADMIN', 'STAFF', 'CLIENT'];
 
   return (
     <div className="space-y-6">
@@ -45,8 +46,8 @@ export const UsersView: React.FC<UsersViewProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* User Profiles Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* User Profiles Grid (3 Roles) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {availableUsers.map((user) => {
           const isCurrent = currentUser.id === user.id;
 
@@ -114,16 +115,15 @@ export const UsersView: React.FC<UsersViewProps> = ({ onNavigate }) => {
               <tr>
                 <th className="py-3 px-4">System Module</th>
                 <th className="py-3 px-4 text-center">ADMIN</th>
-                <th className="py-3 px-4 text-center">ACCOUNTANT</th>
-                <th className="py-3 px-4 text-center">MANAGER</th>
-                <th className="py-3 px-4 text-center">VIEWER</th>
+                <th className="py-3 px-4 text-center">STAFF</th>
+                <th className="py-3 px-4 text-center">CLIENT</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#DCE5E3]/60">
               {permissionList.map((perm) => (
                 <tr key={perm.key} className="hover:bg-white/60">
                   <td className="py-3.5 px-4 font-semibold text-[#173333]">{perm.label}</td>
-                  {['ADMIN', 'ACCOUNTANT', 'MANAGER', 'VIEWER'].map((role) => {
+                  {rolesList.map((role) => {
                     const user = availableUsers.find((u) => u.role === role);
                     const hasPerm = user?.permissions[perm.key as keyof typeof user.permissions];
 

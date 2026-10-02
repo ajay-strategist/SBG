@@ -201,7 +201,7 @@ export interface UserAccount {
   username: string;
   name: string;
   email: string;
-  role: 'ADMIN' | 'ACCOUNTANT' | 'MANAGER' | 'VIEWER';
+  role: 'ADMIN' | 'STAFF' | 'CLIENT';
   status: 'ACTIVE' | 'DISABLED';
   avatarColor?: string;
   permissions: {

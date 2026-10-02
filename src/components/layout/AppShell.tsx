@@ -68,6 +68,11 @@ export const AppShell: React.FC<AppShellProps> = ({
     goldMarketRate,
     setGoldMarketRate,
     lastRateUpdate,
+    selectedPurity,
+    setSelectedPurity,
+    goldRate24hChange,
+    isGoldRateLive,
+    refreshLiveGoldRate,
   } = useSBG();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -84,19 +89,21 @@ export const AppShell: React.FC<AppShellProps> = ({
     localStorage.setItem('sbg_sidebar_collapsed', JSON.stringify(sidebarCollapsed));
   }, [sidebarCollapsed]);
 
-  const navItems = [
+  const allNavItems = [
     { id: 'dashboard' as ActiveTab, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'customers' as ActiveTab, label: 'Customers', icon: Users },
-    { id: 'orders' as ActiveTab, label: 'Orders', icon: ShoppingBag },
-    { id: 'ledger' as ActiveTab, label: 'Customer Ledger', icon: BookOpen },
     { id: 'estimates' as ActiveTab, label: 'SBG Estimates', icon: FileSpreadsheet },
-    { id: 'settlements' as ActiveTab, label: 'Settlements', icon: Coins },
-    { id: 'reports' as ActiveTab, label: 'Reports', icon: FileBarChart2 },
-    { id: 'erp' as ActiveTab, label: 'ERP Reconciliation', icon: RefreshCw },
     { id: 'audit' as ActiveTab, label: 'Audit & Security', icon: ShieldCheck },
     { id: 'users' as ActiveTab, label: 'Users & Access', icon: UserCheck },
     { id: 'settings' as ActiveTab, label: 'Settings', icon: Settings },
   ];
+
+  const navItems = allNavItems.filter((item) => {
+    if (currentUser?.role === 'CLIENT' || currentUser?.role === 'STAFF') {
+      return ['dashboard', 'customers', 'estimates'].includes(item.id);
+    }
+    return true;
+  });
 
   const handleRateSave = () => {
     const val = parseFloat(tempRate);
@@ -185,17 +192,26 @@ export const AppShell: React.FC<AppShellProps> = ({
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] text-[#E7CCA0] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3 h-3 text-[#D9B76C]" /> Market Gold Rate
+                  <Sparkles className="w-3 h-3 text-[#D9B76C]" /> MARKET GOLD RATE
                 </span>
-                <button
-                  onClick={() => {
-                    setTempRate(goldMarketRate.toString());
-                    setIsEditingRate(!isEditingRate);
-                  }}
-                  className="text-[10px] text-white/70 hover:text-[#E7CCA0] underline cursor-pointer"
-                >
-                  {isEditingRate ? 'Cancel' : 'Edit'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={refreshLiveGoldRate}
+                    className="text-[10px] text-white/60 hover:text-[#E7CCA0] cursor-pointer"
+                    title="Refresh Live Rate"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTempRate(goldMarketRate.toString());
+                      setIsEditingRate(!isEditingRate);
+                    }}
+                    className="text-[10px] text-white/70 hover:text-[#E7CCA0] underline cursor-pointer"
+                  >
+                    {isEditingRate ? 'Cancel' : 'Edit'}
+                  </button>
+                </div>
               </div>
 
               {isEditingRate ? (
@@ -220,21 +236,54 @@ export const AppShell: React.FC<AppShellProps> = ({
                     <span className="text-xl font-mono font-bold text-white tracking-tight">
                       ₹ {goldMarketRate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
-                    <div className="w-6 h-6 rounded-full bg-[#D9B76C]/20 flex items-center justify-center">
-                      <TrendingUp className="w-3.5 h-3.5 text-[#D9B76C]" />
+                    <div className="flex items-center gap-1">
+                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${goldRate24hChange >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+                        {goldRate24hChange >= 0 ? `+${goldRate24hChange}%` : `${goldRate24hChange}%`}
+                      </span>
+                      <div className="w-6 h-6 rounded-full bg-[#D9B76C]/20 flex items-center justify-center">
+                        <TrendingUp className="w-3.5 h-3.5 text-[#D9B76C]" />
+                      </div>
                     </div>
                   </div>
-                  <div className="text-[10px] text-white/60 mt-0.5">per gram (99.5)</div>
+                  <div className="text-[10px] text-white/60 mt-0.5 flex items-center justify-between">
+                    <span>per gram ({selectedPurity === '995' ? '99.5' : '91.6 / 22K'})</span>
+                    {isGoldRateLive && (
+                      <span className="inline-flex items-center gap-1 text-[9px] text-emerald-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Live
+                      </span>
+                    )}
+                  </div>
 
-                  {/* 3D Gold Bars Decorative Graphic */}
+                  {/* Interactive Purity Toggles */}
                   <div className="flex items-end justify-between mt-2 pt-2 border-t border-white/10">
                     <div className="text-[9px] text-white/50">
                       <span className="block">Last Updated</span>
                       <span className="text-white/80 font-medium">{lastRateUpdate}</span>
                     </div>
+
                     <div className="flex items-center gap-1">
-                      <div className="w-4 h-2.5 bg-gradient-to-r from-[#D9B76C] to-[#C49E4B] rounded-xs shadow-xs border border-white/30" />
-                      <div className="w-5 h-3 bg-gradient-to-r from-[#F4E8C8] to-[#D9B76C] rounded-xs shadow-sm border border-white/40" />
+                      <button
+                        onClick={() => setSelectedPurity('995')}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                          selectedPurity === '995'
+                            ? 'bg-[#D9B76C] text-[#093E3C] border-[#D9B76C]'
+                            : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                        }`}
+                        title="Fine Gold 99.5 Rate"
+                      >
+                        99.5
+                      </button>
+                      <button
+                        onClick={() => setSelectedPurity('916')}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                          selectedPurity === '916'
+                            ? 'bg-[#D9B76C] text-[#093E3C] border-[#D9B76C]'
+                            : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                        }`}
+                        title="Jewelry 91.6 (22K) Rate"
+                      >
+                        91.6
+                      </button>
                     </div>
                   </div>
                 </div>

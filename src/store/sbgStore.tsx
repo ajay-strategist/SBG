@@ -15,6 +15,7 @@ import {
   calculateCustomerSummaryBalances,
 } from '../core/calculations';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { fetchLiveGoldRate, GoldRateData } from '../lib/goldRateService';
 
 export interface ERPCommercialSyncItem {
   id: string;
@@ -93,8 +94,17 @@ interface SBGContextType {
   auditLogs: AuditLogEntry[];
   logAudit: (action: string, module: AuditLogEntry['module'], recordId: string, details?: string, prev?: any, next?: any) => void;
 
-  // System Settings
+  // System Settings & Realtime Gold Rate
   goldMarketRate: number;
+  rate24k: number;
+  rate995: number;
+  rate916: number;
+  selectedPurity: '995' | '916';
+  setSelectedPurity: (purity: '995' | '916') => void;
+  goldRate24hChange: number;
+  goldRateSource: string;
+  isGoldRateLive: boolean;
+  refreshLiveGoldRate: () => Promise<void>;
   setGoldMarketRate: (rate: number) => void;
   defaultGSTRate: number;
   setDefaultGSTRate: (rate: number) => void;
@@ -120,15 +130,15 @@ const defaultUsers: UserAccount[] = [
       settlements: true,
       reports: true,
       users: true,
-      erp: true,
+      erp: false,
     },
   },
   {
     id: 'usr-2',
-    username: 'accountant',
+    username: 'staff',
     name: 'Sunita Sharma',
     email: 'sunita@sbgjewels.com',
-    role: 'ACCOUNTANT',
+    role: 'STAFF',
     status: 'ACTIVE',
     avatarColor: '#23827F',
     permissions: {
@@ -139,15 +149,15 @@ const defaultUsers: UserAccount[] = [
       settlements: true,
       reports: true,
       users: false,
-      erp: true,
+      erp: false,
     },
   },
   {
     id: 'usr-3',
-    username: 'manager',
+    username: 'client',
     name: 'Vikram Sethi',
     email: 'vikram@sbgjewels.com',
-    role: 'MANAGER',
+    role: 'CLIENT',
     status: 'ACTIVE',
     avatarColor: '#D9B76C',
     permissions: {
@@ -156,7 +166,7 @@ const defaultUsers: UserAccount[] = [
       transactions: true,
       estimates: true,
       settlements: false,
-      reports: true,
+      reports: false,
       users: false,
       erp: false,
     },
@@ -205,15 +215,78 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [erpSyncItems, setErpSyncItems] = useState<ERPCommercialSyncItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
+  const [rate24k, setRate24k] = useState<number>(11904.65);
+  const [rate995, setRate995] = useState<number>(11845.13);
+  const [rate916, setRate916] = useState<number>(10904.66);
+  const [selectedPurity, setSelectedPurityState] = useState<'995' | '916'>(() => {
+    const saved = localStorage.getItem('sbg_purity');
+    return saved === '916' ? '916' : '995';
+  });
+  const [goldRate24hChange, setGoldRate24hChange] = useState<number>(+0.24);
+  const [goldRateSource, setGoldRateSource] = useState<string>('Yahoo Finance (Live)');
+  const [isGoldRateLive, setIsGoldRateLive] = useState<boolean>(true);
+
   const [goldMarketRate, setGoldMarketRateState] = useState<number>(() => {
-    const saved = localStorage.getItem('sbg_gold_rate');
-    return saved ? parseFloat(saved) : 11845.13;
+    return selectedPurity === '916' ? 10904.66 : 11845.13;
   });
 
   const [lastRateUpdate, setLastRateUpdate] = useState<string>('22 Sep 2026, 10:15 AM');
   const [defaultGSTRate, setDefaultGSTRate] = useState<number>(3.0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'SYNCED' | 'SYNCING' | 'OFFLINE'>('SYNCED');
+
+  const setSelectedPurity = (purity: '995' | '916') => {
+    setSelectedPurityState(purity);
+    localStorage.setItem('sbg_purity', purity);
+    setGoldMarketRateState(purity === '916' ? rate916 : rate995);
+  };
+
+  const refreshLiveGoldRate = async () => {
+    try {
+      const data: GoldRateData = await fetchLiveGoldRate();
+      setRate24k(data.base24kPerGram);
+      setRate995(data.rate995);
+      setRate916(data.rate916);
+      setGoldRate24hChange(data.change24hPercent);
+      setLastRateUpdate(data.lastUpdated);
+      setIsGoldRateLive(data.isLive);
+      setGoldRateSource(data.source);
+
+      const activeRate = selectedPurity === '916' ? data.rate916 : data.rate995;
+      setGoldMarketRateState(activeRate);
+      localStorage.setItem('sbg_gold_rate', activeRate.toString());
+    } catch (e) {
+      console.warn('Live gold rate refresh failed:', e);
+    }
+  };
+
+  // Live fetch on mount & 5-minute interval
+  useEffect(() => {
+    refreshLiveGoldRate();
+    const interval = setInterval(refreshLiveGoldRate, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [selectedPurity]);
+
+  // Supabase Realtime Gold Rate Channel Subscription for multi-user sync
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const channel = supabase.channel('sbg-gold-rate')
+      .on('broadcast', { event: 'rate_update' }, (payload) => {
+        if (payload.payload) {
+          const { rate995: r995, rate916: r916, lastUpdated, change } = payload.payload;
+          if (r995) setRate995(r995);
+          if (r916) setRate916(r916);
+          if (lastUpdated) setLastRateUpdate(lastUpdated);
+          if (change) setGoldRate24hChange(change);
+          setGoldMarketRateState(selectedPurity === '916' ? (r916 || rate916) : (r995 || rate995));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedPurity, rate995, rate916]);
 
   // Supabase Data Fetcher
   const refreshFromDatabase = async () => {
@@ -370,10 +443,32 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setGoldMarketRate = (rate: number) => {
     setGoldMarketRateState(rate);
+    if (selectedPurity === '916') {
+      setRate916(rate);
+    } else {
+      setRate995(rate);
+    }
     const now = new Date();
     const formatted = `${now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
     setLastRateUpdate(formatted);
     localStorage.setItem('sbg_gold_rate', rate.toString());
+
+    if (isSupabaseConfigured) {
+      try {
+        supabase.channel('sbg-gold-rate').send({
+          type: 'broadcast',
+          event: 'rate_update',
+          payload: {
+            rate995: selectedPurity === '995' ? rate : rate995,
+            rate916: selectedPurity === '916' ? rate : rate916,
+            lastUpdated: formatted,
+            change: goldRate24hChange,
+          },
+        });
+      } catch (e) {
+        console.warn('Realtime broadcast error:', e);
+      }
+    }
   };
 
   const login = (username?: string, _password?: string) => {
@@ -896,6 +991,15 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         auditLogs,
         logAudit,
         goldMarketRate,
+        rate24k,
+        rate995,
+        rate916,
+        selectedPurity,
+        setSelectedPurity,
+        goldRate24hChange,
+        goldRateSource,
+        isGoldRateLive,
+        refreshLiveGoldRate,
         setGoldMarketRate,
         defaultGSTRate,
         setDefaultGSTRate,

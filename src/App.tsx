@@ -88,7 +88,6 @@ const MainApp: React.FC = () => {
         />
       )}
       {currentTab === 'reports' && <ReportsView onNavigate={handleNavigate} />}
-      {currentTab === 'erp' && <ERPReconciliationView onNavigate={handleNavigate} />}
       {currentTab === 'audit' && <AuditView onNavigate={handleNavigate} />}
       {currentTab === 'users' && <UsersView onNavigate={handleNavigate} />}
       {currentTab === 'settings' && <SettingsView onNavigate={handleNavigate} />}
