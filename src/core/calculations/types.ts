@@ -4,6 +4,7 @@ export type ParticularsType =
   | 'PURCHASE'
   | 'SALE'
   | 'SALES'
+  | 'PR'
   | 'RECEIPT'
   | 'ISSUE'
   | 'RETURN'
