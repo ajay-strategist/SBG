@@ -49,9 +49,9 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
     const csvContent = `Date,Issue/Receipt,Particulars,Description,Nos,Gross WT,Stone WT,Net WT,Touch,Pure WT,Stone Amount,MC Amount,Total Amount,Balance MC,Balance WT
 29/05/26,RECEIPT,PURCHASE,RD/BB/031/26-27,50,-23.085,1.478,-21.607,76.00%,-16.421,"(₹2,22,583.00)",0,"(₹2,22,583.00)","(₹2,22,583.00)",-16.421
 03/06/26,ISSUE,PURCHASE,DN/003/26-27,1,0.344,0.012,0.332,76.00%,0.252,"₹4,063.00",0,"₹4,063.00","(₹2,18,520.00)",-16.169
-03/06/26,ISSUE,SALES,SBG/BB/047,0,16.510,0.000,16.510,99.90%,16.493,0,0,"₹-","(₹2,18,520.00)",0.324
-10/06/26,ISSUE,PAYMENT,,0,0.000,0.000,0.000,0.00%,0.000,"₹1,00,000.00",0,"₹1,00,000.00","(₹1,18,520.00)",0.324
-19/06/26,ISSUE,PAYMENT,,0,0.000,0.000,0.000,0.00%,0.000,"₹1,12,155.00",0,"₹1,12,155.00","(₹6,365.00)",0.324
+03/06/26,ISSUE,SALES,SBG/BB/047,,16.510,,16.510,99.90%,16.493,0,0,"₹-","(₹2,18,520.00)",0.324
+10/06/26,ISSUE,PAYMENT,,,0,0,0,0.00%,0,"₹1,00,000.00",0,"₹1,00,000.00","(₹1,18,520.00)",0.324
+19/06/26,ISSUE,PAYMENT,,,0,0,0,0.00%,0,"₹1,12,155.00",0,"₹1,12,155.00","(₹6,365.00)",0.324
 07/07/26,ISSUE,ISSUE,JWI/148/26-27,1,2.036,0.018,2.018,92.00%,1.857,0,0,"₹-","(₹6,365.00)",2.181
 07/07/26,ISSUE,ISSUE,JWI/148/26-27,1,3.734,0.050,3.684,75.00%,2.763,0,0,"₹-","(₹6,365.00)",4.944
 19/08/26,RECEIPT,PURCHASE,RD/BB/087/26-27,2,-2.225,0.132,-2.093,76.00%,-1.591,"(₹15,494.00)",0,"(₹15,494.00)","(₹21,859.00)",3.353`;
@@ -90,12 +90,37 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
   const parseNumericValue = (val: string | undefined): number => {
     if (!val) return 0;
     const cleaned = val.trim();
-    if (cleaned === '-' || cleaned === '₹-' || cleaned === '₹ -' || cleaned === '₹') return 0;
+    if (cleaned === '' || cleaned === '-' || cleaned === '₹-' || cleaned === '₹ -' || cleaned === '₹') return 0;
 
     const isNegative = cleaned.includes('(') || cleaned.startsWith('-');
     const digitsOnly = cleaned.replace(/[^0-9.]/g, '');
     const num = parseFloat(digitsOnly) || 0;
     return isNegative ? -Math.abs(num) : Math.abs(num);
+  };
+
+  // Robust line splitter for TSV and CSV that preserves empty cells (,, or \t\t)
+  const parseLineToCols = (line: string): string[] => {
+    if (line.includes('\t')) {
+      return line.split('\t').map((c) => c.trim().replace(/^"|"$/g, ''));
+    }
+
+    const result: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        result.push(cur.trim().replace(/^"|"$/g, ''));
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    result.push(cur.trim().replace(/^"|"$/g, ''));
+    return result;
   };
 
   const parseInputText = (text: string) => {
@@ -110,50 +135,48 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
 
     lines.forEach((line, index) => {
       // Ignore header rows
-      if (index === 0 && (line.toLowerCase().includes('date') || line.toLowerCase().includes('particulars') || line.toLowerCase().includes('issue/receipt'))) {
+      const lower = line.toLowerCase();
+      if (index === 0 && (lower.includes('date') || lower.includes('particulars') || lower.includes('issue/receipt') || lower.includes('column1'))) {
         return;
       }
 
-      // Split by tab (\t) or comma (,) with CSV quote awareness
-      let cols: string[] = [];
-      if (line.includes('\t')) {
-        cols = line.split('\t');
-      } else {
-        // Regex to handle CSV quoted fields like "(₹2,22,583.00)"
-        cols = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
-      }
-
+      const cols = parseLineToCols(line);
       if (cols.length < 3) return; // Skip empty/invalid lines
 
       try {
-        const rawDate = cols[0]?.replace(/"/g, '').trim() || '';
-        const rawDir = cols[1]?.replace(/"/g, '').trim().toUpperCase() || 'ISSUE';
-        const rawParticulars = cols[2]?.replace(/"/g, '').trim() || 'SALE';
-        const description = cols[3]?.replace(/"/g, '').trim() || '';
+        const rawDate = cols[0] || '';
+        const rawDir = cols[1]?.toUpperCase() || 'ISSUE';
+        const rawParticulars = cols[2] || 'SALE';
+        const description = cols[3] || '';
         
         const nos = Math.abs(parseNumericValue(cols[4]));
         
-        // Parse Gross WT & Stone WT (Handling 15-column format: 5=Gross WT, 6=Stone WT, 7=Net WT, 8=Touch)
+        // Exact 15-column Index Mapping matching Excel template:
+        // Index 5 = Gross WT, Index 6 = Stone WT, Index 7 = Net WT, Index 8 = Touch, Index 9 = Pure WT
         const parsedGross = parseNumericValue(cols[5]);
+        const parsedStoneWT = parseNumericValue(cols[6]);
         const grossWT = Math.abs(parsedGross);
-        const stoneWT = Math.abs(parseNumericValue(cols[6]));
+        const stoneWT = Math.abs(parsedStoneWT);
         
-        let touch = parseNumericValue(cols[8] || cols[7] || cols[9]);
+        let touch = parseNumericValue(cols[8]);
         if (touch < 0) touch = Math.abs(touch);
         if (touch < 1 && touch > 0) touch = touch * 100; // e.g. 0.76 -> 76%
-        if (touch === 0) touch = 0;
 
-        // Parse Stone Amount & MC Amount (10=Stone Amount, 11=MC Amount, 12=Total Amount)
-        const parsedStoneAmt = parseNumericValue(cols[10] || cols[9] || cols[11]);
+        // Index 10 = Stone Amount, Index 11 = MC Amount, Index 12 = Total Amount
+        const parsedStoneAmt = parseNumericValue(cols[10]);
+        const parsedMCAmt = parseNumericValue(cols[11]);
+        const parsedTotalAmt = parseNumericValue(cols[12]);
+
         const stoneAmount = Math.abs(parsedStoneAmt);
-        const mcAmount = Math.abs(parseNumericValue(cols[11] || cols[12]));
+        const mcAmount = Math.abs(parsedMCAmt);
 
-        // Determine Direction
+        // Determine Direction accurately
         const isDirReceipt =
           rawDir.includes('RECEIPT') ||
           rawParticulars.toUpperCase().includes('PURCHASE') ||
           parsedGross < 0 ||
-          parsedStoneAmt < 0;
+          parsedStoneAmt < 0 ||
+          parsedTotalAmt < 0;
 
         const direction: TransactionDirection = isDirReceipt ? 'RECEIPT' : 'ISSUE';
 
@@ -226,9 +249,9 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
   const loadTIKVAHSampleData = () => {
     const sample = `29/05/26\tRECEIPT\tPURCHASE\tRD/BB/031/26-27\t50\t-23.085\t1.478\t-21.607\t76.00%\t-16.421\t(₹2,22,583.00)\t0\t(₹2,22,583.00)\t(₹2,22,583.00)\t-16.421
 03/06/26\tISSUE\tPURCHASE\tDN/003/26-27\t1\t0.344\t0.012\t0.332\t76.00%\t0.252\t₹4,063.00\t0\t₹4,063.00\t(₹2,18,520.00)\t-16.169
-03/06/26\tISSUE\tSALES\tSBG/BB/047\t0\t16.510\t0.000\t16.510\t99.90%\t16.493\t0\t0\t₹-\t(₹2,18,520.00)\t0.324
-10/06/26\tISSUE\tPAYMENT\t\t0\t0.000\t0.000\t0.000\t0.00%\t0.000\t₹1,00,000.00\t0\t₹1,00,000.00\t(₹1,18,520.00)\t0.324
-19/06/26\tISSUE\tPAYMENT\t\t0\t0.000\t0.000\t0.000\t0.00%\t0.000\t₹1,12,155.00\t0\t₹1,12,155.00\t(₹6,365.00)\t0.324
+03/06/26\tISSUE\tSALES\tSBG/BB/047\t\t16.510\t\t16.510\t99.90%\t16.493\t0\t0\t₹-\t(₹2,18,520.00)\t0.324
+10/06/26\tISSUE\tPAYMENT\t\t\t0\t0\t0\t0.00%\t0\t₹1,00,000.00\t0\t₹1,00,000.00\t(₹1,18,520.00)\t0.324
+19/06/26\tISSUE\tPAYMENT\t\t\t0\t0\t0\t0.00%\t0\t₹1,12,155.00\t0\t₹1,12,155.00\t(₹6,365.00)\t0.324
 07/07/26\tISSUE\tISSUE\tJWI/148/26-27\t1\t2.036\t0.018\t2.018\t92.00%\t1.857\t0\t0\t₹-\t(₹6,365.00)\t2.181
 07/07/26\tISSUE\tISSUE\tJWI/148/26-27\t1\t3.734\t0.050\t3.684\t75.00%\t2.763\t0\t0\t₹-\t(₹6,365.00)\t4.944
 19/08/26\tRECEIPT\tPURCHASE\tRD/BB/087/26-27\t2\t-2.225\t0.132\t-2.093\t76.00%\t-1.591\t(₹15,494.00)\t0\t(₹15,494.00)\t(₹21,859.00)\t3.353`;
@@ -406,12 +429,12 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
                         <td className="py-1.5 px-2 font-semibold">{r.date}</td>
                         <td className="py-1.5 px-2 font-bold">{r.direction}</td>
                         <td className="py-1.5 px-2 font-bold uppercase">{r.particulars}</td>
-                        <td className="py-1.5 px-2 max-w-[120px] truncate">{r.description}</td>
+                        <td className="py-1.5 px-2 max-w-[120px] truncate">{r.description || '-'}</td>
                         <td className="py-1.5 px-2 text-right">{r.nos || '-'}</td>
                         <td className="py-1.5 px-2 text-right">{r.grossWT.toFixed(3)}</td>
                         <td className="py-1.5 px-2 text-right">{r.stoneWT.toFixed(3)}</td>
                         <td className="py-1.5 px-2 text-right font-bold">{r.netWT.toFixed(3)}</td>
-                        <td className="py-1.5 px-2 text-right">{r.touch.toFixed(2)}%</td>
+                        <td className="py-1.5 px-2 text-right">{r.touch > 0 ? `${r.touch.toFixed(2)}%` : '-'}</td>
                         <td className="py-1.5 px-2 text-right font-bold">{r.pureWT.toFixed(3)}</td>
                         <td className="py-1.5 px-2 text-right font-bold">
                           {r.stoneAmount > 0

@@ -1209,7 +1209,7 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const importCustomerTransactions = async (
     customerId: string,
     txDataList: Omit<LedgerTransaction, 'id' | 'createdAt' | 'updatedAt' | 'balanceWT' | 'balanceMC'>[],
-    replaceExisting: boolean = false
+    replaceExisting: boolean = true
   ) => {
     const customer = customers.find((c) => c.id === customerId);
     if (!customer) return;
