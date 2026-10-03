@@ -65,6 +65,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   const [isGold, setIsGold] = useState(existingEstimate?.isGold ?? true);
   const [goldRate, setGoldRate] = useState<number>(existingEstimate?.goldRate || goldMarketRate);
   const [goldRatePurity, setGoldRatePurity] = useState<number>(existingEstimate?.goldRatePurity || 99.5);
+  const [diamondRate, setDiamondRate] = useState<number>(existingEstimate?.diamondRate || 45000);
+  const [stoneRate, setStoneRate] = useState<number>(existingEstimate?.stoneRate || 1200);
+  const [mcRate, setMcRate] = useState<number>(existingEstimate?.mcRate || 950);
+  const [wastagePercent, setWastagePercent] = useState<number>(existingEstimate?.wastagePercent || 0);
   const [unfixGoldRate, setUnfixGoldRate] = useState<number>(existingEstimate?.unfixGoldRate || 0);
   const [remarks, setRemarks] = useState(existingEstimate?.remarks || '');
 
@@ -95,7 +99,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         grossWT: 0,
         stoneWT: 0,
         touch: 0,
-        rate: 850.0,
+        rate: 950.0,
         rateUnit: 'PER_G',
       },
     ];
@@ -113,6 +117,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       setIsGold(existingEstimate.isGold ?? true);
       setGoldRate(existingEstimate.goldRate || goldMarketRate);
       setGoldRatePurity(existingEstimate.goldRatePurity || 99.5);
+      setDiamondRate(existingEstimate.diamondRate || 45000);
+      setStoneRate(existingEstimate.stoneRate || 1200);
+      setMcRate(existingEstimate.mcRate || 950);
+      setWastagePercent(existingEstimate.wastagePercent || 0);
       setUnfixGoldRate(existingEstimate.unfixGoldRate || 0);
       setRemarks(existingEstimate.remarks || '');
       if (existingEstimate.items && existingEstimate.items.length > 0) {
@@ -138,6 +146,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       isGold,
       goldRate,
       goldRatePurity,
+      diamondRate,
+      stoneRate,
+      mcRate,
+      wastagePercent,
       unfixGoldRate: unfixGoldRate || undefined,
       remarks,
       items: items as any,
@@ -158,6 +170,35 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
     defaultGSTRate
   );
 
+  const handleApplyMasterRatesToAllLines = () => {
+    setItems((prev) =>
+      prev.map((item) => {
+        let rate = item.rate || 0;
+        let rateUnit: RateUnit = item.rateUnit || 'PER_G';
+
+        if (item.category === 'GOLD') {
+          rate = goldRate;
+          rateUnit = 'PER_G';
+        } else if (item.category === 'DIAMOND') {
+          rate = diamondRate;
+          rateUnit = 'PER_CT';
+        } else if (item.category === 'PRECIOUS_STONE') {
+          rate = stoneRate;
+          rateUnit = 'PER_CT';
+        } else if (item.category === 'MAKING_CHARGE') {
+          rate = mcRate;
+          rateUnit = 'PER_G';
+        }
+
+        return {
+          ...item,
+          rate,
+          rateUnit,
+        };
+      })
+    );
+  };
+
   const handleUpdateLine = (index: number, updates: Partial<EstimateLineItem>) => {
     setItems((prev) => {
       const copy = [...prev];
@@ -167,8 +208,19 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   };
 
   const handleAddLine = (category: EstimateItemCategory = 'GOLD') => {
-    const defaultRate = category === 'GOLD' ? goldRate : category === 'MAKING_CHARGE' ? 950 : 50000;
-    const defaultUnit: RateUnit = category === 'DIAMOND' || category === 'PRECIOUS_STONE' ? 'PER_CT' : 'PER_G';
+    let defaultRate = goldRate;
+    let defaultUnit: RateUnit = 'PER_G';
+
+    if (category === 'DIAMOND') {
+      defaultRate = diamondRate;
+      defaultUnit = 'PER_CT';
+    } else if (category === 'PRECIOUS_STONE') {
+      defaultRate = stoneRate;
+      defaultUnit = 'PER_CT';
+    } else if (category === 'MAKING_CHARGE') {
+      defaultRate = mcRate;
+      defaultUnit = 'PER_G';
+    }
 
     setItems((prev) => [
       ...prev,
@@ -347,32 +399,66 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-[#DCE5E3]/60">
-          <SBGInput
-            label="Base Gold Rate (₹/g)"
-            type="number"
-            step="0.01"
-            value={goldRate}
-            onChange={(e) => setGoldRate(parseFloat(e.target.value) || 0)}
-          />
+        {/* Master Rate Matrix Control Bar */}
+        <div className="p-4 bg-gradient-to-r from-[#0F5C5B]/10 via-[#0F5C5B]/5 to-transparent rounded-2xl border border-[#0F5C5B]/20 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#D9B76C]" /> Estimate Master Rates Matrix
+              </h3>
+              <p className="text-[11px] text-[#647777]">
+                Define base rates for Gold, Diamonds, Stones, and Making Charges. Click button to apply to all lines dynamically.
+              </p>
+            </div>
 
-          <SBGInput
-            label="Gold Rate Purity (%)"
-            type="number"
-            step="0.1"
-            suffixText="%"
-            value={goldRatePurity}
-            onChange={(e) => setGoldRatePurity(parseFloat(e.target.value) || 99.5)}
-          />
+            <SBGButton
+              variant="gold"
+              size="sm"
+              icon={<Sparkles className="w-3.5 h-3.5" />}
+              onClick={handleApplyMasterRatesToAllLines}
+            >
+              Apply Master Rates to All Lines
+            </SBGButton>
+          </div>
 
-          <SBGInput
-            label="UNFIX Gold Rate (₹/g)"
-            type="number"
-            step="0.01"
-            placeholder="Optional"
-            value={unfixGoldRate || ''}
-            onChange={(e) => setUnfixGoldRate(parseFloat(e.target.value) || 0)}
-          />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            <SBGInput
+              label="Master Gold Rate (₹/g)"
+              type="number"
+              step="0.01"
+              value={goldRate}
+              onChange={(e) => setGoldRate(parseFloat(e.target.value) || 0)}
+            />
+            <SBGInput
+              label="Master Diamond Rate (₹/ct)"
+              type="number"
+              step="1"
+              value={diamondRate}
+              onChange={(e) => setDiamondRate(parseFloat(e.target.value) || 0)}
+            />
+            <SBGInput
+              label="Master Stone Rate (₹/ct)"
+              type="number"
+              step="1"
+              value={stoneRate}
+              onChange={(e) => setStoneRate(parseFloat(e.target.value) || 0)}
+            />
+            <SBGInput
+              label="Master MC Rate (₹/g)"
+              type="number"
+              step="1"
+              value={mcRate}
+              onChange={(e) => setMcRate(parseFloat(e.target.value) || 0)}
+            />
+            <SBGInput
+              label="Gold Purity (%)"
+              type="number"
+              step="0.1"
+              suffixText="%"
+              value={goldRatePurity}
+              onChange={(e) => setGoldRatePurity(parseFloat(e.target.value) || 99.5)}
+            />
+          </div>
         </div>
       </SBGCard>
 
@@ -386,7 +472,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <SBGButton
               variant="outline"
               size="sm"
@@ -402,6 +488,14 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
               onClick={() => handleAddLine('DIAMOND')}
             >
               + Diamond Line
+            </SBGButton>
+            <SBGButton
+              variant="outline"
+              size="sm"
+              icon={<Plus className="w-3.5 h-3.5" />}
+              onClick={() => handleAddLine('PRECIOUS_STONE')}
+            >
+              + Stone Line
             </SBGButton>
             <SBGButton
               variant="outline"

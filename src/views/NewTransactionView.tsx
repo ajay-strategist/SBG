@@ -362,47 +362,47 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider text-[#D9B76C] flex items-center gap-1.5">
                 <Calculator className="w-4 h-4" /> Engine Precision Output
               </span>
-              <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded font-mono text-white/80">
+              <span className="text-[10px] bg-white/15 px-2.5 py-0.5 rounded-md font-mono text-emerald-200 border border-white/20">
                 Formula Verified
               </span>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="flex justify-between items-center py-1 border-b border-white/10">
-                <span className="text-white/70">Direction Multiplier:</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-white/15">
+                <span className="text-emerald-100 font-medium">Direction Multiplier:</span>
                 <span className="font-mono font-bold text-white">
                   {direction === 'RECEIPT' ? '-1 (Negative / Inward)' : '+1 (Positive / Outward)'}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center py-1 border-b border-white/10">
-                <span className="text-white/70">Stone WT Converted:</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-white/15">
+                <span className="text-emerald-100 font-medium">Stone WT Converted:</span>
                 <span className="font-mono font-bold text-white">
                   {stoneWT.toFixed(3)} g ({stoneWTCarats.toFixed(3)} ct)
                 </span>
               </div>
 
-              <div className="flex justify-between items-center py-1 border-b border-white/10">
-                <span className="text-white/70">Calculated Net WT:</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-white/15">
+                <span className="text-emerald-100 font-medium">Calculated Net WT:</span>
                 <span className="font-mono font-bold text-base text-[#D9B76C]">
                   {netWT.toFixed(3)} g
                 </span>
               </div>
 
-              <div className="flex justify-between items-center py-1 border-b border-white/10">
-                <span className="text-white/70">Touch Applied:</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-white/15">
+                <span className="text-emerald-100 font-medium">Touch Applied:</span>
                 <span className="font-mono font-bold text-white">{touch.toFixed(2)}%</span>
               </div>
 
-              <div className="flex justify-between items-center py-1 border-b border-white/10">
-                <span className="text-white/70">Calculated Pure WT:</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-white/15">
+                <span className="text-emerald-100 font-medium">Calculated Pure WT:</span>
                 <span className="font-mono font-black text-lg text-white">
                   {pureWT.toFixed(3)} g
                 </span>
               </div>
 
-              <div className="flex justify-between items-center py-1 border-b border-white/10">
-                <span className="text-white/70">Calculated Total MC:</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-white/15">
+                <span className="text-emerald-100 font-medium">Calculated Total MC:</span>
                 <span className="font-mono font-bold text-white">
                   <SBGCurrency value={totalAmount} className="text-white" />
                 </span>
@@ -415,7 +415,7 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
                 <div className="flex items-center gap-1.5 text-[#D9B76C] font-bold">
                   <CheckCircle2 className="w-4 h-4" /> Sample Test Case Exact Match!
                 </div>
-                <p className="text-[11px] text-white/80">
+                <p className="text-[11px] text-emerald-100">
                   Net WT: -17.570 g & Pure WT: -13.353 g generated strictly by math formula!
                 </p>
               </div>

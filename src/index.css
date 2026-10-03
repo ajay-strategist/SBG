@@ -92,13 +92,14 @@
   border-radius: 18px;
 }
 
-.glass-panel-mint-card {
-  background: linear-gradient(135deg, rgba(245, 252, 250, 0.92) 0%, rgba(238, 248, 246, 0.96) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(15, 92, 91, 0.15);
-  box-shadow: 0 8px 24px rgba(15, 92, 91, 0.06);
+.glass-panel-teal {
+  background: linear-gradient(145deg, #093E3C 0%, #062A29 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(217, 183, 108, 0.35);
+  box-shadow: 0 16px 36px rgba(6, 42, 41, 0.35);
   border-radius: 18px;
+  color: #FFFFFF;
 }
 
 .gold-gradient-text {

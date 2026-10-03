@@ -86,6 +86,10 @@ export interface EstimateCostSheet {
   isGold: boolean;
   goldRate: number;
   goldRatePurity: number; // e.g. 99.5 or 100
+  diamondRate?: number; // Master default diamond rate per ct (₹)
+  stoneRate?: number; // Master default gemstone rate per ct/g (₹)
+  mcRate?: number; // Master default making charge rate per g (₹)
+  wastagePercent?: number; // Master wastage percentage (%)
   unfixGoldRate?: number;
   unfixGoldRatePurity?: number;
   remarks?: string;
