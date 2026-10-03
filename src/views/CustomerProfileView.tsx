@@ -75,20 +75,17 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const handleExportCSV = () => {
     const headers = [
       'Date',
-      'Column1',
+      'Issue/Receipt',
       'Particulars',
       'Description',
       'Nos',
       'Gross WT',
-      'Gross WT Cal',
       'Stone WT',
       'Net WT',
       'Touch',
       'Pure WT',
       'Stone Amount',
-      'Stone Amount Cal',
       'MC Amount',
-      'MC Amount Cal',
       'Total Amount',
       'Balance MC',
       'Balance WT',
@@ -98,20 +95,27 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
       tx.date,
       tx.direction,
       tx.particulars,
-      `"${tx.description.replace(/"/g, '""')}"`,
-      tx.nos,
-      tx.grossWT,
-      tx.direction === 'RECEIPT' ? -tx.grossWT : tx.grossWT,
-      tx.stoneWT,
+      `"${(tx.description || '').replace(/"/g, '""')}"`,
+      tx.nos || '',
+      tx.grossWT !== 0 ? (tx.direction === 'RECEIPT' ? -Math.abs(tx.grossWT) : tx.grossWT) : 0,
+      tx.stoneWT || 0,
       tx.netWT,
       `${tx.touch}%`,
       tx.pureWT,
-      tx.stoneAmount,
-      tx.stoneAmountCal,
-      tx.mcAmount,
-      tx.mcAmountCal,
-      tx.totalAmount,
-      tx.balanceMC,
+      tx.stoneAmountCal < 0
+        ? `"(₹${Math.abs(tx.stoneAmountCal).toLocaleString('en-IN', { minimumFractionDigits: 2 })})"`
+        : tx.stoneAmount > 0
+        ? `"₹${tx.stoneAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}"`
+        : 0,
+      tx.mcAmount || 0,
+      tx.totalAmount < 0
+        ? `"(₹${Math.abs(tx.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })})"`
+        : tx.totalAmount > 0
+        ? `"₹${tx.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}"`
+        : '"₹-"',
+      tx.balanceMC < 0
+        ? `"(₹${Math.abs(tx.balanceMC).toLocaleString('en-IN', { minimumFractionDigits: 2 })})"`
+        : `"₹${tx.balanceMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}"`,
       tx.balanceWT,
     ]);
 
@@ -119,7 +123,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_GoogleSheet_Ledger.csv`);
+    link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_Customer_Ledger.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
