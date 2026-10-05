@@ -638,6 +638,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
         defaultCustomerId={selectedTxCustId}
+        onNavigate={onNavigate}
         onSuccess={(targetId) => onNavigate('customer-profile', targetId)}
       />
     </div>

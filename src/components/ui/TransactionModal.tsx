@@ -14,6 +14,7 @@ interface TransactionModalProps {
   onClose: () => void;
   defaultCustomerId?: string;
   onSuccess?: (customerId: string) => void;
+  onNavigate?: (tab: any, entityId?: string) => void;
 }
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
@@ -21,6 +22,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onClose,
   defaultCustomerId,
   onSuccess,
+  onNavigate,
 }) => {
   const { customers, addTransaction } = useSBG();
 
@@ -246,30 +248,64 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           {mode === 'COST_SHEET' && (
             <div className="space-y-3.5 pt-2 border-t border-[#DCE5E3]">
               {/* Type Select: Sale (Issue) vs Purchase (Receipt) */}
-              <div className="flex items-center gap-3">
-                <label className="text-xs font-bold text-[#173333] uppercase">Transaction Type:</label>
-                <div className="flex items-center gap-2">
-                  <label className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${costSheetType === 'SALE' ? 'bg-rose-100 border-rose-300 text-rose-800' : 'bg-white border-gray-200 text-gray-600'}`}>
-                    <input
-                      type="radio"
-                      name="costSheetType"
-                      checked={costSheetType === 'SALE'}
-                      onChange={() => setCostSheetType('SALE')}
-                      className="sr-only"
-                    />
-                    SALE (Issue to Customer +)
-                  </label>
-                  <label className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${costSheetType === 'PURCHASE' ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-gray-200 text-gray-600'}`}>
-                    <input
-                      type="radio"
-                      name="costSheetType"
-                      checked={costSheetType === 'PURCHASE'}
-                      onChange={() => setCostSheetType('PURCHASE')}
-                      className="sr-only"
-                    />
-                    PURCHASE (Receipt from Customer −)
-                  </label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-bold text-[#173333] uppercase">Transaction Type:</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCostSheetType('SALE')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5 transition-all ${
+                        costSheetType === 'SALE'
+                          ? 'bg-rose-50 border-rose-300 text-rose-800 shadow-2xs font-extrabold'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      💎 SALE (Issue / Delivery)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCostSheetType('PURCHASE')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border flex items-center gap-1.5 transition-all ${
+                        costSheetType === 'PURCHASE'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-2xs font-extrabold'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      📦 PURCHASE (Receipt / Inward)
+                    </button>
+                  </div>
                 </div>
+
+                {/* Direct Go to Estimate Sheet Banner */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#D9B76C]/15 to-[#0F5C5B]/10 border border-[#D9B76C]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#0F5C5B]">
+                      <span>{costSheetType === 'SALE' ? '💎' : '📦'}</span>
+                      <span>{costSheetType === 'SALE' ? 'Sale' : 'Purchase'} handled in SBG Estimate Sheet</span>
+                    </div>
+                    <p className="text-[11px] text-[#647777] mt-0.5">
+                      Sub-items, stone weight/carats, purity touch %, making charges, and taxes are calculated in Estimate.
+                    </p>
+                  </div>
+                  {onNavigate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onNavigate('new-estimate', customerId ? `${customerId}::${costSheetType}` : costSheetType);
+                      }}
+                      className="shrink-0 px-3.5 py-2 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                    >
+                      <span>Proceed to {costSheetType === 'SALE' ? 'Sale' : 'Purchase'} Estimate</span>
+                      <span>➔</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 text-[10px] font-bold uppercase tracking-wider text-[#647777] border-t border-[#DCE5E3]/60">
+                Or Quick Single-Line Entry
               </div>
 
               <SBGInput

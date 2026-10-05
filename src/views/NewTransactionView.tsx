@@ -220,9 +220,120 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
         </SBGButton>
       </div>
 
+      {/* Transaction Workflow Selection Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        {/* Card 1: Sale -> Estimate */}
+        <button
+          type="button"
+          onClick={() => onNavigate('new-estimate', customerId ? `${customerId}::SALE` : 'SALE')}
+          className="p-4 rounded-2xl bg-white hover:bg-emerald-50/50 border border-[#DCE5E3] hover:border-emerald-400 text-left transition-all shadow-xs group cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100/80 text-emerald-800 flex items-center justify-center font-bold text-base">
+              💎
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100/60 px-2 py-0.5 rounded-full">
+              Estimate Sheet
+            </span>
+          </div>
+          <h4 className="font-bold text-sm text-[#173333] group-hover:text-[#0F5C5B]">
+            Jewellery Sale
+          </h4>
+          <p className="text-[11px] text-[#647777] mt-1 leading-snug">
+            Ornaments delivery, stone carats, touch purity, MC & invoice
+          </p>
+          <div className="mt-2.5 text-xs font-bold text-[#0F5C5B] flex items-center gap-1">
+            <span>Open Sales Estimate</span>
+            <span>➔</span>
+          </div>
+        </button>
+
+        {/* Card 2: Purchase -> Estimate */}
+        <button
+          type="button"
+          onClick={() => onNavigate('new-estimate', customerId ? `${customerId}::PURCHASE` : 'PURCHASE')}
+          className="p-4 rounded-2xl bg-white hover:bg-amber-50/50 border border-[#DCE5E3] hover:border-amber-400 text-left transition-all shadow-xs group cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="w-9 h-9 rounded-xl bg-amber-100/80 text-amber-800 flex items-center justify-center font-bold text-base">
+              📦
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/60 px-2 py-0.5 rounded-full">
+              Estimate Sheet
+            </span>
+          </div>
+          <h4 className="font-bold text-sm text-[#173333] group-hover:text-[#0F5C5B]">
+            Jewellery Purchase
+          </h4>
+          <p className="text-[11px] text-[#647777] mt-1 leading-snug">
+            Old gold receipt, raw casting purchase, purity touch & valuation
+          </p>
+          <div className="mt-2.5 text-xs font-bold text-amber-800 flex items-center gap-1">
+            <span>Open Purchase Estimate</span>
+            <span>➔</span>
+          </div>
+        </button>
+
+        {/* Card 3: Settlement */}
+        <button
+          type="button"
+          onClick={() => onNavigate('new-settlement', customerId)}
+          className="p-4 rounded-2xl bg-white hover:bg-teal-50/50 border border-[#DCE5E3] hover:border-teal-400 text-left transition-all shadow-xs group cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="w-9 h-9 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center font-bold text-base">
+              🪙
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 bg-teal-100/60 px-2 py-0.5 rounded-full">
+              Metal / Cash
+            </span>
+          </div>
+          <h4 className="font-bold text-sm text-[#173333] group-hover:text-[#0F5C5B]">
+            Account Settlement
+          </h4>
+          <p className="text-[11px] text-[#647777] mt-1 leading-snug">
+            Settle pure gold grams & cash balance with instant voucher
+          </p>
+          <div className="mt-2.5 text-xs font-bold text-teal-800 flex items-center gap-1">
+            <span>Open Settlement</span>
+            <span>➔</span>
+          </div>
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-5">
+            {/* Direct Estimate Redirection Prompt when Particulars is Purchase or Sale */}
+            {(particulars === 'PURCHASE' || particulars === 'SALE') && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-[#D9B76C]/15 to-[#0F5C5B]/10 border-2 border-[#D9B76C] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fadeIn">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#0F5C5B] text-[#D9B76C] flex items-center justify-center font-bold text-lg shrink-0">
+                    {particulars === 'SALE' ? '💎' : '📦'}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#0F5C5B] flex items-center gap-2">
+                      {particulars === 'SALE' ? 'Sale' : 'Purchase'} Transaction Selected
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0F5C5B] text-[#D9B76C] font-semibold">
+                        Estimate Engine
+                      </span>
+                    </h4>
+                    <p className="text-xs text-[#173333] mt-1 leading-relaxed">
+                      In SBG Jewellers ERP, {particulars === 'SALE' ? 'Sales (deliveries)' : 'Purchases (inwards/old gold)'} are recorded via the <strong>Estimate Sheet</strong> to compute stone deductions, touch purity %, making charges, and GST.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('new-estimate', customerId ? `${customerId}::${particulars}` : particulars)}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+                >
+                  <span>Go to {particulars === 'SALE' ? 'Sale' : 'Purchase'} Estimate</span>
+                  <span>➔</span>
+                </button>
+              </div>
+            )}
+
             {/* Transaction Header */}
             <SBGCard variant="glass" className="p-6 space-y-5">
               <div className="border-b border-[#DCE5E3] pb-4">
@@ -230,7 +341,7 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
                   <BookOpen className="w-5 h-5" /> Record Ledger Transaction
                 </h2>
                 <p className="text-xs text-[#647777] mt-0.5">
-                  Enter header details once — add multiple items below
+                  Direct ledger voucher entry (For Sales or Purchases, use the Estimate Sheet above)
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -270,12 +381,20 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
                 <SBGSelect
                   label="Particulars"
                   value={particulars}
-                  onChange={(e) => setParticulars(e.target.value as ParticularsType)}
+                  onChange={(e) => {
+                    const nextVal = e.target.value as ParticularsType;
+                    setParticulars(nextVal);
+                    if (nextVal === 'SALE') {
+                      setDirection('ISSUE');
+                    } else if (nextVal === 'PURCHASE') {
+                      setDirection('RECEIPT');
+                    }
+                  }}
                   options={[
-                    { label: 'PURCHASE', value: 'PURCHASE' },
-                    { label: 'SALE', value: 'SALE' },
-                    { label: 'RECEIPT', value: 'RECEIPT' },
-                    { label: 'ISSUE', value: 'ISSUE' },
+                    { label: 'PURCHASE (Go to Estimate Sheet)', value: 'PURCHASE' },
+                    { label: 'SALE (Go to Estimate Sheet)', value: 'SALE' },
+                    { label: 'RECEIPT (Inward Metal/Cash)', value: 'RECEIPT' },
+                    { label: 'ISSUE (Outward Metal/Cash)', value: 'ISSUE' },
                     { label: 'RETURN', value: 'RETURN' },
                     { label: 'SETTLEMENT', value: 'SETTLEMENT' },
                     { label: 'ADJUSTMENT', value: 'ADJUSTMENT' },

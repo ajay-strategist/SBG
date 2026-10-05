@@ -67,8 +67,22 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   const existingEstimate = targetId ? estimates.find((e) => e.id === targetId) : undefined;
   const isEditing = Boolean(isEditMode || existingEstimate);
 
+  // Check if targetId specifies a transactionType or customer (e.g. 'SALE', 'PURCHASE', 'cust-101::SALE')
+  let initialTransactionType: 'PURCHASE' | 'SALE' = 'PURCHASE';
+  let initialCustId = preselectedCustomerId || '';
+
+  if (targetId === 'SALE' || targetId === 'PURCHASE') {
+    initialTransactionType = targetId;
+  } else if (targetId && targetId.includes('::')) {
+    const [cId, tType] = targetId.split('::');
+    if (cId) initialCustId = cId;
+    if (tType === 'SALE' || tType === 'PURCHASE') initialTransactionType = tType;
+  } else if (existingEstimate?.transactionType) {
+    initialTransactionType = existingEstimate.transactionType;
+  }
+
   const [customerId, setCustomerId] = useState(
-    existingEstimate?.customerId || preselectedCustomerId || customers[0]?.id || ''
+    existingEstimate?.customerId || initialCustId || customers[0]?.id || ''
   );
   const [orderId, setOrderId] = useState(existingEstimate?.orderId || '');
   const [estimateNo, setEstimateNo] = useState(
@@ -88,12 +102,20 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   const [wastagePercent, setWastagePercent] = useState<number>(existingEstimate?.wastagePercent || 0);
   const [unfixGoldRate, setUnfixGoldRate] = useState<number>(existingEstimate?.unfixGoldRate || 0);
   const [remarks, setRemarks] = useState(existingEstimate?.remarks || '');
-  const [transactionType, setTransactionType] = useState<'PURCHASE' | 'SALE'>(
-    existingEstimate?.transactionType || 'PURCHASE'
-  );
+  const [transactionType, setTransactionType] = useState<'PURCHASE' | 'SALE'>(initialTransactionType);
   const [settlementMode, setSettlementMode] = useState<'FIX' | 'UNFIX' | 'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY'>(
     (existingEstimate?.settlementMode as any) || 'UNFIX'
   );
+
+  useEffect(() => {
+    if (targetId === 'SALE' || targetId === 'PURCHASE') {
+      setTransactionType(targetId);
+    } else if (targetId && targetId.includes('::')) {
+      const [cId, tType] = targetId.split('::');
+      if (cId) setCustomerId(cId);
+      if (tType === 'SALE' || tType === 'PURCHASE') setTransactionType(tType);
+    }
+  }, [targetId]);
 
   // Load existing line items or fresh defaults
   const [items, setItems] = useState<Partial<EstimateLineItem>[]>(() => {

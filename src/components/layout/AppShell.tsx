@@ -84,6 +84,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [isEditingRate, setIsEditingRate] = useState(false);
   const [tempRate, setTempRate] = useState(goldMarketRate.toString());
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [isTxDropdownOpen, setIsTxDropdownOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('sbg_sidebar_collapsed', JSON.stringify(sidebarCollapsed));
@@ -446,14 +447,116 @@ export const AppShell: React.FC<AppShellProps> = ({
 
           {/* Quick Action Pills & Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* New Transaction Action Pill */}
-            <button
-              onClick={() => onNavigate('new-transaction')}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs shadow-sm transition-all cursor-pointer"
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>New Transaction</span>
-            </button>
+            {/* New Transaction Action Pill with Purchase / Sale / Settlement Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsTxDropdownOpen((prev) => !prev)}
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs shadow-sm transition-all cursor-pointer"
+                title="New Transaction Menu"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>New Transaction</span>
+                <ChevronDown className="w-3 h-3 text-white/70 ml-0.5" />
+              </button>
+
+              {isTxDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsTxDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-[#DCE5E3] shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#647777] border-b border-[#EFECE6]">
+                      Choose Transaction Type
+                    </div>
+
+                    {/* Sale -> Go to Estimate */}
+                    <button
+                      onClick={() => {
+                        setIsTxDropdownOpen(false);
+                        onNavigate('new-estimate', 'SALE');
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left text-xs hover:bg-[#0F5C5B]/5 flex items-center gap-3 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                        💎
+                      </div>
+                      <div>
+                        <div className="font-bold text-[#173333] group-hover:text-[#0F5C5B]">
+                          Sale (Estimate Sheet)
+                        </div>
+                        <div className="text-[10px] text-[#647777]">
+                          Client ornaments delivery & invoice
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Purchase -> Go to Estimate */}
+                    <button
+                      onClick={() => {
+                        setIsTxDropdownOpen(false);
+                        onNavigate('new-estimate', 'PURCHASE');
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left text-xs hover:bg-[#0F5C5B]/5 flex items-center gap-3 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-sm">
+                        📦
+                      </div>
+                      <div>
+                        <div className="font-bold text-[#173333] group-hover:text-[#0F5C5B]">
+                          Purchase (Estimate Sheet)
+                        </div>
+                        <div className="text-[10px] text-[#647777]">
+                          Old gold receipt & raw casting purchase
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Settlement -> Gold & Cash */}
+                    <button
+                      onClick={() => {
+                        setIsTxDropdownOpen(false);
+                        onNavigate('new-settlement');
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left text-xs hover:bg-[#0F5C5B]/5 flex items-center gap-3 transition-colors cursor-pointer group border-t border-[#EFECE6]"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-sm">
+                        🪙
+                      </div>
+                      <div>
+                        <div className="font-bold text-[#173333] group-hover:text-[#0F5C5B]">
+                          Gold / Cash Settlement
+                        </div>
+                        <div className="text-[10px] text-[#647777]">
+                          Payment, receipt & ledger adjustment
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Direct Ledger Entry */}
+                    <button
+                      onClick={() => {
+                        setIsTxDropdownOpen(false);
+                        onNavigate('new-transaction');
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left text-xs hover:bg-[#0F5C5B]/5 flex items-center gap-3 transition-colors cursor-pointer group border-t border-[#EFECE6]"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-gray-50 text-gray-700 flex items-center justify-center font-bold text-sm">
+                        📝
+                      </div>
+                      <div>
+                        <div className="font-bold text-[#173333] group-hover:text-[#0F5C5B]">
+                          Direct Ledger Voucher
+                        </div>
+                        <div className="text-[10px] text-[#647777]">
+                          Single-entry journal / manual adjustment
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Notification Bell with Badge 3 */}
             <button

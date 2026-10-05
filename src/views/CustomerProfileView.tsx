@@ -584,6 +584,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
         defaultCustomerId={customer.id}
+        onNavigate={onNavigate}
       />
 
       {/* Google Sheet Copy-Paste / CSV Import Modal */}
