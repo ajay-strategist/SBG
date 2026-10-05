@@ -541,12 +541,6 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#647777] uppercase">Estimate Total Pure WT:</span>
-              <span className="font-mono font-black text-base text-[#0F5C5B] px-3 py-1 bg-[#0F5C5B]/10 border border-[#0F5C5B]/20 rounded-lg">
-                {estimate.totals.totalPureWT.toFixed(3)} g
-              </span>
-            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
