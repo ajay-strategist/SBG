@@ -26,8 +26,46 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ChevronLeft,
+  CheckCircle2,
+  Check,
 } from 'lucide-react';
 import { TransactionModal } from '../ui/TransactionModal';
+
+interface NotificationItem {
+  id: string;
+  title: string;
+  desc: string;
+  time: string;
+  read: boolean;
+  type: 'rate' | 'audit' | 'transaction';
+}
+
+const defaultNotifications: NotificationItem[] = [
+  {
+    id: 'n1',
+    title: 'Market Gold Rate Updated',
+    desc: 'Fine Gold 99.5 rate updated to ₹12,889.30/g',
+    time: '10m ago',
+    read: false,
+    type: 'rate',
+  },
+  {
+    id: 'n2',
+    title: 'New Transaction Confirmed',
+    desc: 'Customer TIKVAH ledger updated with new entry',
+    time: '1h ago',
+    read: false,
+    type: 'transaction',
+  },
+  {
+    id: 'n3',
+    title: 'Audit Log Recorded',
+    desc: 'Security event verified in immutable audit trail',
+    time: '2h ago',
+    read: false,
+    type: 'audit',
+  },
+];
 
 export type ActiveTab =
   | 'dashboard'
@@ -87,6 +125,30 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isTxDropdownOpen, setIsTxDropdownOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    const saved = localStorage.getItem('sbg_notifications');
+    return saved ? JSON.parse(saved) : defaultNotifications;
+  });
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('sbg_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const handleToggleNotifications = () => {
+    const willOpen = !isNotifOpen;
+    setIsNotifOpen(willOpen);
+    if (willOpen) {
+      // Clear badge count immediately when checked
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    }
+  };
+
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+  };
 
   useEffect(() => {
     localStorage.setItem('sbg_sidebar_collapsed', JSON.stringify(sidebarCollapsed));
@@ -581,17 +643,105 @@ export const AppShell: React.FC<AppShellProps> = ({
               )}
             </div>
 
-            {/* Notification Bell with Badge 3 */}
-            <button
-              onClick={() => onNavigate('audit')}
-              className="relative p-2.5 rounded-full border border-[#DCE5E3] text-[#647777] hover:text-[#0F5C5B] hover:bg-white transition-colors cursor-pointer bg-white shadow-xs"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                3
-              </span>
-            </button>
+            {/* Notification Bell with Dynamic Clearable Badge */}
+            <div className="relative">
+              <button
+                onClick={handleToggleNotifications}
+                className="relative p-2.5 rounded-full border border-[#DCE5E3] text-[#647777] hover:text-[#0F5C5B] hover:bg-white transition-colors cursor-pointer bg-white shadow-xs"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs animate-in zoom-in-75 duration-150">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {isNotifOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsNotifOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white border border-[#DCE5E3] shadow-xl py-3 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-4 pb-2.5 border-b border-[#EFECE6] flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-[#173333]">Notifications</span>
+                        {unreadCount > 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">
+                            {unreadCount} new
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={handleClearAllNotifications}
+                            className="text-[10px] font-semibold text-[#647777] hover:text-red-600 transition-colors cursor-pointer"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto divide-y divide-[#EFECE6]/60">
+                      {notifications.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-[#647777]">
+                          <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-1.5 opacity-80" />
+                          <p className="font-bold text-[#173333]">All caught up!</p>
+                          <p className="text-[11px] text-[#647777] mt-0.5">No notifications pending</p>
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            className={`p-3.5 hover:bg-gray-50/80 transition-colors flex items-start gap-3 cursor-pointer ${
+                              !notif.read ? 'bg-[#0F5C5B]/5' : ''
+                            }`}
+                            onClick={() => {
+                              setIsNotifOpen(false);
+                              onNavigate('audit');
+                            }}
+                          >
+                            <div className="w-8 h-8 rounded-xl bg-[#0F5C5B]/10 text-[#0F5C5B] flex items-center justify-center text-xs shrink-0 font-bold">
+                              {notif.type === 'rate' ? '🪙' : notif.type === 'transaction' ? '💎' : '🛡️'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-bold text-[#173333] truncate">
+                                  {notif.title}
+                                </h4>
+                                <span className="text-[9px] text-[#647777] shrink-0 ml-1">
+                                  {notif.time}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-[#647777] mt-0.5 line-clamp-2 leading-relaxed">
+                                {notif.desc}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="px-4 pt-2.5 border-t border-[#EFECE6] flex items-center justify-between text-xs">
+                      <button
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          onNavigate('audit');
+                        }}
+                        className="text-[11px] font-bold text-[#0F5C5B] hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>View Security Audit Logs</span>
+                        <span>➔</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* User Profile Pill */}
             <div
