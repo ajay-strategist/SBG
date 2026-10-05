@@ -306,6 +306,54 @@ describe('SBG Core Calculation Engine', () => {
       expect(diamondLine.amount).toBe(93690.00);
     });
 
+    it('calculates sub-items under a main item (e.g. 18 CT GLD RIN with Gold & Rubie sub-items)', () => {
+      const line = calculateEstimateLine({
+        item: '18 CT GLD RIN',
+        category: 'GOLD',
+        grossWT: 7.802,
+        stoneWT: 0,
+        touch: 76.0,
+        rate: 11845.13,
+        rateUnit: 'PER_G',
+        subItems: [
+          {
+            id: 'sub-1',
+            name: 'Gold (18K)',
+            category: 'GOLD',
+            weight: 7.622,
+            unit: 'g',
+            touch: 76.0,
+            rate: 11845.13,
+            rateUnit: 'PER_G',
+            nos: 1,
+            amount: 0,
+          },
+          {
+            id: 'sub-2',
+            name: 'Rubie',
+            category: 'PRECIOUS_STONE',
+            weight: 0.90, // 0.90 carats
+            unit: 'ct',
+            nos: 5,
+            rate: 5000,
+            rateUnit: 'PER_CT',
+            amount: 0,
+          },
+        ],
+      });
+
+      // Stone weight in grams rolled up from Rubie sub-item (0.90 ct * 0.2 = 0.180g)
+      expect(line.stoneWT).toBe(0.180);
+      expect(line.subItems).toBeDefined();
+      expect(line.subItems?.length).toBe(2);
+      expect(line.subItems?.[0].pureWT).toBe(5.793);
+      expect(line.subItems?.[0].amount).toBe(68618.84);
+      expect(line.subItems?.[1].weightInCarats).toBe(0.90);
+      expect(line.subItems?.[1].amount).toBe(4500.00);
+      // Total line amount equals Gold (68618.84) + Rubie (4500.00) = 73118.84
+      expect(line.amount).toBe(73118.84);
+    });
+
     it('handles FIX settlement mode: 100% Cash balance adjustment with 0 Gold balance impact', () => {
       const estimate = calculateEstimateSheet({
         estimateNo: 'EST-FIX-01',

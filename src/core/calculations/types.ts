@@ -56,6 +56,23 @@ export interface LedgerTransaction {
   updatedAt: string;
 }
 
+export interface EstimateSubItem {
+  id: string;
+  name: string; // e.g. "Gold 18KT", "Rubie", "Diamond", "Making Charges"
+  category: EstimateItemCategory;
+  nos: number;
+  weight: number; // in grams or carats
+  unit: 'g' | 'ct';
+  weightInGrams?: number;
+  weightInCarats?: number;
+  touch?: number; // percentage, e.g. 76 for 76%
+  pureWT?: number;
+  rate: number;
+  rateUnit: RateUnit;
+  amount: number;
+  remarks?: string;
+}
+
 export interface EstimateLineItem {
   id: string;
   sl: number;
@@ -73,6 +90,7 @@ export interface EstimateLineItem {
   rateUnit: RateUnit;
   amount: number;
   remarks?: string;
+  subItems?: EstimateSubItem[];
 }
 
 export interface EstimateCostSheet {

@@ -13,6 +13,7 @@ import {
   calculateEstimateSheet,
   EstimateCostSheet,
   EstimateLineItem,
+  EstimateSubItem,
   EstimateItemCategory,
   RateUnit,
 } from '../core/calculations';
@@ -31,6 +32,10 @@ import {
   FileCheck,
   Wallet,
   Gem,
+  ChevronDown,
+  ChevronRight,
+  CornerDownRight,
+  Layers,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -280,6 +285,106 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       },
       ...prev.slice(index + 1),
     ]);
+  };
+
+  // Sub-items Expansion & Management State
+  const [expandedSubItems, setExpandedSubItems] = useState<Record<string, boolean>>({
+    'item-1': true,
+    'item-2': true,
+  });
+
+  const toggleSubItems = (lineId: string) => {
+    setExpandedSubItems((prev) => ({
+      ...prev,
+      [lineId]: !prev[lineId],
+    }));
+  };
+
+  const handleAddSubItem = (
+    lineIndex: number,
+    preset?: {
+      name?: string;
+      category?: EstimateItemCategory;
+      unit?: 'g' | 'ct';
+      touch?: number;
+      rate?: number;
+      rateUnit?: RateUnit;
+    }
+  ) => {
+    const parentLine = items[lineIndex];
+    if (!parentLine) return;
+
+    const defaultCategory = preset?.category || 'PRECIOUS_STONE';
+    const defaultUnit: 'g' | 'ct' =
+      preset?.unit ||
+      (defaultCategory === 'PRECIOUS_STONE' || defaultCategory === 'DIAMOND' ? 'ct' : 'g');
+    const defaultRate =
+      preset?.rate ??
+      (defaultCategory === 'GOLD'
+        ? goldRate
+        : defaultCategory === 'DIAMOND'
+        ? diamondRate
+        : defaultCategory === 'PRECIOUS_STONE'
+        ? stoneRate
+        : defaultCategory === 'MAKING_CHARGE'
+        ? mcRate
+        : 0);
+    const defaultRateUnit: RateUnit =
+      preset?.rateUnit || (defaultUnit === 'ct' ? 'PER_CT' : 'PER_G');
+
+    const newSubItem: EstimateSubItem = {
+      id: `sub-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name:
+        preset?.name ||
+        (defaultCategory === 'GOLD'
+          ? 'Gold Casting'
+          : defaultCategory === 'PRECIOUS_STONE'
+          ? 'Rubie'
+          : defaultCategory === 'DIAMOND'
+          ? 'Diamond'
+          : 'Making Charges'),
+      category: defaultCategory,
+      nos: 1,
+      weight: 0,
+      unit: defaultUnit,
+      touch: preset?.touch ?? (defaultCategory === 'GOLD' ? (parentLine.touch || 76) : 0),
+      rate: defaultRate,
+      rateUnit: defaultRateUnit,
+      amount: 0,
+    };
+
+    const currentSubs = parentLine.subItems || [];
+    const updatedSubs = [...currentSubs, newSubItem];
+
+    handleUpdateLine(lineIndex, { subItems: updatedSubs });
+
+    const lineKey = parentLine.id || `line-${lineIndex}`;
+    setExpandedSubItems((prev) => ({
+      ...prev,
+      [lineKey]: true,
+    }));
+  };
+
+  const handleUpdateSubItem = (
+    lineIndex: number,
+    subIndex: number,
+    updates: Partial<EstimateSubItem>
+  ) => {
+    const parentLine = items[lineIndex];
+    if (!parentLine || !parentLine.subItems) return;
+
+    const updatedSubs = [...parentLine.subItems];
+    updatedSubs[subIndex] = { ...updatedSubs[subIndex], ...updates };
+
+    handleUpdateLine(lineIndex, { subItems: updatedSubs });
+  };
+
+  const handleDeleteSubItem = (lineIndex: number, subIndex: number) => {
+    const parentLine = items[lineIndex];
+    if (!parentLine || !parentLine.subItems) return;
+
+    const updatedSubs = parentLine.subItems.filter((_, i) => i !== subIndex);
+    handleUpdateLine(lineIndex, { subItems: updatedSubs });
   };
 
   const handleSaveEstimate = (e: React.FormEvent) => {
@@ -706,138 +811,403 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#DCE5E3]/60">
-              {calculatedEstimate.items.map((line, idx) => (
-                <tr key={line.id} className="hover:bg-white/60">
-                  <td className="py-2.5 px-2 font-mono text-[#647777]">{idx + 1}</td>
-                  <td className="py-2.5 px-2">
-                    <input
-                      type="text"
-                      value={line.item}
-                      onChange={(e) => handleUpdateLine(idx, { item: e.target.value })}
-                      className="w-full text-xs font-semibold px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none focus:border-[#0F5C5B]"
-                    />
-                  </td>
-                  <td className="py-2.5 px-2">
-                    <select
-                      value={line.category}
-                      onChange={(e) => handleUpdateLine(idx, { category: e.target.value as any })}
-                      className="text-xs px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none"
-                    >
-                      <option value="GOLD">GOLD</option>
-                      <option value="DIAMOND">DIAMOND</option>
-                      <option value="PRECIOUS_STONE">PRECIOUS STONE</option>
-                      <option value="MAKING_CHARGE">MAKING CHARGE</option>
-                      <option value="FINDINGS">FINDINGS</option>
-                      <option value="OTHER">OTHER</option>
-                    </select>
-                  </td>
-                  <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      value={line.nos}
-                      onChange={(e) => handleUpdateLine(idx, { nos: parseInt(e.target.value) || 1 })}
-                      className="w-14 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
-                    />
-                  </td>
-                  <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      step="0.001"
-                      value={line.grossWT}
-                      onChange={(e) => handleUpdateLine(idx, { grossWT: parseFloat(e.target.value) || 0 })}
-                      className="w-20 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono font-medium"
-                    />
-                  </td>
-                  <td className="py-2.5 px-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <input
-                        type="number"
-                        step="0.001"
-                        value={line.stoneWT === 0 ? '' : line.stoneWT}
-                        onChange={(e) => handleUpdateLine(idx, { stoneWT: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.000"
-                        className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono text-[#647777]"
-                      />
-                      <select
-                        value={line.stoneWTUnit || 'g'}
-                        onChange={(e) => handleUpdateLine(idx, { stoneWTUnit: e.target.value as 'g' | 'ct' })}
-                        className="text-[10px] px-1 py-1 bg-white border border-[#DCE5E3] rounded-lg font-bold text-[#0F5C5B] cursor-pointer"
-                        title="Stone Weight Unit: Grams (g) or Carats (ct)"
-                      >
-                        <option value="g">g</option>
-                        <option value="ct">ct</option>
-                      </select>
-                    </div>
-                    {(Number(line.stoneWT) > 0 || (line.stoneWTCarats && line.stoneWTCarats > 0)) && (
-                      <div className="text-[9px] text-right font-mono text-[#0F5C5B] font-medium mt-0.5">
-                        {line.stoneWTUnit === 'ct'
-                          ? `≈ ${((line.stoneWT || 0) * 0.2).toFixed(3)}g`
-                          : `≈ ${((line.stoneWT || 0) / 0.2).toFixed(2)}ct`}
-                      </div>
+              {calculatedEstimate.items.map((line, idx) => {
+                const isExpanded = !!expandedSubItems[line.id];
+                const subCount = line.subItems?.length || 0;
+
+                return (
+                  <React.Fragment key={line.id}>
+                    <tr className="hover:bg-white/60">
+                      <td className="py-2.5 px-2 font-mono text-[#647777]">{idx + 1}</td>
+                      <td className="py-2.5 px-2">
+                        <input
+                          type="text"
+                          value={line.item}
+                          onChange={(e) => handleUpdateLine(idx, { item: e.target.value })}
+                          className="w-full text-xs font-semibold px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none focus:border-[#0F5C5B]"
+                        />
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleSubItems(line.id)}
+                            className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                              subCount > 0
+                                ? 'bg-[#0F5C5B]/10 text-[#0F5C5B] hover:bg-[#0F5C5B]/20 border border-[#0F5C5B]/20'
+                                : 'bg-black/5 text-[#647777] hover:bg-black/10'
+                            }`}
+                            title="Toggle Component Sub-items"
+                          >
+                            <Layers className="w-3 h-3 text-[#D9B76C]" />
+                            <span>Sub-items {subCount > 0 ? `(${subCount})` : '+ Add'}</span>
+                            {isExpanded ? (
+                              <ChevronDown className="w-2.5 h-2.5" />
+                            ) : (
+                              <ChevronRight className="w-2.5 h-2.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <select
+                          value={line.category}
+                          onChange={(e) => handleUpdateLine(idx, { category: e.target.value as any })}
+                          className="text-xs px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none"
+                        >
+                          <option value="GOLD">GOLD</option>
+                          <option value="DIAMOND">DIAMOND</option>
+                          <option value="PRECIOUS_STONE">PRECIOUS STONE</option>
+                          <option value="MAKING_CHARGE">MAKING CHARGE</option>
+                          <option value="FINDINGS">FINDINGS</option>
+                          <option value="OTHER">OTHER</option>
+                        </select>
+                      </td>
+                      <td className="py-2.5 px-2 text-right">
+                        <input
+                          type="number"
+                          value={line.nos}
+                          onChange={(e) => handleUpdateLine(idx, { nos: parseInt(e.target.value) || 1 })}
+                          className="w-14 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
+                        />
+                      </td>
+                      <td className="py-2.5 px-2 text-right">
+                        <input
+                          type="number"
+                          step="0.001"
+                          value={line.grossWT}
+                          onChange={(e) => handleUpdateLine(idx, { grossWT: parseFloat(e.target.value) || 0 })}
+                          className="w-20 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono font-medium"
+                        />
+                      </td>
+                      <td className="py-2.5 px-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <input
+                            type="number"
+                            step="0.001"
+                            value={line.stoneWT === 0 ? '' : line.stoneWT}
+                            onChange={(e) => handleUpdateLine(idx, { stoneWT: parseFloat(e.target.value) || 0 })}
+                            placeholder="0.000"
+                            className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono text-[#647777]"
+                          />
+                          <select
+                            value={line.stoneWTUnit || 'g'}
+                            onChange={(e) => handleUpdateLine(idx, { stoneWTUnit: e.target.value as 'g' | 'ct' })}
+                            className="text-[10px] px-1 py-1 bg-white border border-[#DCE5E3] rounded-lg font-bold text-[#0F5C5B] cursor-pointer"
+                            title="Stone Weight Unit: Grams (g) or Carats (ct)"
+                          >
+                            <option value="g">g</option>
+                            <option value="ct">ct</option>
+                          </select>
+                        </div>
+                        {(Number(line.stoneWT) > 0 || (line.stoneWTCarats && line.stoneWTCarats > 0)) && (
+                          <div className="text-[9px] text-right font-mono text-[#0F5C5B] font-medium mt-0.5">
+                            {line.stoneWTUnit === 'ct'
+                              ? `≈ ${((line.stoneWT || 0) * 0.2).toFixed(3)}g`
+                              : `≈ ${((line.stoneWT || 0) / 0.2).toFixed(2)}ct`}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-2 text-right font-mono font-medium text-[#173333]">
+                        {line.netWT.toFixed(3)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={line.touch}
+                          onChange={(e) => handleUpdateLine(idx, { touch: parseFloat(e.target.value) || 0 })}
+                          className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
+                        />
+                      </td>
+                      <td className="py-2.5 px-2 text-right font-mono font-bold text-[#0F5C5B]">
+                        {line.pureWT.toFixed(3)}
+                      </td>
+                      <td className="py-2.5 px-2 text-right">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={line.rate}
+                          onChange={(e) => handleUpdateLine(idx, { rate: parseFloat(e.target.value) || 0 })}
+                          className="w-24 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono font-semibold"
+                        />
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <select
+                          value={line.rateUnit}
+                          onChange={(e) => handleUpdateLine(idx, { rateUnit: e.target.value as any })}
+                          className="text-xs px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
+                        >
+                          <option value="PER_G">/g</option>
+                          <option value="PER_CT">/ct</option>
+                          <option value="PER_PIECE">/pc</option>
+                          <option value="PERCENT">%</option>
+                          <option value="LUMP_SUM">Fix</option>
+                        </select>
+                      </td>
+                      <td className="py-2.5 px-2 text-right font-mono font-bold text-sm text-[#0F5C5B]">
+                        <SBGCurrency value={line.amount} />
+                      </td>
+                      <td className="py-2.5 px-2 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateLine(idx)}
+                            className="p-1 rounded text-[#647777] hover:text-[#0F5C5B] hover:bg-black/5"
+                            title="Duplicate line"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLine(idx)}
+                            className="p-1 rounded text-[#B85C5C] hover:bg-[#B85C5C]/10"
+                            title="Delete line"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expandable Sub-items Breakdown */}
+                    {isExpanded && (
+                      <tr key={`${line.id}-subs`} className="bg-[#FAF9F6]/90 border-b border-[#DCE5E3]">
+                        <td colSpan={13} className="py-3 px-3 pl-8">
+                          <div className="bg-white rounded-xl border border-[#DCE5E3] p-3 shadow-xs space-y-2.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#DCE5E3]">
+                              <div className="flex items-center gap-2">
+                                <CornerDownRight className="w-4 h-4 text-[#0F5C5B]" />
+                                <span className="text-xs font-bold text-[#0F5C5B]">
+                                  Sub-items for <span className="text-[#173333]">{line.item || 'Item'}</span>:
+                                </span>
+                                {subCount > 0 && (
+                                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0F5C5B]/10 text-[#0F5C5B] font-bold">
+                                    {subCount} Component{subCount > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Quick Add Sub-item Buttons */}
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleAddSubItem(idx, {
+                                      name: 'Rubie',
+                                      category: 'PRECIOUS_STONE',
+                                      unit: 'ct',
+                                      rate: stoneRate,
+                                      rateUnit: 'PER_CT',
+                                    })
+                                  }
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 cursor-pointer"
+                                >
+                                  + Rubie / Stone
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleAddSubItem(idx, {
+                                      name: 'Gold Component',
+                                      category: 'GOLD',
+                                      unit: 'g',
+                                      touch: line.touch || 76,
+                                      rate: goldRate,
+                                      rateUnit: 'PER_G',
+                                    })
+                                  }
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 cursor-pointer"
+                                >
+                                  + Gold
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleAddSubItem(idx, {
+                                      name: 'Diamonds',
+                                      category: 'DIAMOND',
+                                      unit: 'ct',
+                                      rate: diamondRate,
+                                      rateUnit: 'PER_CT',
+                                    })
+                                  }
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100 cursor-pointer"
+                                >
+                                  + Diamond
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleAddSubItem(idx, {
+                                      name: 'Making Charges',
+                                      category: 'MAKING_CHARGE',
+                                      unit: 'g',
+                                      rate: mcRate,
+                                      rateUnit: 'PER_G',
+                                    })
+                                  }
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 cursor-pointer"
+                                >
+                                  + Making Charge
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddSubItem(idx)}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-[#0F5C5B] text-white hover:bg-[#0D4E4D] cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  <Plus className="w-3 h-3" /> Add Component
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Sub-items Table */}
+                            {subCount === 0 ? (
+                              <div className="py-4 text-center text-xs text-[#647777]">
+                                <p>No sub-items added yet under this item.</p>
+                                <p className="text-[11px] text-[#647777]/70 mt-0.5">
+                                  Click &quot;+ Rubie / Stone&quot; or &quot;+ Add Component&quot; above to specify individual components.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs">
+                                  <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#DCE5E3] uppercase font-bold text-[9px] tracking-wider">
+                                    <tr>
+                                      <th className="py-2 px-2 w-8">#</th>
+                                      <th className="py-2 px-2 min-w-[130px]">Component Name</th>
+                                      <th className="py-2 px-2 min-w-[110px]">Category</th>
+                                      <th className="py-2 px-2 text-right w-16">Nos</th>
+                                      <th className="py-2 px-2 text-right min-w-[120px]">Weight</th>
+                                      <th className="py-2 px-2 text-right w-16">Touch %</th>
+                                      <th className="py-2 px-2 text-right w-20 font-bold text-[#0F5C5B]">Pure WT</th>
+                                      <th className="py-2 px-2 text-right min-w-[90px]">Rate (₹)</th>
+                                      <th className="py-2 px-2 min-w-[70px]">Unit</th>
+                                      <th className="py-2 px-2 text-right font-bold text-[#0F5C5B] min-w-[100px]">Amount (₹)</th>
+                                      <th className="py-2 px-2 text-center w-10"></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-[#EFECE6]">
+                                    {line.subItems?.map((sub, sIdx) => (
+                                      <tr key={sub.id} className="hover:bg-[#FAF9F6]/60">
+                                        <td className="py-1.5 px-2 font-mono text-[#647777] text-[11px]">
+                                          {idx + 1}.{sIdx + 1}
+                                        </td>
+                                        <td className="py-1.5 px-2">
+                                          <input
+                                            type="text"
+                                            value={sub.name}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { name: e.target.value })}
+                                            placeholder="e.g. Rubie"
+                                            className="w-full text-xs font-medium px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none focus:border-[#0F5C5B]"
+                                          />
+                                        </td>
+                                        <td className="py-1.5 px-2">
+                                          <select
+                                            value={sub.category}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { category: e.target.value as any })}
+                                            className="text-xs px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none"
+                                          >
+                                            <option value="GOLD">GOLD</option>
+                                            <option value="PRECIOUS_STONE">PRECIOUS STONE</option>
+                                            <option value="DIAMOND">DIAMOND</option>
+                                            <option value="MAKING_CHARGE">MAKING CHARGE</option>
+                                            <option value="FINDINGS">FINDINGS</option>
+                                            <option value="OTHER">OTHER</option>
+                                          </select>
+                                        </td>
+                                        <td className="py-1.5 px-2 text-right">
+                                          <input
+                                            type="number"
+                                            value={sub.nos}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { nos: parseInt(e.target.value) || 1 })}
+                                            className="w-12 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
+                                          />
+                                        </td>
+                                        <td className="py-1.5 px-2 text-right">
+                                          <div className="flex items-center justify-end gap-1">
+                                            <input
+                                              type="number"
+                                              step="0.001"
+                                              value={sub.weight === 0 ? '' : sub.weight}
+                                              onChange={(e) => handleUpdateSubItem(idx, sIdx, { weight: parseFloat(e.target.value) || 0 })}
+                                              placeholder="0.00"
+                                              className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono font-medium"
+                                            />
+                                            <select
+                                              value={sub.unit}
+                                              onChange={(e) => handleUpdateSubItem(idx, sIdx, { unit: e.target.value as 'g' | 'ct' })}
+                                              className="text-[10px] px-1 py-1 bg-white border border-[#DCE5E3] rounded-lg font-bold text-[#0F5C5B] cursor-pointer"
+                                            >
+                                              <option value="ct">ct</option>
+                                              <option value="g">g</option>
+                                            </select>
+                                          </div>
+                                          {Number(sub.weight) > 0 && (
+                                            <div className="text-[9px] text-right font-mono text-[#0F5C5B] mt-0.5">
+                                              {sub.unit === 'ct'
+                                                ? `≈ ${(sub.weight * 0.2).toFixed(3)}g`
+                                                : `≈ ${(sub.weight / 0.2).toFixed(2)}ct`}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td className="py-1.5 px-2 text-right">
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            value={sub.touch || 0}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { touch: parseFloat(e.target.value) || 0 })}
+                                            className="w-14 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
+                                          />
+                                        </td>
+                                        <td className="py-1.5 px-2 text-right font-mono font-bold text-[#0F5C5B]">
+                                          {(sub.pureWT || 0).toFixed(3)}g
+                                        </td>
+                                        <td className="py-1.5 px-2 text-right">
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            value={sub.rate}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { rate: parseFloat(e.target.value) || 0 })}
+                                            className="w-20 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
+                                          />
+                                        </td>
+                                        <td className="py-1.5 px-2">
+                                          <select
+                                            value={sub.rateUnit}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { rateUnit: e.target.value as any })}
+                                            className="text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
+                                          >
+                                            <option value="PER_CT">/ct</option>
+                                            <option value="PER_G">/g</option>
+                                            <option value="PER_PIECE">/pc</option>
+                                            <option value="LUMP_SUM">Fix</option>
+                                          </select>
+                                        </td>
+                                        <td className="py-1.5 px-2 text-right font-mono font-bold text-[#0F5C5B]">
+                                          <SBGCurrency value={sub.amount} />
+                                        </td>
+                                        <td className="py-1.5 px-2 text-center">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteSubItem(idx, sIdx)}
+                                            className="p-1 rounded text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                            title="Remove sub-item"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-mono font-medium text-[#173333]">
-                    {line.netWT.toFixed(3)}
-                  </td>
-                  <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={line.touch}
-                      onChange={(e) => handleUpdateLine(idx, { touch: parseFloat(e.target.value) || 0 })}
-                      className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
-                    />
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-mono font-bold text-[#0F5C5B]">
-                    {line.pureWT.toFixed(3)}
-                  </td>
-                  <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={line.rate}
-                      onChange={(e) => handleUpdateLine(idx, { rate: parseFloat(e.target.value) || 0 })}
-                      className="w-24 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono font-semibold"
-                    />
-                  </td>
-                  <td className="py-2.5 px-2">
-                    <select
-                      value={line.rateUnit}
-                      onChange={(e) => handleUpdateLine(idx, { rateUnit: e.target.value as any })}
-                      className="text-xs px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
-                    >
-                      <option value="PER_G">/g</option>
-                      <option value="PER_CT">/ct</option>
-                      <option value="PER_PIECE">/pc</option>
-                      <option value="PERCENT">%</option>
-                      <option value="LUMP_SUM">Fix</option>
-                    </select>
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-mono font-bold text-sm text-[#0F5C5B]">
-                    <SBGCurrency value={line.amount} />
-                  </td>
-                  <td className="py-2.5 px-2 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleDuplicateLine(idx)}
-                        className="p-1 rounded text-[#647777] hover:text-[#0F5C5B] hover:bg-black/5"
-                        title="Duplicate line"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteLine(idx)}
-                        className="p-1 rounded text-[#B85C5C] hover:bg-[#B85C5C]/10"
-                        title="Delete line"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

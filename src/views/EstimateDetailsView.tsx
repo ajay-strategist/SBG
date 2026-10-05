@@ -28,6 +28,8 @@ import {
   Gem,
   Sparkles,
   Trash2,
+  CornerDownRight,
+  Layers,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -461,39 +463,128 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
             </thead>
             <tbody className="divide-y divide-[#DCE5E3]/60">
               {estimate.items.map((item, idx) => (
-                <tr key={item.id}>
-                  <td className="py-3 px-3 font-mono text-[#647777]">{idx + 1}</td>
-                  <td className="py-3 px-3 font-semibold text-[#173333]">{item.item}</td>
-                  <td className="py-3 px-3">
-                    <span className="text-[10px] bg-black/5 px-2 py-0.5 rounded font-medium">
-                      {item.category}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono">{item.nos}</td>
-                  <td className="py-3 px-3 text-right font-mono">{item.grossWT.toFixed(3)}g</td>
-                  <td className="py-3 px-3 text-right font-mono text-[#647777]">
-                    <div>{item.stoneWT.toFixed(3)}g</div>
-                    {(item.stoneWTCarats || item.stoneWT > 0) ? (
-                      <div className="text-[10px] text-blue-700 font-semibold">
-                        {(item.stoneWTCarats || (item.stoneWT / 0.2)).toFixed(2)}ct
+                <React.Fragment key={item.id}>
+                  <tr>
+                    <td className="py-3 px-3 font-mono text-[#647777]">{idx + 1}</td>
+                    <td className="py-3 px-3 font-semibold text-[#173333]">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{item.item}</span>
+                        {item.subItems && item.subItems.length > 0 && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#0F5C5B]/10 text-[#0F5C5B]">
+                            {item.subItems.length} Sub-items
+                          </span>
+                        )}
                       </div>
-                    ) : null}
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono">{item.netWT.toFixed(3)}g</td>
-                  <td className="py-3 px-3 text-right font-mono">{item.touch > 0 ? `${item.touch.toFixed(2)}%` : '-'}</td>
-                  <td className="py-3 px-3 text-right font-mono font-bold text-[#0F5C5B]">
-                    {item.pureWT.toFixed(3)}g
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono text-[#647777]">
-                    ₹{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    <span className="text-[10px] font-semibold text-[#0F5C5B] ml-0.5">
-                      {item.rateUnit === 'PER_CT' ? '/ct' : item.rateUnit === 'PER_G' ? '/g' : item.rateUnit === 'PER_PIECE' ? '/pc' : ''}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono font-bold text-sm text-[#0F5C5B]">
-                    <SBGCurrency value={item.amount} />
-                  </td>
-                </tr>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="text-[10px] bg-black/5 px-2 py-0.5 rounded font-medium">
+                        {item.category}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono">{item.nos}</td>
+                    <td className="py-3 px-3 text-right font-mono">{item.grossWT.toFixed(3)}g</td>
+                    <td className="py-3 px-3 text-right font-mono text-[#647777]">
+                      <div>{item.stoneWT.toFixed(3)}g</div>
+                      {(item.stoneWTCarats || item.stoneWT > 0) ? (
+                        <div className="text-[10px] text-blue-700 font-semibold">
+                          {(item.stoneWTCarats || (item.stoneWT / 0.2)).toFixed(2)}ct
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono">{item.netWT.toFixed(3)}g</td>
+                    <td className="py-3 px-3 text-right font-mono">{item.touch > 0 ? `${item.touch.toFixed(2)}%` : '-'}</td>
+                    <td className="py-3 px-3 text-right font-mono font-bold text-[#0F5C5B]">
+                      {item.pureWT.toFixed(3)}g
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono text-[#647777]">
+                      ₹{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      <span className="text-[10px] font-semibold text-[#0F5C5B] ml-0.5">
+                        {item.rateUnit === 'PER_CT' ? '/ct' : item.rateUnit === 'PER_G' ? '/g' : item.rateUnit === 'PER_PIECE' ? '/pc' : ''}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono font-bold text-sm text-[#0F5C5B]">
+                      <SBGCurrency value={item.amount} />
+                    </td>
+                  </tr>
+
+                  {/* Sub-items Nested Row */}
+                  {item.subItems && item.subItems.length > 0 && (
+                    <tr key={`${item.id}-subs`} className="bg-[#FAF9F6]/80 border-b border-[#DCE5E3]">
+                      <td colSpan={11} className="py-2.5 px-4 pl-10">
+                        <div className="bg-white/95 rounded-xl border border-[#DCE5E3] p-2.5 shadow-2xs space-y-2">
+                          <div className="flex items-center justify-between text-xs pb-1.5 border-b border-[#EFECE6]">
+                            <div className="flex items-center gap-1.5 font-bold text-[#0F5C5B]">
+                              <CornerDownRight className="w-3.5 h-3.5 text-[#D9B76C]" />
+                              <span>Sub-items Breakdown for: <span className="text-[#173333]">{item.item}</span></span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0F5C5B]/10 text-[#0F5C5B] font-bold">
+                              {item.subItems.length} Component{item.subItems.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-[11px]">
+                              <thead className="text-[#647777] border-b border-[#EFECE6] uppercase font-bold text-[9px] tracking-wider">
+                                <tr>
+                                  <th className="py-1 px-2">#</th>
+                                  <th className="py-1 px-2">Component</th>
+                                  <th className="py-1 px-2">Category</th>
+                                  <th className="py-1 px-2 text-right">Nos</th>
+                                  <th className="py-1 px-2 text-right">Weight</th>
+                                  <th className="py-1 px-2 text-right">Touch</th>
+                                  <th className="py-1 px-2 text-right font-bold text-[#0F5C5B]">Pure WT</th>
+                                  <th className="py-1 px-2 text-right">Rate</th>
+                                  <th className="py-1 px-2 text-right font-bold text-[#0F5C5B]">Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#F6F4EE]">
+                                {item.subItems.map((sub, sIdx) => (
+                                  <tr key={sub.id || sIdx} className="hover:bg-[#FAF9F6]">
+                                    <td className="py-1 px-2 font-mono text-[#647777]">{idx + 1}.{sIdx + 1}</td>
+                                    <td className="py-1 px-2 font-semibold text-[#173333]">{sub.name}</td>
+                                    <td className="py-1 px-2">
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/5 font-medium">
+                                        {sub.category}
+                                      </span>
+                                    </td>
+                                    <td className="py-1 px-2 text-right font-mono">{sub.nos || 1}</td>
+                                    <td className="py-1 px-2 text-right font-mono">
+                                      {sub.weight} {sub.unit}
+                                      {sub.unit === 'ct' && sub.weightInGrams ? (
+                                        <span className="text-[9px] text-[#647777] block font-sans">
+                                          ({sub.weightInGrams.toFixed(3)}g)
+                                        </span>
+                                      ) : sub.unit === 'g' && sub.weightInCarats ? (
+                                        <span className="text-[9px] text-[#647777] block font-sans">
+                                          ({sub.weightInCarats.toFixed(2)}ct)
+                                        </span>
+                                      ) : null}
+                                    </td>
+                                    <td className="py-1 px-2 text-right font-mono">
+                                      {sub.touch && sub.touch > 0 ? `${sub.touch}%` : '-'}
+                                    </td>
+                                    <td className="py-1 px-2 text-right font-mono font-bold text-[#0F5C5B]">
+                                      {sub.pureWT ? `${sub.pureWT.toFixed(3)}g` : '-'}
+                                    </td>
+                                    <td className="py-1 px-2 text-right font-mono text-[#647777]">
+                                      ₹{sub.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                      <span className="text-[9px] text-[#0F5C5B] ml-0.5">
+                                        {sub.rateUnit === 'PER_CT' ? '/ct' : sub.rateUnit === 'PER_G' ? '/g' : sub.rateUnit === 'PER_PIECE' ? '/pc' : ''}
+                                      </span>
+                                    </td>
+                                    <td className="py-1 px-2 text-right font-mono font-bold text-[#0F5C5B]">
+                                      <SBGCurrency value={sub.amount} />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
