@@ -503,16 +503,8 @@ export const AppShell: React.FC<AppShellProps> = ({
       <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
         {/* Top Navbar */}
         <header className="no-print sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-[#DCE5E3] px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 sm:gap-4 shadow-xs">
-          {/* Left: Sidebar Toggle Button + Search Pill Input */}
+          {/* Left: Search Pill Input */}
           <div className="flex items-center gap-3 flex-1 max-w-xl">
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              title={sidebarCollapsed ? 'Expand Navigation Panel' : 'Hide / Collapse Panel'}
-              className="hidden lg:flex p-2 rounded-xl border border-[#DCE5E3] text-[#173333] hover:text-[#0F5C5B] hover:bg-[#F2FAF8] transition-colors cursor-pointer bg-white shadow-xs"
-            >
-              {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-            </button>
-
             <div className="flex-1 relative">
               <Search className="w-4 h-4 text-[#647777] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
