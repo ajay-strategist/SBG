@@ -131,43 +131,46 @@ export function calculateEstimateSheet(
     totalNetWT += item.netWT;
     totalPureWT += item.pureWT;
 
-    switch (item.category) {
-      case 'GOLD':
+    const cat = String(item.category || '').toUpperCase().replace(/[\s-]+/g, '_').trim();
+    if (cat === 'GOLD' || cat.includes('GOLD') || cat === 'GLD') {
+      goldValue += item.amount;
+      goldGrossWT += item.grossWT;
+      goldStoneWT += item.stoneWT;
+      goldNetWT += item.netWT;
+      goldPureWT += item.pureWT;
+    } else if (cat === 'DIAMOND' || cat.includes('DIAMOND') || cat === 'DMD') {
+      diamondValue += item.amount;
+      diamondGrossWT += item.grossWT;
+      const dStoneWT = item.stoneWT > 0 ? item.stoneWT : item.grossWT;
+      diamondStoneWT += dStoneWT;
+      const dCarats = item.stoneWTCarats || (item.rateUnit === 'PER_CT' ? (item.stoneWTCarats || item.grossWT) : roundWeight(dStoneWT / 0.2));
+      diamondCarats += dCarats;
+      diamondPureWT += item.pureWT;
+    } else if (cat === 'PRECIOUS_STONE' || cat.includes('PRECIOUS') || cat.includes('STONE') || cat === 'PS') {
+      psValue += item.amount;
+      psGrossWT += item.grossWT;
+      const pStoneWT = item.stoneWT > 0 ? item.stoneWT : item.grossWT;
+      psStoneWT += pStoneWT;
+      const pCarats = item.stoneWTCarats || roundWeight(pStoneWT / 0.2);
+      psCarats += pCarats;
+      psPureWT += item.pureWT;
+    } else if (cat === 'MAKING_CHARGE' || cat.includes('MAKING') || cat === 'MC') {
+      mcValue += item.amount;
+    } else {
+      // If category wasn't explicit, check touch or item description
+      if (item.touch > 0 || (item.item && /gold|gld|kt|ct/i.test(item.item))) {
         goldValue += item.amount;
         goldGrossWT += item.grossWT;
         goldStoneWT += item.stoneWT;
         goldNetWT += item.netWT;
         goldPureWT += item.pureWT;
-        break;
-      case 'DIAMOND': {
-        diamondValue += item.amount;
-        diamondGrossWT += item.grossWT;
-        const dStoneWT = item.stoneWT > 0 ? item.stoneWT : item.grossWT;
-        diamondStoneWT += dStoneWT;
-        const dCarats = item.stoneWTCarats || (item.rateUnit === 'PER_CT' ? (item.stoneWTCarats || item.grossWT) : roundWeight(dStoneWT / 0.2));
-        diamondCarats += dCarats;
-        diamondPureWT += item.pureWT;
-        break;
-      }
-      case 'PRECIOUS_STONE': {
-        psValue += item.amount;
-        psGrossWT += item.grossWT;
-        const pStoneWT = item.stoneWT > 0 ? item.stoneWT : item.grossWT;
-        psStoneWT += pStoneWT;
-        const pCarats = item.stoneWTCarats || roundWeight(pStoneWT / 0.2);
-        psCarats += pCarats;
-        psPureWT += item.pureWT;
-        break;
-      }
-      case 'MAKING_CHARGE':
-        mcValue += item.amount;
-        break;
-      default:
+      } else {
         otherValue += item.amount;
         otherGrossWT += item.grossWT;
         otherStoneWT += item.stoneWT;
         otherNetWT += item.netWT;
         otherPureWT += item.pureWT;
+      }
     }
   }
 

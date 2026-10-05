@@ -541,103 +541,203 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 </span>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            {/* Gold Breakdown */}
-            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] uppercase font-bold text-[#8C6A23]">Gold Metal</span>
-                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">GOLD</span>
-              </div>
-              <div className="space-y-1 font-mono text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-[#647777]">Pure Gold WT:</span>
-                  <span className="font-bold text-[#0F5C5B] text-xs">{(estimate.totals.goldPureWT ?? 0).toFixed(3)} g</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-[#647777]">
-                  <span>Net Gold WT:</span>
-                  <span>{(estimate.totals.goldNetWT ?? 0).toFixed(3)} g</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-[#647777]">
-                  <span>Gross WT:</span>
-                  <span>{(estimate.totals.goldGrossWT ?? 0).toFixed(3)} g</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Diamonds Breakdown */}
-            <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] uppercase font-bold text-blue-800 flex items-center gap-1">
-                  <Gem className="w-3 h-3" /> Diamonds
-                </span>
-                <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">DMD</span>
-              </div>
-              <div className="space-y-1 font-mono text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-[#647777]">Total Carats:</span>
-                  <span className="font-bold text-[#173333] text-xs">{(estimate.totals.diamondCarats ?? 0).toFixed(2)} ct</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-[#647777]">
-                  <span>Stone WT:</span>
-                  <span>{(estimate.totals.diamondStoneWT ?? 0).toFixed(3)} g</span>
-                </div>
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-[#647777]">Pure WT:</span>
-                  <span className={(estimate.totals.diamondPureWT ?? 0) > 0 ? "font-bold text-[#0F5C5B]" : "text-[#647777]"}>
-                    {(estimate.totals.diamondPureWT ?? 0).toFixed(3)} g
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Gemstones / PS Breakdown */}
-            <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] uppercase font-bold text-emerald-800 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Gemstones / PS
-                </span>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">PS</span>
-              </div>
-              <div className="space-y-1 font-mono text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-[#647777]">Pure WT:</span>
-                  <span className="font-bold text-[#0F5C5B] text-xs">{(estimate.totals.psPureWT ?? 0).toFixed(3)} g</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-[#647777]">
-                  <span>Carats:</span>
-                  <span className="font-semibold text-[#173333]">{(estimate.totals.psCarats ?? 0).toFixed(2)} ct</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-[#647777]">
-                  <span>Stone WT:</span>
-                  <span>{(estimate.totals.psStoneWT ?? 0).toFixed(3)} g</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Summary */}
-            <div className="p-3 rounded-xl bg-[#0F5C5B]/5 border border-[#0F5C5B]/20">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] uppercase font-bold text-[#0F5C5B]">Ledger Impact WT</span>
-                <span className="text-[10px] font-bold text-[#0F5C5B] bg-[#0F5C5B]/10 px-1.5 py-0.5 rounded">NET PURE</span>
-              </div>
-              <div className="space-y-1 font-mono text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-[#647777]">Net Pure Gold:</span>
-                  <span className="font-black text-[#0F5C5B] text-xs">+{estimate.totals.totalPureWT.toFixed(3)} g</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-[#647777]">
-                  <span>Total Net WT:</span>
-                  <span className="font-bold text-[#173333]">{estimate.totals.totalNetWT.toFixed(3)} g</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-[#647777]">
-                  <span>Total Gross WT:</span>
-                  <span>{estimate.totals.totalGrossWT.toFixed(3)} g</span>
-                </div>
-              </div>
+            {/* Total Amount in Banner Header */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#647777] uppercase">Total Amount:</span>
+              <span className="font-mono font-black text-base text-[#0F5C5B] px-3 py-1 bg-[#0F5C5B]/10 border border-[#0F5C5B]/20 rounded-lg">
+                <SBGCurrency value={estimate.totals.grandTotal} />
+              </span>
             </div>
           </div>
+
+          {(() => {
+            const displayGoldPure = (estimate.totals.goldPureWT && estimate.totals.goldPureWT > 0)
+              ? estimate.totals.goldPureWT
+              : estimate.items.filter((i) => {
+                  const cat = String(i.category || '').toUpperCase();
+                  return cat === 'GOLD' || cat.includes('GOLD') || cat === 'GLD' || (i.touch || 0) > 0;
+                }).reduce((sum, i) => sum + (i.pureWT || 0), 0);
+
+            const displayGoldNet = (estimate.totals.goldNetWT && estimate.totals.goldNetWT > 0)
+              ? estimate.totals.goldNetWT
+              : estimate.items.filter((i) => {
+                  const cat = String(i.category || '').toUpperCase();
+                  return cat === 'GOLD' || cat.includes('GOLD') || cat === 'GLD' || (i.touch || 0) > 0;
+                }).reduce((sum, i) => sum + (i.netWT || 0), 0);
+
+            const displayGoldGross = (estimate.totals.goldGrossWT && estimate.totals.goldGrossWT > 0)
+              ? estimate.totals.goldGrossWT
+              : estimate.items.filter((i) => {
+                  const cat = String(i.category || '').toUpperCase();
+                  return cat === 'GOLD' || cat.includes('GOLD') || cat === 'GLD' || (i.touch || 0) > 0;
+                }).reduce((sum, i) => sum + (i.grossWT || 0), 0);
+
+            const displayGoldVal = (estimate.totals.goldValue && estimate.totals.goldValue > 0)
+              ? estimate.totals.goldValue
+              : estimate.items.filter((i) => {
+                  const cat = String(i.category || '').toUpperCase();
+                  return cat === 'GOLD' || cat.includes('GOLD') || cat === 'GLD' || (i.touch || 0) > 0;
+                }).reduce((sum, i) => sum + (i.amount || 0), 0);
+
+            const displayDmdVal = (estimate.totals.diamondValue && estimate.totals.diamondValue > 0)
+              ? estimate.totals.diamondValue
+              : estimate.items.filter((i) => {
+                  const cat = String(i.category || '').toUpperCase();
+                  return cat === 'DIAMOND' || cat.includes('DIAMOND') || cat === 'DMD';
+                }).reduce((sum, i) => sum + (i.amount || 0), 0);
+
+            const displayDmdCarats = (estimate.totals.diamondCarats && estimate.totals.diamondCarats > 0)
+              ? estimate.totals.diamondCarats
+              : estimate.items.filter((i) => {
+                  const cat = String(i.category || '').toUpperCase();
+                  return cat === 'DIAMOND' || cat.includes('DIAMOND') || cat === 'DMD';
+                }).reduce((sum, i) => sum + (i.stoneWTCarats || (i.rateUnit === 'PER_CT' ? (i.grossWT || 0) : ((i.stoneWT || 0) / 0.2))), 0);
+
+            const displayPsVal = (estimate.totals.psValue && estimate.totals.psValue > 0)
+              ? estimate.totals.psValue
+              : estimate.items.filter((i) => {
+                  const cat = String(i.category || '').toUpperCase();
+                  return cat === 'PRECIOUS_STONE' || cat.includes('PRECIOUS') || cat.includes('STONE') || cat === 'PS';
+                }).reduce((sum, i) => sum + (i.amount || 0), 0);
+
+            const displayPsPure = (estimate.totals.psPureWT && estimate.totals.psPureWT > 0)
+              ? estimate.totals.psPureWT
+              : estimate.items.filter((i) => {
+                  const cat = String(i.category || '').toUpperCase();
+                  return cat === 'PRECIOUS_STONE' || cat.includes('PRECIOUS') || cat.includes('STONE') || cat === 'PS';
+                }).reduce((sum, i) => sum + (i.pureWT || 0), 0);
+
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                {/* Gold Breakdown */}
+                <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] uppercase font-bold text-[#8C6A23]">Gold Metal</span>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">GOLD</span>
+                    </div>
+                    <div className="space-y-1 font-mono text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-[#647777]">Pure Gold WT:</span>
+                        <span className="font-bold text-[#0F5C5B] text-xs">{displayGoldPure.toFixed(3)} g</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#647777]">
+                        <span>Net Gold WT:</span>
+                        <span>{displayGoldNet.toFixed(3)} g</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#647777]">
+                        <span>Gross WT:</span>
+                        <span>{displayGoldGross.toFixed(3)} g</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-2 mt-2 border-t border-amber-500/20 flex justify-between items-center text-xs font-bold">
+                    <span className="text-[#8C6A23] text-[10px] uppercase">Total Amount:</span>
+                    <span className="font-mono text-[#0F5C5B]">
+                      <SBGCurrency value={displayGoldVal} />
+                    </span>
+                  </div>
+                </div>
+
+                {/* Diamonds Breakdown */}
+                <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] uppercase font-bold text-blue-800 flex items-center gap-1">
+                        <Gem className="w-3 h-3" /> Diamonds
+                      </span>
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">DMD</span>
+                    </div>
+                    <div className="space-y-1 font-mono text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-[#647777]">Total Carats:</span>
+                        <span className="font-bold text-[#173333] text-xs">{displayDmdCarats.toFixed(2)} ct</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#647777]">
+                        <span>Stone WT:</span>
+                        <span>{(estimate.totals.diamondStoneWT ?? 0).toFixed(3)} g</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-[#647777]">Pure WT:</span>
+                        <span className={(estimate.totals.diamondPureWT ?? 0) > 0 ? "font-bold text-[#0F5C5B]" : "text-[#647777]"}>
+                          {(estimate.totals.diamondPureWT ?? 0).toFixed(3)} g
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-2 mt-2 border-t border-blue-500/20 flex justify-between items-center text-xs font-bold">
+                    <span className="text-blue-800 text-[10px] uppercase">Total Amount:</span>
+                    <span className="font-mono text-blue-900">
+                      <SBGCurrency value={displayDmdVal} />
+                    </span>
+                  </div>
+                </div>
+
+                {/* Gemstones / PS Breakdown */}
+                <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] uppercase font-bold text-emerald-800 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Gemstones / PS
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">PS</span>
+                    </div>
+                    <div className="space-y-1 font-mono text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-[#647777]">Pure WT:</span>
+                        <span className="font-bold text-[#0F5C5B] text-xs">{displayPsPure.toFixed(3)} g</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#647777]">
+                        <span>Carats:</span>
+                        <span className="font-semibold text-[#173333]">{(estimate.totals.psCarats ?? 0).toFixed(2)} ct</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#647777]">
+                        <span>Stone WT:</span>
+                        <span>{(estimate.totals.psStoneWT ?? 0).toFixed(3)} g</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-2 mt-2 border-t border-emerald-500/20 flex justify-between items-center text-xs font-bold">
+                    <span className="text-emerald-800 text-[10px] uppercase">Total Amount:</span>
+                    <span className="font-mono text-emerald-900">
+                      <SBGCurrency value={displayPsVal} />
+                    </span>
+                  </div>
+                </div>
+
+                {/* Total Summary */}
+                <div className="p-3 rounded-xl bg-[#0F5C5B]/5 border border-[#0F5C5B]/20 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] uppercase font-bold text-[#0F5C5B]">Total Summary</span>
+                      <span className="text-[10px] font-bold text-[#0F5C5B] bg-[#0F5C5B]/10 px-1.5 py-0.5 rounded">GRAND TOTAL</span>
+                    </div>
+                    <div className="space-y-1 font-mono text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-[#647777]">Net Pure Gold:</span>
+                        <span className="font-black text-[#0F5C5B] text-xs">+{estimate.totals.totalPureWT.toFixed(3)} g</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#647777]">
+                        <span>Taxable Value:</span>
+                        <span className="font-bold text-[#173333]"><SBGCurrency value={estimate.totals.taxableValue} /></span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#647777]">
+                        <span>GST ({estimate.totals.gstRate}%):</span>
+                        <span><SBGCurrency value={estimate.totals.gstAmount} /></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-2 mt-2 border-t-2 border-[#0F5C5B]/30 flex justify-between items-center text-xs font-black">
+                    <span className="text-[#0F5C5B] text-[10px] uppercase">Total Amount:</span>
+                    <span className="font-mono text-sm text-[#0F5C5B]">
+                      <SBGCurrency value={estimate.totals.grandTotal} />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Totals Summary and Balance Adjustment */}
