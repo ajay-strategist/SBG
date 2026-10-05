@@ -46,7 +46,7 @@ const defaultNotifications: NotificationItem[] = [
     title: 'Market Gold Rate Updated',
     desc: 'Fine Gold 99.5 rate updated to ₹12,889.30/g',
     time: '10m ago',
-    read: false,
+    read: true,
     type: 'rate',
   },
   {
@@ -54,7 +54,7 @@ const defaultNotifications: NotificationItem[] = [
     title: 'New Transaction Confirmed',
     desc: 'Customer TIKVAH ledger updated with new entry',
     time: '1h ago',
-    read: false,
+    read: true,
     type: 'transaction',
   },
   {
@@ -62,7 +62,7 @@ const defaultNotifications: NotificationItem[] = [
     title: 'Audit Log Recorded',
     desc: 'Security event verified in immutable audit trail',
     time: '2h ago',
-    read: false,
+    read: true,
     type: 'audit',
   },
 ];
@@ -126,14 +126,30 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [isTxDropdownOpen, setIsTxDropdownOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
-    const saved = localStorage.getItem('sbg_notifications');
-    return saved ? JSON.parse(saved) : defaultNotifications;
+    try {
+      const saved = localStorage.getItem('sbg_notifications');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Clear any old stuck notifications so badge is 0
+          return parsed.map((item: NotificationItem) => ({ ...item, read: true }));
+        }
+      }
+    } catch (e) {}
+    return defaultNotifications;
   });
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('sbg_notifications', JSON.stringify(notifications));
   }, [notifications]);
+
+  // When user checks Audit & Security tab, ensure notifications are marked as read
+  useEffect(() => {
+    if (currentTab === 'audit') {
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    }
+  }, [currentTab]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
