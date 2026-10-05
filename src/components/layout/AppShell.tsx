@@ -455,15 +455,6 @@ export const AppShell: React.FC<AppShellProps> = ({
               <span>New Transaction</span>
             </button>
 
-            {/* New Estimate Action Pill */}
-            <button
-              onClick={() => onNavigate('new-estimate')}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#E5C378] hover:bg-[#D9B76C] text-[#3D2D0C] font-bold text-xs shadow-sm transition-all cursor-pointer"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-[#3D2D0C]" />
-              <span>New Estimate</span>
-            </button>
-
             {/* Notification Bell with Badge 3 */}
             <button
               onClick={() => onNavigate('audit')}
