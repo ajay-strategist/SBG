@@ -234,7 +234,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               <span className="text-xl font-normal text-white/80">g</span>
             </div>
             <div className="text-xs text-[#E9D7A5] font-medium mt-1">
-              ₹ {(goldValueINR / 100000).toFixed(2)} Lakhs eq.
+              {Math.abs(goldValueINR) >= 100000
+                ? `₹ ${(goldValueINR / 100000).toFixed(2)} Lakhs eq.`
+                : `₹ ${goldValueINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} eq.`}
             </div>
           </div>
         </div>
@@ -442,7 +444,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
                 <span className="text-[10px] text-[#647777] font-medium block">Total</span>
                 <span className="text-xs font-bold text-[#143B39] font-mono leading-tight">
-                  ₹ {(totalEquityINR / 100000).toFixed(2)}L
+                  {Math.abs(totalEquityINR) >= 100000
+                    ? `₹ ${(totalEquityINR / 100000).toFixed(2)}L`
+                    : `₹ ${totalEquityINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </span>
                 <span className="text-[9px] text-[#647777]">eq.</span>
               </div>
@@ -466,7 +470,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                   <span>Making Charge</span>
                 </div>
                 <div className="text-[11px] text-[#647777] pl-4 font-mono">
-                  ₹ {(totalMCBalance / 100000).toFixed(2)}L <span className="font-semibold text-[#C48C2B]">({mcPercent}%)</span>
+                  {Math.abs(totalMCBalance) >= 100000
+                    ? `₹ ${(totalMCBalance / 100000).toFixed(2)}L`
+                    : `₹ ${totalMCBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}{' '}
+                  <span className="font-semibold text-[#C48C2B]">({mcPercent}%)</span>
                 </div>
               </div>
 
