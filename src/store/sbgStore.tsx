@@ -1621,20 +1621,44 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const customer = customers.find((c) => c.id === merged.customerId);
       const prevWT = merged.previousBalanceWT ?? customer?.currentWT ?? 0;
       const prevMC = merged.previousBalanceMC ?? customer?.currentMC ?? 0;
-      const newWT = roundWeight(prevWT + merged.totals.totalPureWT);
-      const newMC = roundCurrency(prevMC + merged.totals.grandTotal);
+
+      const isPurchase = merged.transactionType === 'PURCHASE' || merged.direction === 'RECEIPT';
+      const sign = isPurchase ? -1 : 1;
+      const goldPureToAdjust = merged.totals.goldPureWT ?? merged.totals.totalPureWT;
+      const remainingCash = merged.totals.remainingCashValue ?? Math.max(0, merged.totals.grandTotal - (merged.totals.goldValue ?? 0));
+
+      const deltaPureWT = merged.balanceComparison?.deltaPureWT ?? roundWeight(sign * goldPureToAdjust);
+      const deltaAmount = merged.balanceComparison?.deltaAmount ?? roundCurrency(sign * remainingCash);
+
+      const newWT = roundWeight(prevWT + deltaPureWT);
+      const newMC = roundCurrency(prevMC + deltaAmount);
 
       const existingTxIndex = transactions.findIndex(
         (t) => t.estimateId === id || (t.erpRef && t.erpRef === merged.estimateNo)
       );
       if (existingTxIndex >= 0) {
+        const totalNos = merged.items.reduce((sum, item) => sum + (Number(item.nos) || 1), 0);
+        const netWT = isPurchase ? -merged.totals.totalNetWT : merged.totals.totalNetWT;
+        const touch = merged.totals.totalNetWT > 0 ? (goldPureToAdjust / merged.totals.totalNetWT) * 100 : 0;
+        const stoneAmount = roundCurrency(merged.totals.diamondValue + merged.totals.psValue);
+
         const estTx: LedgerTransaction = {
           ...transactions[existingTxIndex],
-          grossWT: merged.totals.totalGrossWT,
+          direction: isPurchase ? 'RECEIPT' : 'ISSUE',
+          particulars: isPurchase ? 'PURCHASE' : 'SALE',
+          description: `Estimate ${merged.estimateNo} (${isPurchase ? 'Purchase' : 'Sale'})${merged.customerRef ? ` (${merged.customerRef})` : ''}`,
+          nos: totalNos,
+          grossWT: isPurchase ? -merged.totals.totalGrossWT : merged.totals.totalGrossWT,
           stoneWT: merged.totals.totalStoneWT,
-          netWT: merged.totals.totalNetWT,
-          pureWT: merged.totals.totalPureWT,
-          totalAmount: merged.totals.grandTotal,
+          netWT,
+          touch: roundPurity(touch),
+          pureWT: deltaPureWT,
+          stoneAmount,
+          stoneAmountCal: isPurchase ? -stoneAmount : stoneAmount,
+          mcRate: merged.mcRate || 0,
+          mcAmount: merged.totals.mcValue,
+          mcAmountCal: deltaAmount,
+          totalAmount: deltaAmount,
           balanceWT: newWT,
           balanceMC: newMC,
           updatedAt: new Date().toISOString(),

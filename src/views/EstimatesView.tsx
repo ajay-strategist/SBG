@@ -13,6 +13,7 @@ import {
   FileText,
   Edit3,
   FileCheck,
+  Trash2,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -21,7 +22,7 @@ interface EstimatesViewProps {
 }
 
 export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
-  const { estimates, customers, confirmEstimate } = useSBG();
+  const { estimates, customers, confirmEstimate, deleteEstimate } = useSBG();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredEstimates = estimates.filter((e) => {
@@ -278,6 +279,17 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
                           className="px-2.5 py-1 rounded-xl bg-white border border-[#DCE5E3] hover:bg-[#FAF9F6] text-xs font-semibold text-[#0F5C5B] cursor-pointer transition-all"
                         >
                           Details
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to delete estimate ${est.estimateNo}?`)) {
+                              await deleteEstimate(est.id);
+                            }
+                          }}
+                          className="p-1 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 cursor-pointer transition-all"
+                          title="Delete Estimate"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSBG } from '../store/sbgStore';
+import { calculateEstimateSheet } from '../core/calculations/estimateEngine';
+import { roundWeight, roundCurrency } from '../core/calculations/mathUtils';
 import {
   SBGCard,
   SBGButton,
@@ -25,6 +27,7 @@ import {
   Check,
   Gem,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -37,15 +40,30 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
   estimateId,
   onNavigate,
 }) => {
-  const { estimates, customers, transactions, confirmEstimate, unconfirmEstimate } = useSBG();
+  const { estimates, customers, transactions, confirmEstimate, unconfirmEstimate, updateEstimate, deleteEstimate } = useSBG();
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [showToast, setShowToast] = useState<string | null>(null);
 
-  const estimate = estimates.find((e) => e.id === estimateId) || estimates[0];
-  const customer = customers.find((c) => c.id === estimate?.customerId);
+  const rawEstimate = estimates.find((e) => e.id === estimateId) || estimates[0];
+  const customer = customers.find((c) => c.id === rawEstimate?.customerId);
 
-  if (!estimate) {
+  // Dynamically recalculate sheet so category breakdowns & deltas are always live and accurate
+  const estimate = useMemo(() => {
+    if (!rawEstimate) return rawEstimate;
+    return calculateEstimateSheet(
+      {
+        ...rawEstimate,
+        transactionType: rawEstimate.transactionType || (rawEstimate.direction === 'ISSUE' ? 'SALE' : 'PURCHASE'),
+        direction: rawEstimate.direction || (rawEstimate.transactionType === 'SALE' ? 'ISSUE' : 'RECEIPT'),
+        settlementMode: rawEstimate.settlementMode || 'GOLD_AND_CASH',
+      },
+      rawEstimate.totals?.gstRate ?? 3.0
+    );
+  }, [rawEstimate]);
+
+  if (!estimate || !rawEstimate) {
     return (
       <div className="p-8 text-center">
         <p className="text-sm text-[#647777]">Estimate cost sheet not found.</p>
@@ -63,20 +81,68 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
 
   // Determine transaction nature & components
   const isPurchase = estimate.transactionType === 'PURCHASE' || estimate.direction === 'RECEIPT';
-  const goldPureWT = estimate.totals.goldPureWT ?? estimate.totals.totalPureWT;
+  const goldPureWT = (estimate.totals.goldPureWT && estimate.totals.goldPureWT > 0)
+    ? estimate.totals.goldPureWT
+    : estimate.items.filter((i) => i.category === 'GOLD').reduce((sum, i) => sum + (i.pureWT || 0), 0);
   const remainingCash = estimate.totals.remainingCashValue ?? Math.max(0, estimate.totals.grandTotal - (estimate.totals.goldValue ?? 0));
 
-  const deltaPureWT = estimate.deltaPureWT !== undefined
-    ? estimate.deltaPureWT
-    : (estimate.settlementMode === 'CASH_ONLY'
-        ? 0
-        : (isPurchase ? -goldPureWT : goldPureWT));
+  const deltaPureWT = estimate.settlementMode === 'CASH_ONLY'
+    ? 0
+    : (isPurchase ? -goldPureWT : goldPureWT);
 
-  const deltaMC = estimate.deltaAmount !== undefined
-    ? estimate.deltaAmount
-    : (estimate.settlementMode === 'CASH_ONLY'
-        ? (isPurchase ? -estimate.totals.grandTotal : estimate.totals.grandTotal)
-        : (isPurchase ? -remainingCash : remainingCash));
+  const deltaMC = estimate.settlementMode === 'CASH_ONLY'
+    ? (isPurchase ? -estimate.totals.grandTotal : estimate.totals.grandTotal)
+    : (isPurchase ? -remainingCash : remainingCash);
+
+  const handleToggleTransactionType = async (newType: 'PURCHASE' | 'SALE') => {
+    if (!rawEstimate) return;
+    const isNowPurchase = newType === 'PURCHASE';
+    const newDirection = isNowPurchase ? 'RECEIPT' : 'ISSUE';
+
+    const goldPureToAdjust = estimate.totals.goldPureWT ?? estimate.totals.totalPureWT;
+    const remainingCashToAdjust = estimate.totals.remainingCashValue ?? Math.max(0, estimate.totals.grandTotal - (estimate.totals.goldValue ?? 0));
+
+    const newDeltaPureWT = isNowPurchase ? -goldPureToAdjust : goldPureToAdjust;
+    const newDeltaAmount = isNowPurchase ? -remainingCashToAdjust : remainingCashToAdjust;
+
+    const prevWT = rawEstimate.previousBalanceWT ?? customer?.currentWT ?? 0;
+    const prevMC = rawEstimate.previousBalanceMC ?? customer?.currentMC ?? 0;
+
+    const newBalWT = Number((prevWT + newDeltaPureWT).toFixed(3));
+    const newBalMC = Number((prevMC + newDeltaAmount).toFixed(2));
+
+    await updateEstimate(rawEstimate.id, {
+      ...rawEstimate,
+      transactionType: newType,
+      direction: newDirection,
+      deltaPureWT: newDeltaPureWT,
+      deltaAmount: newDeltaAmount,
+      newBalanceWT: newBalWT,
+      newBalanceMC: newBalMC,
+      balanceComparison: {
+        ...rawEstimate.balanceComparison,
+        ledgerOldPureWT: prevWT,
+        ledgerOldAmount: prevMC,
+        ledgerNewPureWT: newBalWT,
+        ledgerNewAmount: newBalMC,
+        deltaPureWT: newDeltaPureWT,
+        deltaAmount: newDeltaAmount,
+        pureWTDiff: 0,
+        amountDiff: 0,
+        isReconciled: true,
+      },
+    });
+
+    setShowToast(`Estimate ${rawEstimate.estimateNo} switched to ${newType}! ${isNowPurchase ? 'Balances adjusted in Negative (−).' : 'Balances adjusted in Positive (+).'}`);
+    setTimeout(() => setShowToast(null), 5000);
+  };
+
+  const handleDeleteEstimate = async () => {
+    if (!rawEstimate) return;
+    await deleteEstimate(rawEstimate.id);
+    setIsDeleteModalOpen(false);
+    onNavigate('estimates');
+  };
 
   // Accurate balance determination
   let prevWT: number;
@@ -158,10 +224,42 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
         </button>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Quick Toggle Purchase / Sales */}
+          <div className="flex items-center rounded-xl bg-white border border-[#DCE5E3] p-1 shadow-2xs">
+            <button
+              onClick={() => handleToggleTransactionType('PURCHASE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                isPurchase
+                  ? 'bg-[#0F5C5B] text-white shadow-xs'
+                  : 'text-[#647777] hover:text-[#0F5C5B]'
+              }`}
+              title="Set as Purchase (Receipt - Adjust in Negative)"
+            >
+              <span>PURCHASE (Receipt −)</span>
+              <span className={`text-[10px] px-1 py-0.2 rounded ${isPurchase ? 'bg-white/20 text-white' : 'bg-black/5 text-[#647777]'}`}>
+                − Adjust
+              </span>
+            </button>
+            <button
+              onClick={() => handleToggleTransactionType('SALE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                !isPurchase
+                  ? 'bg-[#D9B76C] text-[#173333] shadow-xs'
+                  : 'text-[#647777] hover:text-[#0F5C5B]'
+              }`}
+              title="Set as Sale (Issue - Adjust in Positive)"
+            >
+              <span>SALE (Issue +)</span>
+              <span className={`text-[10px] px-1 py-0.2 rounded ${!isPurchase ? 'bg-black/15 text-[#173333]' : 'bg-black/5 text-[#647777]'}`}>
+                + Adjust
+              </span>
+            </button>
+          </div>
+
           {estimate.status === 'CONFIRMED' ? (
             <>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#E6F8F2] text-[#1A825B] border border-[#1A825B]/20">
-                <CheckCircle2 className="w-4 h-4" /> Confirmed & Posted to Ledger
+                <CheckCircle2 className="w-4 h-4" /> Confirmed & Posted
               </span>
 
               {customer && (
@@ -171,7 +269,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                   icon={<ExternalLink className="w-4 h-4" />}
                   onClick={() => onNavigate('customer-profile', customer.id)}
                 >
-                  View Customer Ledger
+                  View Ledger
                 </SBGButton>
               )}
 
@@ -181,12 +279,12 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 icon={<RotateCcw className="w-4 h-4" />}
                 onClick={() => setIsReopenModalOpen(true)}
               >
-                Reopen as Draft
+                Reopen Draft
               </SBGButton>
             </>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FEF5E6] text-[#B87B1D] border border-[#B87B1D]/20">
-              <AlertTriangle className="w-4 h-4" /> Draft (Pending Ledger Posting)
+              <AlertTriangle className="w-4 h-4" /> Draft
             </span>
           )}
 
@@ -196,7 +294,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
             icon={<Edit3 className="w-4 h-4" />}
             onClick={() => onNavigate('edit-estimate', estimate.id)}
           >
-            Edit Cost Sheet
+            Edit
           </SBGButton>
 
           <SBGButton
@@ -205,7 +303,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
             icon={<Printer className="w-4 h-4" />}
             onClick={handlePrint}
           >
-            Print Cost Sheet
+            Print
           </SBGButton>
 
           {estimate.status === 'DRAFT' && (
@@ -218,6 +316,17 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
               Confirm & Post to Ledger
             </SBGButton>
           )}
+
+          <SBGButton
+            variant="outline"
+            size="sm"
+            icon={<Trash2 className="w-4 h-4 text-rose-600" />}
+            className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300"
+            onClick={() => setIsDeleteModalOpen(true)}
+            title="Delete this estimate"
+          >
+            Delete
+          </SBGButton>
         </div>
       </div>
 
@@ -551,7 +660,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
 
             {/* Customer Account Balance Adjustment Statement */}
             <div className="bg-white/95 rounded-2xl border-2 border-[#0F5C5B]/20 p-4 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between border-b border-[#DCE5E3] pb-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#DCE5E3] pb-2.5 gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-[#0F5C5B]/10 flex items-center justify-center">
                     <Scale className="w-3.5 h-3.5 text-[#0F5C5B]" />
@@ -566,9 +675,31 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                   </div>
                 </div>
 
-                <SBGBadge variant={estimate.status === 'CONFIRMED' ? 'success' : 'warning'}>
-                  {estimate.status === 'CONFIRMED' ? 'Applied to Ledger' : 'Draft / Unapplied'}
-                </SBGBadge>
+                <div className="flex items-center gap-2">
+                  {/* Inline switcher */}
+                  <div className="flex items-center rounded-lg bg-white border border-[#DCE5E3] p-0.5 text-[11px] shadow-2xs">
+                    <button
+                      onClick={() => handleToggleTransactionType('PURCHASE')}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                        isPurchase ? 'bg-[#0F5C5B] text-white shadow-xs' : 'text-[#647777] hover:text-[#0F5C5B]'
+                      }`}
+                    >
+                      Purchase (−)
+                    </button>
+                    <button
+                      onClick={() => handleToggleTransactionType('SALE')}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                        !isPurchase ? 'bg-[#D9B76C] text-[#173333] shadow-xs' : 'text-[#647777] hover:text-[#0F5C5B]'
+                      }`}
+                    >
+                      Sale (+)
+                    </button>
+                  </div>
+
+                  <SBGBadge variant={estimate.status === 'CONFIRMED' ? 'success' : 'warning'}>
+                    {estimate.status === 'CONFIRMED' ? 'Applied to Ledger' : 'Draft / Unapplied'}
+                  </SBGBadge>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -730,9 +861,13 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                     <span>Previous:</span>
                     <span className="font-mono">{prevWT.toFixed(3)} g</span>
                   </div>
-                  <div className="flex justify-between text-[#0F5C5B] text-[11px] font-semibold">
-                    <span>(+) Estimate Pure WT:</span>
-                    <span className="font-mono">+{currentPureWT.toFixed(3)} g</span>
+                  <div className="flex justify-between text-[11px] font-semibold">
+                    <span className={isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}>
+                      ({isPurchase ? '−' : '+'}) {isPurchase ? 'Purchase Pure Gold:' : 'Sale Pure Gold:'}
+                    </span>
+                    <span className={`font-mono ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
+                      {deltaPureWT >= 0 ? '+' : '−'} {Math.abs(deltaPureWT).toFixed(3)} g
+                    </span>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-[#0F5C5B]/20 font-bold text-[#173333]">
                     <span>(=) New Gold Balance:</span>
@@ -743,19 +878,23 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 {/* Amount Balance */}
                 <div className="bg-[#D9B76C]/10 p-2.5 rounded-xl space-y-1">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase text-[#8C6A23]">
-                    <span>Amount Balance</span>
+                    <span>Cash / MC Balance</span>
                     <Wallet className="w-3 h-3 text-[#8C6A23]" />
                   </div>
                   <div className="flex justify-between text-[#647777] text-[11px]">
                     <span>Previous:</span>
                     <span className="font-mono"><SBGCurrency value={prevMC} /></span>
                   </div>
-                  <div className="flex justify-between text-[#0F5C5B] text-[11px] font-semibold">
-                    <span>(+) Estimate Total:</span>
-                    <span className="font-mono">+<SBGCurrency value={currentGrandTotal} /></span>
+                  <div className="flex justify-between text-[11px] font-semibold">
+                    <span className={isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}>
+                      ({isPurchase ? '−' : '+'}) {isPurchase ? 'Purchase Remaining Cash:' : 'Sale Remaining Cash:'}
+                    </span>
+                    <span className={`font-mono ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
+                      {deltaMC >= 0 ? '+' : '−'} <SBGCurrency value={Math.abs(deltaMC)} />
+                    </span>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-[#D9B76C]/30 font-bold text-[#173333]">
-                    <span>(=) New Amount Balance:</span>
+                    <span>(=) New Cash Balance:</span>
                     <span className="font-mono text-[#0F5C5B]"><SBGCurrency value={newMC} /></span>
                   </div>
                 </div>
@@ -786,9 +925,9 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                   <span>Previous:</span>
                   <span className="font-mono">{prevWT.toFixed(3)} g</span>
                 </div>
-                <div className="flex justify-between font-bold text-[#0F5C5B]">
-                  <span>Adjustment:</span>
-                  <span className="font-mono">+{currentPureWT.toFixed(3)} g</span>
+                <div className={`flex justify-between font-bold ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
+                  <span>{isPurchase ? 'Purchase Adjustment:' : 'Sale Adjustment:'}</span>
+                  <span className="font-mono">{deltaPureWT >= 0 ? '+' : '−'}{Math.abs(deltaPureWT).toFixed(3)} g</span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-[#DCE5E3] font-bold text-[#173333]">
                   <span>New Balance:</span>
@@ -797,14 +936,14 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
               </div>
 
               <div className="bg-white p-3 rounded-xl border border-[#DCE5E3] space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#647777] block">Total Amount (₹)</span>
+                <span className="text-[10px] uppercase font-bold text-[#647777] block">Cash / MC Balance (₹)</span>
                 <div className="flex justify-between text-[#647777]">
                   <span>Previous:</span>
                   <span className="font-mono"><SBGCurrency value={prevMC} /></span>
                 </div>
-                <div className="flex justify-between font-bold text-[#0F5C5B]">
-                  <span>Adjustment:</span>
-                  <span className="font-mono">+<SBGCurrency value={currentGrandTotal} /></span>
+                <div className={`flex justify-between font-bold ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
+                  <span>{isPurchase ? 'Purchase Adjustment:' : 'Sale Adjustment:'}</span>
+                  <span className="font-mono">{deltaMC >= 0 ? '+' : '−'}<SBGCurrency value={Math.abs(deltaMC)} /></span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-[#DCE5E3] font-bold text-[#173333]">
                   <span>New Balance:</span>
@@ -848,6 +987,45 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
             </SBGButton>
             <SBGButton variant="danger" size="sm" icon={<RotateCcw className="w-4 h-4" />} onClick={handleReopenToDraft}>
               Revert to Draft & Remove from Ledger
+            </SBGButton>
+          </div>
+        </div>
+      </SBGModal>
+
+      {/* Delete Confirmation Modal */}
+      <SBGModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Estimate Cost Sheet"
+      >
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-sm text-rose-700">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              Delete Confirmation
+            </div>
+            <p>
+              Are you sure you want to permanently delete estimate <strong className="font-mono font-bold">{rawEstimate.estimateNo}</strong> for{' '}
+              <strong>{customer?.name || estimate.customerName}</strong>?
+            </p>
+            {rawEstimate.status === 'CONFIRMED' && (
+              <p className="font-semibold text-rose-800 pt-1 border-t border-rose-200">
+                Notice: This estimate is currently CONFIRMED. Deleting it will also remove its corresponding transaction from the Customer Ledger and restore previous balances automatically.
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <SBGButton variant="outline" size="sm" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </SBGButton>
+            <SBGButton
+              variant="danger"
+              size="sm"
+              icon={<Trash2 className="w-4 h-4" />}
+              onClick={handleDeleteEstimate}
+            >
+              Permanently Delete Estimate
             </SBGButton>
           </div>
         </div>
