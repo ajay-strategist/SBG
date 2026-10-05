@@ -13,6 +13,9 @@ import {
   calculateRunningBalances,
   calculateSettlement,
   calculateCustomerSummaryBalances,
+  roundWeight,
+  roundCurrency,
+  roundPurity,
 } from '../core/calculations';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { fetchLiveGoldRate, GoldRateData } from '../lib/goldRateService';
@@ -79,6 +82,8 @@ interface SBGContextType {
   estimates: EstimateCostSheet[];
   addEstimate: (estimate: EstimateCostSheet) => Promise<void>;
   updateEstimate: (id: string, updates: Partial<EstimateCostSheet>) => Promise<void>;
+  confirmEstimate: (id: string) => Promise<void>;
+  unconfirmEstimate: (id: string) => Promise<void>;
   deleteEstimate: (id: string) => Promise<void>;
   getEstimate: (id: string) => EstimateCostSheet | undefined;
 
@@ -599,9 +604,183 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved && JSON.parse(saved).length > 0 ? JSON.parse(saved) : defaultTransactionsList;
   });
 
+  const defaultEstimatesList: EstimateCostSheet[] = [
+    {
+      id: 'est-301',
+      estimateNo: 'EST-2026-106',
+      estimateDate: '2026-09-23',
+      customerId: 'cust-tikvah',
+      customerName: 'TIKVAH',
+      touchFixed: true,
+      isGold: true,
+      goldRate: 11845.13,
+      goldRatePurity: 99.5,
+      remarks: 'Standard commercial estimate based on prevailing market gold rates and pure weights.',
+      items: [
+        {
+          id: 'item-1',
+          sl: 1,
+          item: '18 CT GLD RIN',
+          category: 'GOLD',
+          nos: 5,
+          grossWT: 7.802,
+          stoneWT: 0.180,
+          netWT: 7.622,
+          touch: 76.0,
+          pureWT: 5.793,
+          rate: 11845.13,
+          rateUnit: 'PER_G',
+          amount: 68618.84,
+        },
+        {
+          id: 'item-2',
+          sl: 2,
+          item: '18 CT GLD STD',
+          category: 'GOLD',
+          nos: 10,
+          grossWT: 6.080,
+          stoneWT: 0.360,
+          netWT: 5.720,
+          touch: 76.0,
+          pureWT: 4.347,
+          rate: 11845.13,
+          rateUnit: 'PER_G',
+          amount: 51490.78,
+        },
+        {
+          id: 'item-3',
+          sl: 3,
+          item: '18 CT GLD PDT',
+          category: 'GOLD',
+          nos: 5,
+          grossWT: 2.762,
+          stoneWT: 0.180,
+          netWT: 2.582,
+          touch: 76.0,
+          pureWT: 1.962,
+          rate: 11845.13,
+          rateUnit: 'PER_G',
+          amount: 23240.15,
+        },
+        {
+          id: 'item-4',
+          sl: 4,
+          item: '18 CT GLD NSP',
+          category: 'GOLD',
+          nos: 2,
+          grossWT: 1.832,
+          stoneWT: 0.186,
+          netWT: 1.646,
+          touch: 76.0,
+          pureWT: 1.251,
+          rate: 11845.13,
+          rateUnit: 'PER_G',
+          amount: 14818.26,
+        },
+        {
+          id: 'item-5',
+          sl: 5,
+          item: 'DMD',
+          category: 'DIAMOND',
+          nos: 1,
+          grossWT: 1.330,
+          stoneWT: 0.000,
+          netWT: 1.330,
+          touch: 0.0,
+          pureWT: 0.000,
+          rate: 70443.61,
+          rateUnit: 'PER_CT',
+          amount: 0.00,
+        },
+        {
+          id: 'item-6',
+          sl: 6,
+          item: 'PS',
+          category: 'PRECIOUS_STONE',
+          nos: 1,
+          grossWT: 3.200,
+          stoneWT: 0.000,
+          netWT: 3.200,
+          touch: 76.0,
+          pureWT: 2.432,
+          rate: 4375.00,
+          rateUnit: 'PER_G',
+          amount: 14000.00,
+        },
+        {
+          id: 'item-7',
+          sl: 7,
+          item: 'MC',
+          category: 'MAKING_CHARGE',
+          nos: 1,
+          grossWT: 17.570,
+          stoneWT: 0.000,
+          netWT: 17.570,
+          touch: 0.0,
+          pureWT: 0.000,
+          rate: 948.98,
+          rateUnit: 'PER_G',
+          amount: 16673.58,
+        },
+      ],
+      totals: {
+        goldValue: 158168.03,
+        diamondValue: 0,
+        psValue: 14000.00,
+        mcValue: 16673.58,
+        taxableValue: 188841.61,
+        gstRate: 3.0,
+        gstAmount: 5665.25,
+        grandTotal: 194506.86,
+        totalGrossWT: 40.576,
+        totalStoneWT: 0.906,
+        totalNetWT: 39.670,
+        totalPureWT: 15.785,
+        goldGrossWT: 18.476,
+        goldStoneWT: 0.906,
+        goldNetWT: 17.570,
+        goldPureWT: 13.353,
+        remainingCashValue: 36338.83,
+        diamondGrossWT: 1.330,
+        diamondStoneWT: 0,
+        diamondCarats: 1.33,
+        diamondPureWT: 0,
+        psGrossWT: 3.200,
+        psStoneWT: 0,
+        psCarats: 16.00,
+        psPureWT: 2.432,
+      },
+      transactionType: 'PURCHASE',
+      direction: 'RECEIPT',
+      settlementMode: 'GOLD_AND_CASH',
+      previousBalanceWT: 3.353,
+      previousBalanceMC: -21859.00,
+      newBalanceWT: -10.000,
+      newBalanceMC: -58197.83,
+      balanceComparison: {
+        gSheetOldPureWT: 3.353,
+        gSheetOldAmount: -21859.00,
+        gSheetNewPureWT: -10.000,
+        gSheetNewAmount: -58197.83,
+        ledgerOldPureWT: 3.353,
+        ledgerOldAmount: -21859.00,
+        ledgerNewPureWT: -10.000,
+        ledgerNewAmount: -58197.83,
+        deltaPureWT: -13.353,
+        deltaAmount: -36338.83,
+        pureWTDiff: 0,
+        amountDiff: 0,
+        isReconciled: true,
+      },
+      status: 'DRAFT',
+      createdAt: '2026-09-23T10:00:00.000Z',
+      updatedAt: '2026-09-23T10:00:00.000Z',
+    },
+  ];
+
   const [estimates, setEstimates] = useState<EstimateCostSheet[]>(() => {
     const saved = localStorage.getItem('sbg_live_estimates');
-    return saved ? JSON.parse(saved) : [];
+    return saved && JSON.parse(saved).length > 0 ? JSON.parse(saved) : defaultEstimatesList;
   });
 
   const [settlements, setSettlements] = useState<SettlementRecord[]>(() => {
@@ -1267,11 +1446,203 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const confirmEstimate = async (id: string) => {
+    const est = estimates.find((e) => e.id === id);
+    if (!est) return;
+
+    const customer = customers.find((c) => c.id === est.customerId);
+    const prevWT = est.previousBalanceWT ?? customer?.currentWT ?? 0;
+    const prevMC = est.previousBalanceMC ?? customer?.currentMC ?? 0;
+
+    const isPurchase = est.transactionType === 'PURCHASE' || est.direction === 'RECEIPT';
+    const sign = isPurchase ? -1 : 1;
+    const goldPureToAdjust = est.totals.goldPureWT ?? est.totals.totalPureWT;
+    const remainingCash = est.totals.remainingCashValue ?? Math.max(0, est.totals.grandTotal - est.totals.goldValue);
+
+    const deltaPureWT = est.balanceComparison?.deltaPureWT ?? roundWeight(sign * goldPureToAdjust);
+    const deltaAmount = est.balanceComparison?.deltaAmount ?? roundCurrency(sign * remainingCash);
+
+    const newWT = roundWeight(prevWT + deltaPureWT);
+    const newMC = roundCurrency(prevMC + deltaAmount);
+
+    const updatedEstimate: EstimateCostSheet = {
+      ...est,
+      status: 'CONFIRMED',
+      transactionType: isPurchase ? 'PURCHASE' : 'SALE',
+      direction: isPurchase ? 'RECEIPT' : 'ISSUE',
+      previousBalanceWT: prevWT,
+      previousBalanceMC: prevMC,
+      newBalanceWT: newWT,
+      newBalanceMC: newMC,
+      balanceComparison: {
+        ...est.balanceComparison,
+        ledgerOldPureWT: prevWT,
+        ledgerOldAmount: prevMC,
+        ledgerNewPureWT: newWT,
+        ledgerNewAmount: newMC,
+        deltaPureWT,
+        deltaAmount,
+        pureWTDiff: 0,
+        amountDiff: 0,
+        isReconciled: true,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+
+    setEstimates((prev) => prev.map((e) => (e.id === id ? updatedEstimate : e)));
+
+    // Create or update Ledger Transaction
+    const existingTxIndex = transactions.findIndex(
+      (t) => t.estimateId === id || (t.erpRef && t.erpRef === est.estimateNo)
+    );
+
+    const txId = existingTxIndex >= 0 ? transactions[existingTxIndex].id : `tx-est-${est.id}`;
+    const totalNos = est.items.reduce((sum, item) => sum + (Number(item.nos) || 1), 0);
+    const netWT = isPurchase ? -est.totals.totalNetWT : est.totals.totalNetWT;
+    const touch = est.totals.totalNetWT > 0 ? (goldPureToAdjust / est.totals.totalNetWT) * 100 : 0;
+    const stoneAmount = roundCurrency(est.totals.diamondValue + est.totals.psValue);
+
+    const estTx: LedgerTransaction = {
+      id: txId,
+      customerId: est.customerId,
+      orderId: est.orderId,
+      estimateId: est.id,
+      date: est.estimateDate,
+      direction: isPurchase ? 'RECEIPT' : 'ISSUE',
+      particulars: isPurchase ? 'PURCHASE' : 'SALE',
+      description: `Estimate ${est.estimateNo} (${isPurchase ? 'Purchase' : 'Sale'})${est.customerRef ? ` (${est.customerRef})` : ''}`,
+      nos: totalNos,
+      grossWT: isPurchase ? -est.totals.totalGrossWT : est.totals.totalGrossWT,
+      stoneWT: est.totals.totalStoneWT,
+      netWT,
+      touch: roundPurity(touch),
+      pureWT: deltaPureWT,
+      stoneAmount: stoneAmount,
+      stoneAmountCal: isPurchase ? -stoneAmount : stoneAmount,
+      mcRate: est.mcRate || 0,
+      mcAmount: est.totals.mcValue,
+      mcAmountCal: deltaAmount,
+      totalAmount: deltaAmount,
+      balanceWT: newWT,
+      balanceMC: newMC,
+      status: 'CONFIRMED',
+      erpRef: est.estimateNo,
+      createdAt: existingTxIndex >= 0 ? transactions[existingTxIndex].createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    let updatedTxList: LedgerTransaction[];
+    if (existingTxIndex >= 0) {
+      updatedTxList = transactions.map((t, idx) => (idx === existingTxIndex ? estTx : t));
+    } else {
+      updatedTxList = [...transactions, estTx];
+    }
+
+    await recalculateAndSaveCustomerBalances(est.customerId, updatedTxList);
+
+    logAudit(
+      'CONFIRM_ESTIMATE',
+      'ESTIMATES',
+      est.id,
+      `Confirmed estimate ${est.estimateNo} for ${customer?.name || 'Customer'}: +${est.totals.totalPureWT}g Gold, +₹${est.totals.grandTotal} posted to Ledger`
+    );
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('estimates').update(updatedEstimate).eq('id', id);
+        if (existingTxIndex >= 0) {
+          await supabase.from('transactions').update(estTx).eq('id', txId);
+        } else {
+          await supabase.from('transactions').insert([estTx]);
+        }
+      } catch (e) {
+        console.error('Supabase confirm estimate error:', e);
+      }
+    }
+  };
+
+  const unconfirmEstimate = async (id: string) => {
+    const est = estimates.find((e) => e.id === id);
+    if (!est) return;
+
+    const updatedEstimate: EstimateCostSheet = {
+      ...est,
+      status: 'DRAFT',
+      updatedAt: new Date().toISOString(),
+    };
+
+    setEstimates((prev) => prev.map((e) => (e.id === id ? updatedEstimate : e)));
+
+    const updatedTxList = transactions.filter(
+      (t) => t.estimateId !== id && !(t.erpRef && t.erpRef === est.estimateNo)
+    );
+
+    await recalculateAndSaveCustomerBalances(est.customerId, updatedTxList);
+
+    logAudit(
+      'UNCONFIRM_ESTIMATE',
+      'ESTIMATES',
+      est.id,
+      `Reopened estimate ${est.estimateNo} to DRAFT: removed from Customer Ledger`
+    );
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('estimates').update({ status: 'DRAFT' }).eq('id', id);
+        await supabase.from('transactions').delete().eq('estimate_id', id);
+      } catch (e) {
+        console.error('Supabase unconfirm estimate error:', e);
+      }
+    }
+  };
+
   const updateEstimate = async (id: string, updates: Partial<EstimateCostSheet>) => {
+    if (updates.status === 'CONFIRMED') {
+      await confirmEstimate(id);
+      return;
+    }
+    if (updates.status === 'DRAFT') {
+      const existing = estimates.find((e) => e.id === id);
+      if (existing?.status === 'CONFIRMED') {
+        await unconfirmEstimate(id);
+        return;
+      }
+    }
+
     setEstimates((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e))
     );
     logAudit('UPDATE_ESTIMATE', 'ESTIMATES', id, `Updated estimate ${id}`);
+
+    // If estimate was already confirmed, update the linked transaction in customer ledger
+    const existing = estimates.find((e) => e.id === id);
+    if (existing?.status === 'CONFIRMED') {
+      const merged = { ...existing, ...updates };
+      const customer = customers.find((c) => c.id === merged.customerId);
+      const prevWT = merged.previousBalanceWT ?? customer?.currentWT ?? 0;
+      const prevMC = merged.previousBalanceMC ?? customer?.currentMC ?? 0;
+      const newWT = roundWeight(prevWT + merged.totals.totalPureWT);
+      const newMC = roundCurrency(prevMC + merged.totals.grandTotal);
+
+      const existingTxIndex = transactions.findIndex(
+        (t) => t.estimateId === id || (t.erpRef && t.erpRef === merged.estimateNo)
+      );
+      if (existingTxIndex >= 0) {
+        const estTx: LedgerTransaction = {
+          ...transactions[existingTxIndex],
+          grossWT: merged.totals.totalGrossWT,
+          stoneWT: merged.totals.totalStoneWT,
+          netWT: merged.totals.totalNetWT,
+          pureWT: merged.totals.totalPureWT,
+          totalAmount: merged.totals.grandTotal,
+          balanceWT: newWT,
+          balanceMC: newMC,
+          updatedAt: new Date().toISOString(),
+        };
+        const updatedTxList = transactions.map((t, idx) => (idx === existingTxIndex ? estTx : t));
+        await recalculateAndSaveCustomerBalances(merged.customerId, updatedTxList);
+      }
+    }
 
     if (isSupabaseConfigured) {
       try {
@@ -1283,12 +1654,21 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteEstimate = async (id: string) => {
+    const est = estimates.find((e) => e.id === id);
     setEstimates((prev) => prev.filter((e) => e.id !== id));
     logAudit('DELETE_ESTIMATE', 'ESTIMATES', id, `Deleted estimate ${id}`);
+
+    if (est) {
+      const updatedTxList = transactions.filter(
+        (t) => t.estimateId !== id && !(t.erpRef && t.erpRef === est.estimateNo)
+      );
+      await recalculateAndSaveCustomerBalances(est.customerId, updatedTxList);
+    }
 
     if (isSupabaseConfigured) {
       try {
         await supabase.from('estimates').delete().eq('id', id);
+        await supabase.from('transactions').delete().eq('estimate_id', id);
       } catch (e) {
         console.error('Supabase estimate delete error:', e);
       }
@@ -1425,6 +1805,8 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         estimates,
         addEstimate,
         updateEstimate,
+        confirmEstimate,
+        unconfirmEstimate,
         deleteEstimate,
         getEstimate,
         settlements,

@@ -12,6 +12,7 @@ import {
   Coins,
   FileText,
   Edit3,
+  FileCheck,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -20,7 +21,7 @@ interface EstimatesViewProps {
 }
 
 export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
-  const { estimates, customers } = useSBG();
+  const { estimates, customers, confirmEstimate } = useSBG();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredEstimates = estimates.filter((e) => {
@@ -253,6 +254,18 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-center gap-1.5">
+                        {est.status === 'DRAFT' && (
+                          <button
+                            onClick={async () => {
+                              await confirmEstimate(est.id);
+                            }}
+                            className="px-2.5 py-1 rounded-xl bg-[#0F5C5B] hover:bg-[#0D4E4D] text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                            title="Confirm & Post to Customer Ledger"
+                          >
+                            <FileCheck className="w-3 h-3 text-[#E5C378]" />
+                            <span>Confirm</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => onNavigate('edit-estimate', est.id)}
                           className="px-2.5 py-1 rounded-xl bg-[#FAF6EE] hover:bg-[#F3ECE0] border border-[#D9B76C]/40 text-xs font-semibold text-[#8C6D23] flex items-center gap-1 cursor-pointer transition-all"

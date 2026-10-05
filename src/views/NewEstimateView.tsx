@@ -28,6 +28,9 @@ import {
   Sparkles,
   Calculator,
   Scale,
+  FileCheck,
+  Wallet,
+  Gem,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -44,7 +47,16 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   isEditMode,
   onNavigate,
 }) => {
-  const { customers, orders, estimates, goldMarketRate, defaultGSTRate, addEstimate, updateEstimate } = useSBG();
+  const {
+    customers,
+    orders,
+    estimates,
+    goldMarketRate,
+    defaultGSTRate,
+    addEstimate,
+    updateEstimate,
+    confirmEstimate,
+  } = useSBG();
 
   // Find if editing an existing estimate
   const existingEstimate = targetId ? estimates.find((e) => e.id === targetId) : undefined;
@@ -71,6 +83,12 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   const [wastagePercent, setWastagePercent] = useState<number>(existingEstimate?.wastagePercent || 0);
   const [unfixGoldRate, setUnfixGoldRate] = useState<number>(existingEstimate?.unfixGoldRate || 0);
   const [remarks, setRemarks] = useState(existingEstimate?.remarks || '');
+  const [transactionType, setTransactionType] = useState<'PURCHASE' | 'SALE'>(
+    existingEstimate?.transactionType || 'PURCHASE'
+  );
+  const [settlementMode, setSettlementMode] = useState<'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY'>(
+    existingEstimate?.settlementMode || 'GOLD_AND_CASH'
+  );
 
   // Load existing line items or fresh defaults
   const [items, setItems] = useState<Partial<EstimateLineItem>[]>(() => {
@@ -123,6 +141,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       setWastagePercent(existingEstimate.wastagePercent || 0);
       setUnfixGoldRate(existingEstimate.unfixGoldRate || 0);
       setRemarks(existingEstimate.remarks || '');
+      setTransactionType(existingEstimate.transactionType || 'PURCHASE');
+      setSettlementMode(existingEstimate.settlementMode || 'GOLD_AND_CASH');
       if (existingEstimate.items && existingEstimate.items.length > 0) {
         setItems(existingEstimate.items);
       }
@@ -151,6 +171,9 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       mcRate,
       wastagePercent,
       unfixGoldRate: unfixGoldRate || undefined,
+      transactionType,
+      settlementMode,
+      direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
       remarks,
       items: items as any,
       balanceComparison: {
@@ -158,8 +181,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         ledgerOldAmount: selectedCustomer?.currentMC || 0,
         gSheetOldPureWT: selectedCustomer?.currentWT || 0,
         gSheetOldAmount: selectedCustomer?.currentMC || 0,
-        gSheetNewPureWT: (selectedCustomer?.currentWT || 0) + (items[0]?.pureWT || 0),
-        gSheetNewAmount: (selectedCustomer?.currentMC || 0) + 0,
+        gSheetNewPureWT: 0,
+        gSheetNewAmount: 0,
         ledgerNewPureWT: 0,
         ledgerNewAmount: 0,
         pureWTDiff: 0,
@@ -269,13 +292,67 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       updateEstimate(existingEstimate.id, {
         ...calculatedEstimate,
         id: existingEstimate.id,
+        transactionType,
+        settlementMode,
+        direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
         status: existingEstimate.status || 'DRAFT',
       });
       onNavigate('estimate-details', existingEstimate.id);
     } else {
-      addEstimate(calculatedEstimate);
+      addEstimate({
+        ...calculatedEstimate,
+        transactionType,
+        settlementMode,
+        direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
+      });
       onNavigate('estimate-details', calculatedEstimate.id);
     }
+  };
+
+  const handleSaveAndConfirmEstimate = async () => {
+    if (!customerId) {
+      alert('Please select a customer account first.');
+      return;
+    }
+
+    const estId = existingEstimate ? existingEstimate.id : `est-${Date.now()}`;
+    const goldPureToAdjust = calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT;
+    const remainingCashToAdjust = calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal;
+
+    const deltaPureWT = calculatedEstimate.balanceComparison?.deltaPureWT ??
+      (transactionType === 'PURCHASE' ? -goldPureToAdjust : goldPureToAdjust);
+    const deltaAmount = calculatedEstimate.balanceComparison?.deltaAmount ??
+      (transactionType === 'PURCHASE' ? -remainingCashToAdjust : remainingCashToAdjust);
+
+    const prevWT = selectedCustomer?.currentWT || 0;
+    const prevMC = selectedCustomer?.currentMC || 0;
+    const newBalWT = calculatedEstimate.balanceComparison?.ledgerNewPureWT ?? Number((prevWT + deltaPureWT).toFixed(3));
+    const newBalMC = calculatedEstimate.balanceComparison?.ledgerNewAmount ?? Number((prevMC + deltaAmount).toFixed(2));
+
+    const estimateToSave = {
+      ...calculatedEstimate,
+      id: estId,
+      status: 'CONFIRMED' as const,
+      transactionType,
+      settlementMode,
+      direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
+      previousBalanceWT: prevWT,
+      previousBalanceMC: prevMC,
+      deltaPureWT,
+      deltaAmount,
+      newBalanceWT: newBalWT,
+      newBalanceMC: newBalMC,
+    };
+
+    if (existingEstimate) {
+      await updateEstimate(existingEstimate.id, estimateToSave);
+      await confirmEstimate(existingEstimate.id);
+    } else {
+      await addEstimate(estimateToSave);
+      await confirmEstimate(estId);
+    }
+
+    onNavigate('estimate-details', estId);
   };
 
   const handleSaveAsNewCopy = () => {
@@ -325,12 +402,21 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           )}
 
           <SBGButton
-            variant="gold"
+            variant="glass"
             size="sm"
             icon={<Save className="w-4 h-4" />}
             onClick={handleSaveEstimate}
           >
-            {isEditing ? 'Re-Update & Save Cost Sheet' : 'Save & Finalize Estimate'}
+            {isEditing ? 'Save as Draft' : 'Save Draft'}
+          </SBGButton>
+
+          <SBGButton
+            variant="primary"
+            size="sm"
+            icon={<FileCheck className="w-4 h-4" />}
+            onClick={handleSaveAndConfirmEstimate}
+          >
+            Save & Confirm to Ledger
           </SBGButton>
         </div>
       </div>
@@ -397,6 +483,97 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             value={customerRef}
             onChange={(e) => setCustomerRef(e.target.value)}
           />
+        </div>
+
+        {/* Transaction Nature & Ledger Settlement Controls */}
+        <div className="p-4 bg-white/90 rounded-2xl border border-[#DCE5E3] grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[#0F5C5B] block mb-1.5">
+              Estimate Nature / Transaction Type
+            </label>
+            <div className="flex rounded-xl bg-[#0F5C5B]/5 p-1 border border-[#DCE5E3]">
+              <button
+                type="button"
+                onClick={() => setTransactionType('PURCHASE')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  transactionType === 'PURCHASE'
+                    ? 'bg-[#0F5C5B] text-white shadow-xs'
+                    : 'text-[#647777] hover:text-[#0F5C5B]'
+                }`}
+              >
+                <span>PURCHASE (Receipt −)</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${transactionType === 'PURCHASE' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#647777]'}`}>
+                  Negative Adjust
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTransactionType('SALE')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  transactionType === 'SALE'
+                    ? 'bg-[#D9B76C] text-[#173333] shadow-xs'
+                    : 'text-[#647777] hover:text-[#0F5C5B]'
+                }`}
+              >
+                <span>SALE (Issue +)</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${transactionType === 'SALE' ? 'bg-black/15 text-[#173333]' : 'bg-black/5 text-[#647777]'}`}>
+                  Positive Adjust
+                </span>
+              </button>
+            </div>
+            <p className="text-[11px] text-[#526B6A] mt-1.5">
+              {transactionType === 'PURCHASE' ? (
+                <span>
+                  <strong>Purchase:</strong> Customer supplies ornaments/gold to SBG. Pure Gold WT & remaining charges are adjusted in <strong>Negative (−)</strong> to credit the customer ledger balance.
+                </span>
+              ) : (
+                <span>
+                  <strong>Sale:</strong> SBG delivers ornaments to customer. Pure Gold WT & charges are adjusted in <strong>Positive (+)</strong>.
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-[#0F5C5B] block mb-1.5">
+              Ledger Balance Adjustment Mode
+            </label>
+            <div className="flex rounded-xl bg-[#0F5C5B]/5 p-1 border border-[#DCE5E3]">
+              <button
+                type="button"
+                onClick={() => setSettlementMode('GOLD_AND_CASH')}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  settlementMode === 'GOLD_AND_CASH'
+                    ? 'bg-[#0F5C5B] text-white shadow-xs'
+                    : 'text-[#647777] hover:text-[#0F5C5B]'
+                }`}
+              >
+                Pure Gold WT + Remaining Cash (Split)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettlementMode('CASH_ONLY')}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  settlementMode === 'CASH_ONLY'
+                    ? 'bg-[#0F5C5B] text-white shadow-xs'
+                    : 'text-[#647777] hover:text-[#0F5C5B]'
+                }`}
+              >
+                Full Cash Only
+              </button>
+            </div>
+            <p className="text-[11px] text-[#526B6A] mt-1.5">
+              {settlementMode === 'GOLD_AND_CASH' ? (
+                <span>
+                  <strong>Split:</strong> Pure Gold WT ({(calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT).toFixed(3)}g) adjusts Gold Balance, remaining <SBGCurrency value={calculatedEstimate.totals.remainingCashValue ?? 0} /> (MC, Stones & GST) adjusts Cash Balance.
+                </span>
+              ) : (
+                <span>
+                  <strong>Full Cash:</strong> Entire Grand Total is adjusted to Cash Balance with zero weight impact.
+                </span>
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Master Rate Matrix Control Bar */}
@@ -642,9 +819,164 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 </tr>
               ))}
             </tbody>
+            <tfoot className="border-t-2 border-[#0F5C5B] bg-[#0F5C5B]/5 font-mono font-bold text-xs">
+              <tr>
+                <td colSpan={3} className="py-2.5 px-2 font-sans font-bold text-[#0F5C5B] text-right uppercase text-[10px]">
+                  Total Pure WT & Sheet Summary:
+                </td>
+                <td className="py-2.5 px-2 text-right">
+                  {calculatedEstimate.items.reduce((sum, it) => sum + (Number(it.nos) || 0), 0)}
+                </td>
+                <td className="py-2.5 px-2 text-right">
+                  {calculatedEstimate.totals.totalGrossWT.toFixed(3)}g
+                </td>
+                <td className="py-2.5 px-2 text-right text-[#647777]">
+                  {calculatedEstimate.totals.totalStoneWT.toFixed(3)}g
+                </td>
+                <td className="py-2.5 px-2 text-right text-[#173333]">
+                  {calculatedEstimate.totals.totalNetWT.toFixed(3)}g
+                </td>
+                <td className="py-2.5 px-2 text-right text-[#647777] text-[10px]">
+                  {calculatedEstimate.totals.totalNetWT > 0
+                    ? ((calculatedEstimate.totals.totalPureWT / calculatedEstimate.totals.totalNetWT) * 100).toFixed(2) + '%'
+                    : '-'}
+                </td>
+                <td className="py-2.5 px-2 text-right text-[#0F5C5B] text-sm font-black">
+                  {calculatedEstimate.totals.totalPureWT.toFixed(3)}g
+                </td>
+                <td colSpan={2} className="py-2.5 px-2 text-right font-sans font-semibold text-[10px] text-[#647777]">
+                  Taxable Total:
+                </td>
+                <td className="py-2.5 px-2 text-right text-[#0F5C5B] text-sm font-black">
+                  <SBGCurrency value={calculatedEstimate.totals.taxableValue} />
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </SBGCard>
+
+      {/* Pure Weight & Material Breakdown Banner */}
+      <div className="glass-panel p-4 bg-white/90 border border-[#DCE5E3] rounded-2xl shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-[#DCE5E3] gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#0F5C5B]/10 flex items-center justify-center">
+              <Scale className="w-4 h-4 text-[#0F5C5B]" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
+                Total Pure Weight & Material Matrix
+              </h4>
+              <span className="text-[11px] text-[#647777]">
+                Calculated pure fine gold, diamond carats, and gemstone weight breakdown
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#647777] uppercase">Estimate Total Pure WT:</span>
+            <span className="font-mono font-black text-base text-[#0F5C5B] px-3 py-1 bg-[#0F5C5B]/10 border border-[#0F5C5B]/20 rounded-lg">
+              {calculatedEstimate.totals.totalPureWT.toFixed(3)} g
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          {/* Gold Metal Breakdown */}
+          <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] uppercase font-bold text-[#8C6A23]">Gold Metal</span>
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">GOLD</span>
+            </div>
+            <div className="space-y-1 font-mono text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-[#647777]">Pure Gold WT:</span>
+                <span className="font-bold text-[#0F5C5B] text-xs">{(calculatedEstimate.totals.goldPureWT ?? 0).toFixed(3)} g</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#647777]">
+                <span>Net Gold WT:</span>
+                <span>{(calculatedEstimate.totals.goldNetWT ?? 0).toFixed(3)} g</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#647777]">
+                <span>Gross WT:</span>
+                <span>{(calculatedEstimate.totals.goldGrossWT ?? 0).toFixed(3)} g</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Diamonds Breakdown */}
+          <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] uppercase font-bold text-blue-800 flex items-center gap-1">
+                <Gem className="w-3 h-3" /> Diamonds
+              </span>
+              <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">DMD</span>
+            </div>
+            <div className="space-y-1 font-mono text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-[#647777]">Total Carats:</span>
+                <span className="font-bold text-[#173333] text-xs">{(calculatedEstimate.totals.diamondCarats ?? 0).toFixed(2)} ct</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#647777]">
+                <span>Stone WT:</span>
+                <span>{(calculatedEstimate.totals.diamondStoneWT ?? 0).toFixed(3)} g</span>
+              </div>
+              <div className="flex justify-between text-[10px]">
+                <span className="text-[#647777]">Pure WT:</span>
+                <span className={(calculatedEstimate.totals.diamondPureWT ?? 0) > 0 ? "font-bold text-[#0F5C5B]" : "text-[#647777]"}>
+                  {(calculatedEstimate.totals.diamondPureWT ?? 0).toFixed(3)} g
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Precious Stones / Gemstones Breakdown */}
+          <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] uppercase font-bold text-emerald-800 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Gemstones / PS
+              </span>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">PS</span>
+            </div>
+            <div className="space-y-1 font-mono text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-[#647777]">Pure WT:</span>
+                <span className="font-bold text-[#0F5C5B] text-xs">{(calculatedEstimate.totals.psPureWT ?? 0).toFixed(3)} g</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#647777]">
+                <span>Carats:</span>
+                <span className="font-semibold text-[#173333]">{(calculatedEstimate.totals.psCarats ?? 0).toFixed(2)} ct</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#647777]">
+                <span>Stone WT:</span>
+                <span>{(calculatedEstimate.totals.psStoneWT ?? 0).toFixed(3)} g</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ledger Posting Weight Summary */}
+          <div className="p-3 rounded-xl bg-[#0F5C5B]/5 border border-[#0F5C5B]/20">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] uppercase font-bold text-[#0F5C5B]">Ledger Impact WT</span>
+              <span className="text-[10px] font-bold text-[#0F5C5B] bg-[#0F5C5B]/10 px-1.5 py-0.5 rounded">NET PURE</span>
+            </div>
+            <div className="space-y-1 font-mono text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-[#647777]">Net Pure Gold:</span>
+                <span className="font-black text-[#0F5C5B] text-xs">+{calculatedEstimate.totals.totalPureWT.toFixed(3)} g</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#647777]">
+                <span>Total Net WT:</span>
+                <span className="font-bold text-[#173333]">{calculatedEstimate.totals.totalNetWT.toFixed(3)} g</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#647777]">
+                <span>Total Gross WT:</span>
+                <span>{calculatedEstimate.totals.totalGrossWT.toFixed(3)} g</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Totals & Breakdown Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -653,8 +985,11 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           <div className="text-lg font-bold text-[#0F5C5B]">
             <SBGCurrency value={calculatedEstimate.totals.goldValue} />
           </div>
-          <span className="text-[11px] text-[#647777] block font-mono">
-            {calculatedEstimate.totals.totalPureWT.toFixed(3)}g Pure Gold
+          <span className="text-[11px] text-[#0F5C5B] block font-mono font-semibold">
+            {(calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT).toFixed(3)}g Pure Gold
+          </span>
+          <span className="text-[10px] text-[#647777] block font-mono">
+            Net: {(calculatedEstimate.totals.goldNetWT ?? calculatedEstimate.totals.totalNetWT).toFixed(3)}g | Gross: {(calculatedEstimate.totals.goldGrossWT ?? calculatedEstimate.totals.totalGrossWT).toFixed(3)}g
           </span>
         </SBGCard>
 
@@ -663,7 +998,29 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           <div className="text-lg font-bold text-[#173333]">
             <SBGCurrency value={calculatedEstimate.totals.diamondValue + calculatedEstimate.totals.psValue} />
           </div>
-          <span className="text-[11px] text-[#647777] block">
+          <div className="text-[11px] font-mono space-y-0.5">
+            <div className="flex justify-between text-[#173333]">
+              <span className="text-[#647777]">Dmd:</span>
+              <span className="font-semibold">
+                {(calculatedEstimate.totals.diamondCarats ?? 0).toFixed(2)} ct
+                <span className="text-[#647777] font-normal text-[10px]"> ({(calculatedEstimate.totals.diamondStoneWT ?? 0).toFixed(3)}g)</span>
+                {(calculatedEstimate.totals.diamondPureWT ?? 0) > 0 && (
+                  <span className="text-[#0F5C5B] font-bold text-[10px]"> • {(calculatedEstimate.totals.diamondPureWT ?? 0).toFixed(3)}g Pure</span>
+                )}
+              </span>
+            </div>
+            <div className="flex justify-between text-[#173333]">
+              <span className="text-[#647777]">PS:</span>
+              <span className="font-semibold">
+                {(calculatedEstimate.totals.psCarats ?? 0).toFixed(2)} ct
+                <span className="text-[#647777] font-normal text-[10px]"> ({(calculatedEstimate.totals.psStoneWT ?? 0).toFixed(3)}g)</span>
+                {(calculatedEstimate.totals.psPureWT ?? 0) > 0 && (
+                  <span className="text-[#0F5C5B] font-bold text-[10px]"> • {(calculatedEstimate.totals.psPureWT ?? 0).toFixed(3)}g Pure</span>
+                )}
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] text-[#647777] block pt-1 border-t border-[#DCE5E3]/60">
             Dmd: ₹{calculatedEstimate.totals.diamondValue.toLocaleString('en-IN')} | PS: ₹{calculatedEstimate.totals.psValue.toLocaleString('en-IN')}
           </span>
         </SBGCard>
@@ -673,7 +1030,9 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           <div className="text-lg font-bold text-[#173333]">
             <SBGCurrency value={calculatedEstimate.totals.mcValue} />
           </div>
-          <span className="text-[11px] text-[#647777] block">Craftsmanship fee</span>
+          <span className="text-[11px] text-[#647777] block font-mono">
+            Craftsmanship on {(calculatedEstimate.totals.goldNetWT && calculatedEstimate.totals.goldNetWT > 0 ? calculatedEstimate.totals.goldNetWT : calculatedEstimate.totals.totalNetWT).toFixed(3)}g Net
+          </span>
         </SBGCard>
 
         <SBGCard variant="gold" className="p-4 space-y-1">
@@ -681,7 +1040,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           <div className="text-xl font-black text-[#173333]">
             <SBGCurrency value={calculatedEstimate.totals.grandTotal} />
           </div>
-          <span className="text-[11px] text-[#8C6A23] block">
+          <span className="text-[11px] text-[#8C6A23] block font-mono font-bold">
+            Total Pure WT: {calculatedEstimate.totals.totalPureWT.toFixed(3)}g
+          </span>
+          <span className="text-[10px] text-[#8C6A23]/80 block">
             Taxable: ₹{calculatedEstimate.totals.taxableValue.toLocaleString('en-IN')} + GST {calculatedEstimate.totals.gstRate}%
           </span>
         </SBGCard>
@@ -690,75 +1052,156 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       {/* Balance Reconciliation Comparison Section */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
-          <Scale className="w-4 h-4" /> Estimate vs Customer Ledger Balance Impact
+          <Scale className="w-4 h-4" /> Customer Ledger Balance Adjustment & Impact
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* G SHEET BALANCES */}
-          <div className="glass-panel p-5 space-y-3 border-l-4 border-l-[#D9B76C]">
-            <div className="flex items-center justify-between border-b border-black/5 pb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#8C6A23]">
-                G Sheet Position
-              </span>
-              <SBGBadge variant="gold">Formula Linked</SBGBadge>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-[#647777] block text-[10px] uppercase">Old Pure WT</span>
-                <span className="font-mono font-bold">{(selectedCustomer?.currentWT || 0).toFixed(3)} g</span>
-              </div>
-              <div>
-                <span className="text-[#647777] block text-[10px] uppercase">Old Amount</span>
-                <SBGCurrency value={selectedCustomer?.currentMC || 0} />
-              </div>
-              <div className="pt-2 border-t border-[#DCE5E3]">
-                <span className="text-[#647777] block text-[10px] uppercase">New Pure WT</span>
-                <span className="font-mono font-bold text-sm text-[#0F5C5B]">
-                  {((selectedCustomer?.currentWT || 0) + calculatedEstimate.totals.totalPureWT).toFixed(3)} g
-                </span>
-              </div>
-              <div className="pt-2 border-t border-[#DCE5E3]">
-                <span className="text-[#647777] block text-[10px] uppercase">New Total Amount</span>
-                <SBGCurrency
-                  value={(selectedCustomer?.currentMC || 0) + calculatedEstimate.totals.grandTotal}
-                  className="text-sm font-bold text-[#0F5C5B]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* LEDGER BALANCE */}
+          {/* Customer Account Position */}
           <div className="glass-panel p-5 space-y-3 border-l-4 border-l-[#0F5C5B]">
             <div className="flex items-center justify-between border-b border-black/5 pb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
-                Ledger Balance Sync
+              <span className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-1.5">
+                <Scale className="w-3.5 h-3.5" /> Customer Account Position: {selectedCustomer?.name || 'Customer'}
               </span>
-              <SBGBadge variant="success">Reconciled</SBGBadge>
+              <SBGBadge variant={transactionType === 'PURCHASE' ? 'teal' : 'gold'}>
+                {transactionType === 'PURCHASE' ? 'Purchase (Receipt −)' : 'Sale (Issue +)'}
+              </SBGBadge>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-[#647777] block text-[10px] uppercase">Ledger Pure WT</span>
-                <span className="font-mono font-bold">{(selectedCustomer?.currentWT || 0).toFixed(3)} g</span>
-              </div>
-              <div>
-                <span className="text-[#647777] block text-[10px] uppercase">Ledger MC Balance</span>
-                <SBGCurrency value={selectedCustomer?.currentMC || 0} />
-              </div>
-              <div className="pt-2 border-t border-[#DCE5E3]">
-                <span className="text-[#647777] block text-[10px] uppercase">Delta Pure WT</span>
-                <span className="font-mono font-bold text-sm text-[#0F5C5B]">
-                  + {calculatedEstimate.totals.totalPureWT.toFixed(3)} g
-                </span>
-              </div>
-              <div className="pt-2 border-t border-[#DCE5E3]">
-                <span className="text-[#647777] block text-[10px] uppercase">Delta MC / Amount</span>
-                <SBGCurrency
-                  value={calculatedEstimate.totals.grandTotal}
-                  className="text-sm font-bold text-[#0F5C5B]"
-                />
-              </div>
+            {(() => {
+              const isPurchase = transactionType === 'PURCHASE';
+              const goldPureToAdjust = calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT;
+              const remainingCashToAdjust = settlementMode === 'CASH_ONLY'
+                ? calculatedEstimate.totals.grandTotal
+                : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal);
+
+              const displayDeltaPureWT = settlementMode === 'CASH_ONLY'
+                ? 0
+                : (isPurchase ? -goldPureToAdjust : goldPureToAdjust);
+              const displayDeltaAmount = isPurchase ? -remainingCashToAdjust : remainingCashToAdjust;
+
+              const currentWT = selectedCustomer?.currentWT || 0;
+              const currentMC = selectedCustomer?.currentMC || 0;
+
+              const newBalWT = Number((currentWT + displayDeltaPureWT).toFixed(3));
+              const newBalMC = Number((currentMC + displayDeltaAmount).toFixed(2));
+
+              return (
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-[#647777] block text-[10px] uppercase font-bold">1. Previous Gold Balance</span>
+                    <span className="font-mono font-bold">{currentWT.toFixed(3)} g</span>
+                  </div>
+                  <div>
+                    <span className="text-[#647777] block text-[10px] uppercase font-bold">1. Previous Cash Balance</span>
+                    <SBGCurrency value={currentMC} />
+                  </div>
+
+                  <div className="pt-2 border-t border-[#DCE5E3]">
+                    <span className={`block text-[10px] uppercase font-bold ${isPurchase ? 'text-amber-700' : 'text-[#0F5C5B]'}`}>
+                      2. ({isPurchase ? '−' : '+'}) {isPurchase ? 'Purchase Pure Gold' : 'Sale Pure Gold'}
+                    </span>
+                    <span className={`font-mono font-bold text-sm ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
+                      {displayDeltaPureWT >= 0 ? '+' : '−'} {Math.abs(displayDeltaPureWT).toFixed(3)} g
+                    </span>
+                    <span className="text-[10px] text-[#647777] block font-mono">
+                      (Adjusts Customer Gold Balance)
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#DCE5E3]">
+                    <span className={`block text-[10px] uppercase font-bold ${isPurchase ? 'text-amber-700' : 'text-[#0F5C5B]'}`}>
+                      2. ({isPurchase ? '−' : '+'}) {isPurchase ? 'Purchase Remaining Cash' : 'Sale Remaining Cash'}
+                    </span>
+                    <span className={`font-mono font-bold text-sm ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
+                      {displayDeltaAmount >= 0 ? '+' : '−'} <SBGCurrency value={Math.abs(displayDeltaAmount)} />
+                    </span>
+                    <span className="text-[10px] text-[#647777] block font-mono">
+                      (MC, Stones & GST to Cash Balance)
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t-2 border-[#0F5C5B] col-span-2 grid grid-cols-2 gap-4 bg-[#0F5C5B]/5 p-2 rounded-xl">
+                    <div>
+                      <span className="text-[#0F5C5B] block text-[10px] uppercase font-bold">3. (=) New Pure Gold Balance</span>
+                      <span className="font-mono font-black text-sm text-[#0F5C5B]">
+                        {newBalWT.toFixed(3)} g
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#0F5C5B] block text-[10px] uppercase font-bold">3. (=) New Cash Balance</span>
+                      <SBGCurrency
+                        value={newBalMC}
+                        className="text-sm font-black text-[#0F5C5B]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Ledger Posting Info */}
+          <div className="glass-panel p-5 space-y-3 border-l-4 border-l-[#D9B76C] flex flex-col justify-between">
+            {(() => {
+              const isPurchase = transactionType === 'PURCHASE';
+              const goldPureToAdjust = calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT;
+              const remainingCashToAdjust = settlementMode === 'CASH_ONLY'
+                ? calculatedEstimate.totals.grandTotal
+                : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal);
+
+              const displayDeltaPureWT = settlementMode === 'CASH_ONLY'
+                ? 0
+                : (isPurchase ? -goldPureToAdjust : goldPureToAdjust);
+              const displayDeltaAmount = isPurchase ? -remainingCashToAdjust : remainingCashToAdjust;
+
+              return (
+                <div>
+                  <div className="flex items-center justify-between border-b border-black/5 pb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#8C6A23] flex items-center gap-1.5">
+                      <Wallet className="w-3.5 h-3.5" /> Ledger Posting Action
+                    </span>
+                    <SBGBadge variant="gold">Ledger Hook</SBGBadge>
+                  </div>
+
+                  <div className="mt-3 space-y-2 text-xs text-[#526B6A]">
+                    <p>
+                      Clicking <strong>"Save & Confirm to Ledger"</strong> will automatically create a verified{' '}
+                      <strong>{isPurchase ? 'PURCHASE / RECEIPT' : 'SALE / ISSUE'}</strong> transaction in{' '}
+                      {selectedCustomer?.name || 'Customer'}'s ledger and update their live running balances immediately.
+                    </p>
+                    <div className="p-3 bg-white/80 rounded-xl border border-[#DCE5E3] space-y-1 font-mono text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-[#647777]">Transaction Type:</span>
+                        <span className={`font-bold ${isPurchase ? 'text-amber-800' : 'text-[#173333]'}`}>
+                          {isPurchase ? 'RECEIPT / PURCHASE (Negative Adjustment)' : 'ISSUE / SALE (Positive Adjustment)'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#647777]">Reference:</span>
+                        <span className="font-bold text-[#0F5C5B]">{estimateNo}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#647777]">Pure Gold Balance Delta:</span>
+                        <span className={`font-bold ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
+                          {displayDeltaPureWT >= 0 ? '+' : '−'}{Math.abs(displayDeltaPureWT).toFixed(3)} g
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#647777]">Cash Balance Delta:</span>
+                        <span className={`font-bold ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
+                          {displayDeltaAmount >= 0 ? '+' : '−'}₹{Math.abs(displayDeltaAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="pt-2 border-t border-[#DCE5E3]">
+              <span className="text-[11px] text-[#647777] flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#2E8B57]" /> All formulas and GST calculations synchronized with live rates.
+              </span>
             </div>
           </div>
         </div>

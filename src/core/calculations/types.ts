@@ -51,6 +51,7 @@ export interface LedgerTransaction {
   balanceMC: number; // Running balance MC Amount
   status: 'DRAFT' | 'CONFIRMED' | 'FINALIZED';
   erpRef?: string;
+  estimateId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,6 +85,9 @@ export interface EstimateCostSheet {
   customerRef?: string;
   touchFixed: boolean;
   isGold: boolean;
+  transactionType?: 'PURCHASE' | 'SALE';
+  direction?: TransactionDirection;
+  settlementMode?: 'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY';
   goldRate: number;
   goldRatePurity: number; // e.g. 99.5 or 100
   diamondRate?: number; // Master default diamond rate per ct (₹)
@@ -103,11 +107,35 @@ export interface EstimateCostSheet {
     gstRate: number; // percentage, e.g. 3
     gstAmount: number;
     grandTotal: number;
+    remainingCashValue?: number; // grandTotal - goldValue (or non-metal cash total)
     totalGrossWT: number;
     totalStoneWT: number;
     totalNetWT: number;
     totalPureWT: number;
+    // Category weight breakdowns
+    goldGrossWT?: number;
+    goldStoneWT?: number;
+    goldNetWT?: number;
+    goldPureWT?: number;
+    diamondGrossWT?: number;
+    diamondStoneWT?: number;
+    diamondCarats?: number;
+    diamondPureWT?: number;
+    psGrossWT?: number;
+    psStoneWT?: number;
+    psCarats?: number;
+    psPureWT?: number;
+    otherGrossWT?: number;
+    otherStoneWT?: number;
+    otherNetWT?: number;
+    otherPureWT?: number;
   };
+  previousBalanceWT?: number;
+  previousBalanceMC?: number;
+  deltaPureWT?: number;
+  deltaAmount?: number;
+  newBalanceWT?: number;
+  newBalanceMC?: number;
   balanceComparison: {
     gSheetOldPureWT: number;
     gSheetOldAmount: number;
@@ -117,6 +145,8 @@ export interface EstimateCostSheet {
     ledgerOldAmount: number;
     ledgerNewPureWT: number;
     ledgerNewAmount: number;
+    deltaPureWT?: number;
+    deltaAmount?: number;
     pureWTDiff: number;
     amountDiff: number;
     isReconciled: boolean;

@@ -24,6 +24,7 @@ import {
   FileText,
   Gem,
   TableProperties,
+  ExternalLink,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -64,6 +65,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
         balWT: tx.balanceWT || 0,
         balMC: tx.balanceMC || 0,
         status: tx.status || 'CONFIRMED',
+        estimateId: tx.estimateId,
       };
     })
     .filter((tx) => {
@@ -491,7 +493,18 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
                         {tx.particulars}
                       </td>
                       <td className="py-3.5 px-3 max-w-[200px] truncate">
-                        <div className="font-medium text-[#173333] truncate">{tx.description}</div>
+                        {tx.estimateId ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('estimate-details', tx.estimateId)}
+                            className="font-medium text-[#0F5C5B] hover:underline truncate text-left cursor-pointer flex items-center gap-1"
+                          >
+                            <span className="truncate">{tx.description}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </button>
+                        ) : (
+                          <div className="font-medium text-[#173333] truncate">{tx.description}</div>
+                        )}
                         <div className="text-[9.5px] text-[#647777] font-mono truncate">
                           ERP: {tx.erpRef}
                         </div>

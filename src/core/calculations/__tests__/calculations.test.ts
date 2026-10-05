@@ -11,6 +11,8 @@ import {
   calculateRunningBalances,
   calculateEstimateSheet,
   calculateSettlement,
+  roundWeight,
+  roundCurrency,
   LedgerTransaction,
 } from '../index';
 
@@ -162,8 +164,105 @@ describe('SBG Core Calculation Engine', () => {
 
       expect(estimate.totals.totalNetWT).toBe(17.57);
       expect(estimate.totals.totalPureWT).toBe(13.353);
+      expect(estimate.totals.goldPureWT).toBe(13.353);
+      expect(estimate.totals.goldNetWT).toBe(17.57);
+      expect(estimate.totals.diamondCarats).toBe(1.33);
       expect(estimate.totals.gstRate).toBe(3.0);
       expect(estimate.totals.grandTotal).toBeGreaterThan(0);
+    });
+
+    it('adjusts PURCHASE cost sheet balances in negative (Gold Pure WT -> Gold Balance, Remaining -> Cash Balance)', () => {
+      const prevWT = 3.353;
+      const prevMC = -21859.00;
+
+      const estimate = calculateEstimateSheet({
+        estimateNo: 'EST-2026-106',
+        customerId: 'cust-tikvah',
+        transactionType: 'PURCHASE',
+        goldRate: 11845.13,
+        balanceComparison: {
+          ledgerOldPureWT: prevWT,
+          ledgerOldAmount: prevMC,
+          gSheetOldPureWT: prevWT,
+          gSheetOldAmount: prevMC,
+          gSheetNewPureWT: 0,
+          gSheetNewAmount: 0,
+          ledgerNewPureWT: 0,
+          ledgerNewAmount: 0,
+          pureWTDiff: 0,
+          amountDiff: 0,
+          isReconciled: true,
+        },
+        items: [
+          {
+            item: '18 CT GLD RIN',
+            category: 'GOLD',
+            grossWT: 18.476,
+            stoneWT: 0.906,
+            touch: 76.0,
+            rate: 11845.13,
+            rateUnit: 'PER_G',
+          },
+          {
+            item: 'MC',
+            category: 'MAKING_CHARGE',
+            grossWT: 17.570,
+            rate: 948.98,
+            rateUnit: 'PER_G',
+          },
+        ],
+      }, 3.0);
+
+      expect(estimate.previousBalanceWT).toBe(3.353);
+      expect(estimate.previousBalanceMC).toBe(-21859.00);
+      // Gold pure WT is 13.353 g, adjusted negative for purchase
+      expect(estimate.totals.goldPureWT).toBe(13.353);
+      expect(estimate.balanceComparison.deltaPureWT).toBe(-13.353);
+      expect(estimate.newBalanceWT).toBe(-10.000);
+      // Cash adjustment is negative for purchase
+      expect(estimate.balanceComparison.deltaAmount).toBeLessThan(0);
+      expect(estimate.newBalanceMC).toBe(roundCurrency(prevMC + estimate.balanceComparison.deltaAmount!));
+    });
+
+    it('adjusts SALE cost sheet balances in positive (Gold Pure WT -> Gold Balance, Remaining -> Cash Balance)', () => {
+      const prevWT = 4.328;
+      const prevMC = -5263.51;
+
+      const estimate = calculateEstimateSheet({
+        estimateNo: 'EST-2026-107',
+        customerId: 'cust-tikvah',
+        transactionType: 'SALE',
+        goldRate: 11845.13,
+        balanceComparison: {
+          ledgerOldPureWT: prevWT,
+          ledgerOldAmount: prevMC,
+          gSheetOldPureWT: prevWT,
+          gSheetOldAmount: prevMC,
+          gSheetNewPureWT: 0,
+          gSheetNewAmount: 0,
+          ledgerNewPureWT: 0,
+          ledgerNewAmount: 0,
+          pureWTDiff: 0,
+          amountDiff: 0,
+          isReconciled: true,
+        },
+        items: [
+          {
+            item: '18 CT GLD RIN',
+            category: 'GOLD',
+            grossWT: 7.802,
+            stoneWT: 0.180,
+            touch: 76.0,
+            rate: 11845.13,
+            rateUnit: 'PER_G',
+          },
+        ],
+      }, 3.0);
+
+      expect(estimate.previousBalanceWT).toBe(4.328);
+      expect(estimate.previousBalanceMC).toBe(-5263.51);
+      expect(estimate.balanceComparison.deltaPureWT).toBe(estimate.totals.goldPureWT);
+      expect(estimate.newBalanceWT).toBe(roundWeight(prevWT + estimate.totals.goldPureWT!));
     });
   });
 

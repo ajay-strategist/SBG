@@ -28,6 +28,7 @@ import {
   Download,
   Trash2,
   Palette,
+  ExternalLink,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -349,7 +350,20 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                           </span>
                         </td>
                         <td className="py-2.5 px-3 font-bold uppercase">{tx.particulars}</td>
-                        <td className="py-2.5 px-3 font-sans max-w-xs truncate font-medium">{tx.description}</td>
+                        <td className="py-2.5 px-3 font-sans max-w-xs truncate font-medium">
+                          {tx.estimateId ? (
+                            <button
+                              type="button"
+                              onClick={() => onNavigate('estimate-details', tx.estimateId)}
+                              className="text-[#0F5C5B] font-bold hover:underline cursor-pointer flex items-center gap-1 text-left"
+                            >
+                              <span>{tx.description}</span>
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                            </button>
+                          ) : (
+                            tx.description
+                          )}
+                        </td>
                         <td className="py-2.5 px-3 text-right font-semibold">{tx.nos || '-'}</td>
                         <td className="py-2.5 px-3 text-right">{tx.grossWT > 0 ? tx.grossWT.toFixed(3) : '-'}</td>
                         <td className="py-2.5 px-3 text-right opacity-80">{tx.stoneWT > 0 ? tx.stoneWT.toFixed(3) : '-'}</td>
