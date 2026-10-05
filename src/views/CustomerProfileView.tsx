@@ -11,15 +11,12 @@ import {
   GoogleSheetImportModal,
 } from '../components/ui';
 import {
-  Users,
   ArrowLeft,
   Phone,
   Mail,
   MapPin,
   FileSpreadsheet,
   Coins,
-  BookOpen,
-  ShoppingBag,
   PlusCircle,
   FileText,
   Clock,
@@ -43,14 +40,10 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
 }) => {
   const {
     customers,
-    orders,
     getCustomerTransactions,
-    estimates,
-    settlements,
     deleteTransaction,
   } = useSBG();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'ledger' | 'estimates' | 'settlements'>('ledger');
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
   const [useSheetTheme, setUseSheetTheme] = useState(true);
@@ -68,10 +61,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     );
   }
 
-  const customerOrders = orders.filter((o) => o.customerId === customer.id);
   const customerLedger = getCustomerTransactions(customer.id);
-  const customerEstimates = estimates.filter((e) => e.customerId === customer.id);
-  const customerSettlements = settlements.filter((s) => s.customerId === customer.id);
 
   const handleExportCSV = () => {
     const headers = [
@@ -218,46 +208,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
           </div>
         </div>
 
-        {/* Profile Tabs Navigation */}
-        <div className="flex items-center gap-2 border-b border-[#DCE5E3]/80 pb-1 overflow-x-auto">
-          {[
-            { id: 'ledger', label: 'Commercial Ledger', icon: BookOpen, count: customerLedger.length },
-            { id: 'orders', label: 'Orders', icon: ShoppingBag, count: customerOrders.length },
-            { id: 'estimates', label: 'Estimates / Cost Sheets', icon: FileSpreadsheet, count: customerEstimates.length },
-            { id: 'settlements', label: 'Settlements', icon: Coins, count: customerSettlements.length },
-            { id: 'overview', label: 'Account Details', icon: Users },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-[#0F5C5B] text-white shadow-sm'
-                    : 'text-[#647777] hover:text-[#173333] hover:bg-black/5'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-                {tab.count !== undefined && (
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-[#0F5C5B]/10 text-[#0F5C5B]'
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Tab 1: Ledger Tab */}
-        {activeTab === 'ledger' && (
-          <div className="space-y-4">
+        {/* Commercial Ledger */}
+        <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
@@ -414,170 +366,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
               </table>
             </div>
           </div>
-        )}
-
-        {/* Tab 2: Orders Tab */}
-        {activeTab === 'orders' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
-                Customer Commercial Orders
-              </h3>
-              <SBGButton
-                variant="primary"
-                size="sm"
-                icon={<PlusCircle className="w-3.5 h-3.5" />}
-                onClick={() => onNavigate('orders')}
-              >
-                Create Order
-              </SBGButton>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {customerOrders.map((ord) => (
-                <SBGCard
-                  key={ord.id}
-                  variant="white"
-                  hoverEffect
-                  onClick={() => onNavigate('order-details', ord.id)}
-                  className="p-5 space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="font-mono font-bold text-xs text-[#0F5C5B]">{ord.orderNo}</span>
-                      <h4 className="font-bold text-sm text-[#173333] mt-1">{ord.itemDescription}</h4>
-                    </div>
-                    <SBGBadge
-                      variant={
-                        ord.status === 'IN_PRODUCTION'
-                          ? 'warning'
-                          : ord.status === 'SETTLED'
-                          ? 'success'
-                          : 'neutral'
-                      }
-                    >
-                      {ord.status}
-                    </SBGBadge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-[#DCE5E3]">
-                    <div>
-                      <span className="text-[#647777] block text-[10px] uppercase">Reference</span>
-                      <span className="font-semibold">{ord.reference}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#647777] block text-[10px] uppercase">ERP Sync Ref</span>
-                      <span className="font-mono font-semibold text-[#0F5C5B]">{ord.erpRef || 'N/A'}</span>
-                    </div>
-                  </div>
-                </SBGCard>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Estimates Tab */}
-        {activeTab === 'estimates' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
-                Cost Sheets & Estimates
-              </h3>
-              <SBGButton
-                variant="gold"
-                size="sm"
-                icon={<PlusCircle className="w-3.5 h-3.5" />}
-                onClick={() => onNavigate('new-estimate', customer.id)}
-              >
-                New Estimate
-              </SBGButton>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {customerEstimates.map((est) => (
-                <SBGCard
-                  key={est.id}
-                  variant="glass"
-                  hoverEffect
-                  onClick={() => onNavigate('estimate-details', est.id)}
-                  className="p-5 space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs font-mono font-bold text-[#D9B76C] bg-[#D9B76C]/15 px-2 py-0.5 rounded">
-                        {est.estimateNo}
-                      </span>
-                      <div className="text-xs text-[#647777] mt-1">{est.estimateDate}</div>
-                    </div>
-                    <SBGBadge variant={est.balanceComparison.isReconciled ? 'success' : 'warning'}>
-                      {est.balanceComparison.isReconciled ? 'Reconciled' : 'Delta Review'}
-                    </SBGBadge>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-xs pt-3 border-t border-[#DCE5E3]">
-                    <div>
-                      <span className="text-[10px] text-[#647777] uppercase block">Pure Gold</span>
-                      <span className="font-mono font-bold text-[#0F5C5B]">{est.totals.totalPureWT.toFixed(3)}g</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-[#647777] uppercase block">Taxable</span>
-                      <SBGCurrency value={est.totals.taxableValue} className="text-xs" />
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-[#647777] uppercase block">Grand Total</span>
-                      <SBGCurrency value={est.totals.grandTotal} className="text-xs font-bold text-[#0F5C5B]" />
-                    </div>
-                  </div>
-                </SBGCard>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 4: Settlements Tab */}
-        {activeTab === 'settlements' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
-                Gold & Cash Settlements
-              </h3>
-              <SBGButton
-                variant="glass"
-                size="sm"
-                icon={<PlusCircle className="w-3.5 h-3.5" />}
-                onClick={() => onNavigate('new-settlement', customer.id)}
-              >
-                New Settlement
-              </SBGButton>
-            </div>
-
-            <div className="space-y-3">
-              {customerSettlements.map((set) => (
-                <SBGCard key={set.id} variant="white" className="p-4 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-[#0F5C5B]">{set.settlementNo}</span>
-                      <SBGBadge variant="gold">{set.settlementType}</SBGBadge>
-                    </div>
-                    <p className="text-xs text-[#647777]">{set.notes || 'Settlement completed'}</p>
-                  </div>
-
-                  <div className="flex items-center gap-6 text-right">
-                    <div>
-                      <span className="text-[10px] text-[#647777] uppercase block">Gold Received</span>
-                      <span className="font-mono font-bold text-[#0F5C5B]">{set.goldReceived.toFixed(3)} g</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-[#647777] uppercase block">Cash Received</span>
-                      <SBGCurrency value={set.cashReceived} />
-                    </div>
-                  </div>
-                </SBGCard>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
 
       {/* Transaction Modal (Purchase/Sale Cost Sheet or Gold/Cash Receipt/Payment) */}
       <TransactionModal
