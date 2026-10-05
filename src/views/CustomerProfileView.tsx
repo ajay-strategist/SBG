@@ -224,6 +224,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setUseSheetTheme(!useSheetTheme)}
+                  title={useSheetTheme ? 'Colors enabled (Click to toggle)' : 'Colors disabled (Click to toggle)'}
                   className={`text-xs font-bold px-3 py-1.5 rounded-lg border flex items-center gap-1.5 transition-all cursor-pointer ${
                     useSheetTheme
                       ? 'bg-[#0F5C5B]/10 text-[#0F5C5B] border-[#0F5C5B]/30'
@@ -231,7 +232,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                   }`}
                 >
                   <Palette className="w-3.5 h-3.5" />
-                  {useSheetTheme ? 'Google Sheet Colors: ON' : 'Default Colors'}
+                  <span>Colors</span>
                 </button>
               </div>
             </div>
