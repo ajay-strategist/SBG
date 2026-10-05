@@ -13,6 +13,7 @@ interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultCustomerId?: string;
+  initialMode?: 'COST_SHEET' | 'RECEIPT_PAYMENT';
   onSuccess?: (customerId: string) => void;
   onNavigate?: (tab: any, entityId?: string) => void;
 }
@@ -21,19 +22,26 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   isOpen,
   onClose,
   defaultCustomerId,
+  initialMode = 'RECEIPT_PAYMENT',
   onSuccess,
   onNavigate,
 }) => {
   const { customers, addTransaction } = useSBG();
 
   // Mode: 'COST_SHEET' (Purchase/Sale) vs 'RECEIPT_PAYMENT' (Gold/Cash Receipt/Payment)
-  const [mode, setMode] = useState<'COST_SHEET' | 'RECEIPT_PAYMENT'>('COST_SHEET');
+  const [mode, setMode] = useState<'COST_SHEET' | 'RECEIPT_PAYMENT'>(initialMode);
 
   // Common Fields
   const [customerId, setCustomerId] = useState(defaultCustomerId || customers[0]?.id || '');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+    }
+  }, [isOpen, initialMode]);
 
   // --- Mode 1: Cost Sheet (Purchase / Sale) Fields ---
   const [costSheetType, setCostSheetType] = useState<'SALE' | 'PURCHASE'>('SALE');
@@ -399,29 +407,33 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           {mode === 'RECEIPT_PAYMENT' && (
             <div className="space-y-3.5 pt-2 border-t border-[#DCE5E3]">
               {/* Voucher Direction Select */}
-              <div className="flex items-center gap-3">
-                <label className="text-xs font-bold text-[#173333] uppercase">Payment Direction:</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <label className="text-xs font-bold text-[#173333] uppercase tracking-wide">
+                  Payment Direction:
+                </label>
                 <div className="flex items-center gap-2">
-                  <label className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${voucherType === 'RECEIPT' ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-gray-200 text-gray-600'}`}>
-                    <input
-                      type="radio"
-                      name="voucherType"
-                      checked={voucherType === 'RECEIPT'}
-                      onChange={() => setVoucherType('RECEIPT')}
-                      className="sr-only"
-                    />
+                  <button
+                    type="button"
+                    onClick={() => setVoucherType('RECEIPT')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer border transition-all ${
+                      voucherType === 'RECEIPT'
+                        ? 'bg-[#E6F8F2] border-[#22A078] text-[#145C45] shadow-2xs font-extrabold ring-1 ring-[#22A078]/30'
+                        : 'bg-white border-[#DCE5E3] text-[#647777] hover:bg-gray-50'
+                    }`}
+                  >
                     RECEIPT (Received from Customer −)
-                  </label>
-                  <label className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${voucherType === 'PAYMENT' ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-white border-gray-200 text-gray-600'}`}>
-                    <input
-                      type="radio"
-                      name="voucherType"
-                      checked={voucherType === 'PAYMENT'}
-                      onChange={() => setVoucherType('PAYMENT')}
-                      className="sr-only"
-                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVoucherType('PAYMENT')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer border transition-all ${
+                      voucherType === 'PAYMENT'
+                        ? 'bg-[#FFF4E5] border-[#E5A84D] text-[#8C5815] shadow-2xs font-extrabold ring-1 ring-[#E5A84D]/30'
+                        : 'bg-white border-[#DCE5E3] text-[#647777] hover:bg-gray-50'
+                    }`}
+                  >
                     PAYMENT (Paid to Customer +)
-                  </label>
+                  </button>
                 </div>
               </div>
 
@@ -472,17 +484,29 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 onChange={(e) => setDescription(e.target.value)}
               />
 
-              {/* Dynamic Calculation Summary */}
-              <div className="p-3 bg-[#0F5C5B]/5 rounded-xl border border-[#0F5C5B]/20 flex items-center justify-between text-xs">
+              {/* Dynamic Calculation Summary matching screenshot */}
+              <div className="p-3.5 bg-[#EBF6F4] rounded-xl border border-[#BDE3DB] flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-[10px] text-[#647777] block uppercase font-bold">Pure Gold Effect</span>
-                  <span className={`text-sm font-mono font-bold ${voucherType === 'RECEIPT' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  <span className="text-[10px] text-[#4B6B68] block uppercase font-bold tracking-wider">
+                    PURE GOLD EFFECT
+                  </span>
+                  <span
+                    className={`text-sm font-mono font-bold ${
+                      voucherType === 'RECEIPT' ? 'text-[#145C45]' : 'text-[#8C5815]'
+                    }`}
+                  >
                     {voucherType === 'RECEIPT' ? '-' : '+'}{(goldGrams * (goldTouch / 100)).toFixed(3)} g
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-[#647777] block uppercase font-bold">Cash Amount Effect</span>
-                  <span className={`text-sm font-mono font-bold ${voucherType === 'RECEIPT' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  <span className="text-[10px] text-[#4B6B68] block uppercase font-bold tracking-wider">
+                    CASH AMOUNT EFFECT
+                  </span>
+                  <span
+                    className={`text-sm font-mono font-bold ${
+                      voucherType === 'RECEIPT' ? 'text-[#145C45]' : 'text-[#B83232]'
+                    }`}
+                  >
                     {voucherType === 'RECEIPT' ? '-' : '+'}₹ {cashAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </span>
                 </div>

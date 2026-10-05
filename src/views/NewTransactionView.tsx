@@ -27,6 +27,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
+import { TransactionModal } from '../components/ui/TransactionModal';
 
 interface NewTransactionViewProps {
   preselectedCustomerId?: string;
@@ -98,6 +99,7 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
   const [lineItems, setLineItems] = useState<LineItem[]>([emptyLine()]);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const customerOrders = orders.filter((o) => o.customerId === customerId);
@@ -274,10 +276,10 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
           </div>
         </button>
 
-        {/* Card 3: Settlement */}
+        {/* Card 3: Payment (Gold & Cash) */}
         <button
           type="button"
-          onClick={() => onNavigate('new-settlement', customerId)}
+          onClick={() => setIsPaymentModalOpen(true)}
           className="p-4 rounded-2xl bg-white hover:bg-teal-50/50 border border-[#DCE5E3] hover:border-teal-400 text-left transition-all shadow-xs group cursor-pointer"
         >
           <div className="flex items-center justify-between mb-2">
@@ -285,17 +287,17 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
               🪙
             </div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 bg-teal-100/60 px-2 py-0.5 rounded-full">
-              Metal / Cash
+              Gold & Cash
             </span>
           </div>
           <h4 className="font-bold text-sm text-[#173333] group-hover:text-[#0F5C5B]">
-            Account Settlement
+            Customer Payment
           </h4>
           <p className="text-[11px] text-[#647777] mt-1 leading-snug">
-            Settle pure gold grams & cash balance with instant voucher
+            Record customer payment or receipt and update ledger balances
           </p>
           <div className="mt-2.5 text-xs font-bold text-teal-800 flex items-center gap-1">
-            <span>Open Settlement</span>
+            <span>Open Payment Voucher</span>
             <span>➔</span>
           </div>
         </button>
@@ -329,6 +331,36 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
                   className="shrink-0 px-4 py-2.5 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
                   <span>Go to {particulars === 'SALE' ? 'Sale' : 'Purchase'} Estimate</span>
+                  <span>➔</span>
+                </button>
+              </div>
+            )}
+
+            {/* Direct Payment Modal Prompt when Particulars is Receipt or Payment or Settlement */}
+            {(particulars === 'RECEIPT' || particulars === 'PAYMENT_RECEIVED' || particulars === 'PAYMENT_PAID' || particulars === 'SETTLEMENT') && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-500/10 via-[#0F5C5B]/10 to-amber-500/10 border-2 border-teal-600/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fadeIn">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#0F5C5B] text-white flex items-center justify-center font-bold text-lg shrink-0">
+                    🪙
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#0F5C5B] flex items-center gap-2">
+                      Customer Payment / Voucher Selected
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0F5C5B] text-[#D9B76C] font-semibold">
+                        Instant Voucher
+                      </span>
+                    </h4>
+                    <p className="text-xs text-[#173333] mt-1 leading-relaxed">
+                      Record gold weight (g), touch %, and cash amount directly in the Payment Voucher modal to update customer balances in real-time.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+                >
+                  <span>Open Payment Voucher</span>
                   <span>➔</span>
                 </button>
               </div>
@@ -572,6 +604,16 @@ export const NewTransactionView: React.FC<NewTransactionViewProps> = ({
           </div>
         </div>
       </form>
+
+      {/* Payment Voucher Modal (Record Customer Transaction) */}
+      <TransactionModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        defaultCustomerId={customerId}
+        initialMode="RECEIPT_PAYMENT"
+        onNavigate={onNavigate}
+        onSuccess={(id) => onNavigate('customer-profile', id)}
+      />
     </div>
   );
 };

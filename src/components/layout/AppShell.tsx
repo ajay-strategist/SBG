@@ -27,6 +27,7 @@ import {
   PanelLeftOpen,
   ChevronLeft,
 } from 'lucide-react';
+import { TransactionModal } from '../ui/TransactionModal';
 
 export type ActiveTab =
   | 'dashboard'
@@ -85,6 +86,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [tempRate, setTempRate] = useState(goldMarketRate.toString());
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isTxDropdownOpen, setIsTxDropdownOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('sbg_sidebar_collapsed', JSON.stringify(sidebarCollapsed));
@@ -512,11 +514,11 @@ export const AppShell: React.FC<AppShellProps> = ({
                       </div>
                     </button>
 
-                    {/* Settlement -> Gold & Cash */}
+                    {/* Payment -> Opens Record Customer Transaction Modal (Gold & Cash) */}
                     <button
                       onClick={() => {
                         setIsTxDropdownOpen(false);
-                        onNavigate('new-settlement');
+                        setIsPaymentModalOpen(true);
                       }}
                       className="w-full px-3.5 py-2.5 text-left text-xs hover:bg-[#0F5C5B]/5 flex items-center gap-3 transition-colors cursor-pointer group border-t border-[#EFECE6]"
                     >
@@ -525,10 +527,31 @@ export const AppShell: React.FC<AppShellProps> = ({
                       </div>
                       <div>
                         <div className="font-bold text-[#173333] group-hover:text-[#0F5C5B]">
-                          Gold / Cash Settlement
+                          Payment (Gold & Cash)
                         </div>
                         <div className="text-[10px] text-[#647777]">
-                          Payment, receipt & ledger adjustment
+                          Record customer payment & update ledger
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Account Settlement */}
+                    <button
+                      onClick={() => {
+                        setIsTxDropdownOpen(false);
+                        onNavigate('new-settlement');
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left text-xs hover:bg-[#0F5C5B]/5 flex items-center gap-3 transition-colors cursor-pointer group border-t border-[#EFECE6]"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-sm">
+                        📑
+                      </div>
+                      <div>
+                        <div className="font-bold text-[#173333] group-hover:text-[#0F5C5B]">
+                          Account Settlement
+                        </div>
+                        <div className="text-[10px] text-[#647777]">
+                          Full settlement statement & vouchers
                         </div>
                       </div>
                     </button>
@@ -598,6 +621,14 @@ export const AppShell: React.FC<AppShellProps> = ({
           {children}
         </main>
       </div>
+
+      {/* Payment / Receipt Modal (Record Customer Transaction) */}
+      <TransactionModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        initialMode="RECEIPT_PAYMENT"
+        onNavigate={onNavigate}
+      />
     </div>
   );
 };
