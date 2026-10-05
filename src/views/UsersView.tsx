@@ -199,139 +199,224 @@ export const UsersView: React.FC<UsersViewProps> = () => {
         </div>
       </SBGCard>
 
-      {/* User Accounts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredUsers.map((user) => {
-          const isCurrent = currentUser.id === user.id;
-          const userPassword = user.password || 'password';
-          const linkedCustomer = customers.find((c) => c.id === user.customerId);
+      {/* User Accounts Table */}
+      <SBGCard variant="glass" className="overflow-hidden p-0 border border-[#DCE5E3] shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#E2E8E6] uppercase font-bold text-[10px] tracking-wider">
+              <tr>
+                <th className="py-3.5 px-4">USER PROFILE</th>
+                <th className="py-3.5 px-4">ROLE</th>
+                <th className="py-3.5 px-4">DEFAULT PASSWORD</th>
+                <th className="py-3.5 px-4">LINKED ACCOUNT / SCOPE</th>
+                <th className="py-3.5 px-4 text-center">STATUS</th>
+                <th className="py-3.5 px-4 text-center">SESSION</th>
+                <th className="py-3.5 px-4 text-right">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#EFECE6]">
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-[#647777]">
+                    <UserCheck className="w-10 h-10 mx-auto text-[#647777]/40 mb-2" />
+                    <p className="font-semibold text-sm">No matching users found</p>
+                    <p className="text-xs text-[#647777]/70 mt-1">
+                      Try adjusting your search criteria or role filter.
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => {
+                  const isCurrent = currentUser.id === user.id;
+                  const userPassword = user.password || 'password';
+                  const linkedCustomer = customers.find((c) => c.id === user.customerId);
 
-          return (
-            <SBGCard
-              key={user.id}
-              variant={isCurrent ? 'teal' : 'glass'}
-              className="p-5 relative overflow-hidden flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div>
-                {/* User Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm"
-                      style={{ backgroundColor: user.avatarColor || '#0F5C5B' }}
-                    >
-                      {user.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className={`font-bold text-sm ${isCurrent ? 'text-white' : 'text-[#173333]'}`}>
-                        {user.name}
-                      </h4>
-                      <p className={`text-xs ${isCurrent ? 'text-white/70' : 'text-[#647777]'}`}>
-                        {user.email}
-                      </p>
-                    </div>
-                  </div>
-
-                  <SBGBadge
-                    variant={
-                      user.role === 'ADMIN'
-                        ? 'gold'
-                        : user.role === 'STAFF'
-                        ? 'teal'
-                        : 'neutral'
-                    }
-                  >
-                    {user.role}
-                  </SBGBadge>
-                </div>
-
-                {/* Account Details & Password Pill */}
-                <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/10 space-y-2 text-xs">
-                  {/* Default Password Card */}
-                  <div className={`p-2.5 rounded-xl flex items-center justify-between border ${isCurrent ? 'bg-white/10 border-white/20 text-white' : 'bg-white/80 border-[#DCE5E3] text-[#173333]'}`}>
-                    <div className="flex items-center gap-2">
-                      <Key className="w-3.5 h-3.5 text-[#D9B76C]" />
-                      <div>
-                        <span className="text-[9px] uppercase tracking-wider block opacity-70">Default Password</span>
-                        <span className="font-mono font-bold">{userPassword}</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleCopyPassword(user.id, userPassword)}
-                      className={`p-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
-                        isCurrent ? 'hover:bg-white/20 text-white' : 'hover:bg-[#0F5C5B]/10 text-[#0F5C5B]'
+                  return (
+                    <tr
+                      key={user.id}
+                      className={`transition-colors ${
+                        isCurrent
+                          ? 'bg-[#0F5C5B]/5 font-medium'
+                          : 'hover:bg-[#FAF9F6]/80'
                       }`}
-                      title="Copy Default Password"
                     >
-                      {copiedId === user.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
+                      {/* User Profile */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0"
+                            style={{ backgroundColor: user.avatarColor || '#0F5C5B' }}
+                          >
+                            {user.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-[#173333] truncate">
+                                {user.name}
+                              </span>
+                              {isCurrent && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#0F5C5B] text-white">
+                                  YOU
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-[#647777] truncate">
+                              {user.email}
+                              {user.username && (
+                                <span className="ml-1 opacity-70">(@{user.username})</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-                  {/* Linked Customer info for CLIENT role */}
-                  {user.role === 'CLIENT' && (
-                    <div className={`p-2 rounded-xl text-[11px] flex items-center gap-1.5 ${isCurrent ? 'bg-white/10 text-white/80' : 'bg-[#0F5C5B]/5 text-[#0F5C5B]'}`}>
-                      <LinkIcon className="w-3 h-3 text-[#D9B76C]" />
-                      <span>Linked Account: <strong>{linkedCustomer ? `${linkedCustomer.name} (${linkedCustomer.code})` : 'Unlinked Customer'}</strong></span>
-                    </div>
-                  )}
-                </div>
-              </div>
+                      {/* Role */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <SBGBadge
+                          variant={
+                            user.role === 'ADMIN'
+                              ? 'gold'
+                              : user.role === 'STAFF'
+                              ? 'teal'
+                              : 'neutral'
+                          }
+                        >
+                          {user.role}
+                        </SBGBadge>
+                      </td>
 
-              {/* Action Buttons Footer */}
-              <div className="pt-3 border-t border-black/5 dark:border-white/10 flex items-center justify-between gap-2">
-                {isCurrent ? (
-                  <span className="text-xs font-bold text-[#D9B76C] block w-full text-center py-1">
-                    ✓ Currently Active Profile
-                  </span>
-                ) : (
-                  <>
-                    <SBGButton
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 text-xs"
-                      onClick={() => switchUserRole(user.role)}
-                    >
-                      Switch Profile
-                    </SBGButton>
+                      {/* Default Password */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white border border-[#DCE5E3] text-[#173333]">
+                          <Key className="w-3.5 h-3.5 text-[#D9B76C]" />
+                          <span className="font-mono font-bold text-xs">{userPassword}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPassword(user.id, userPassword)}
+                            className="p-1 rounded hover:bg-[#0F5C5B]/10 text-[#0F5C5B] cursor-pointer transition-colors ml-0.5"
+                            title="Copy Password"
+                          >
+                            {copiedId === user.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
 
-                    <button
-                      onClick={() => handleOpenEditModal(user)}
-                      className="p-2 rounded-xl bg-white/60 hover:bg-white text-[#173333] border border-[#DCE5E3] cursor-pointer"
-                      title="Edit User"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                      {/* Linked Customer / Scope */}
+                      <td className="py-3.5 px-4">
+                        {user.role === 'CLIENT' ? (
+                          <div className="flex items-center gap-1.5 text-xs text-[#0F5C5B]">
+                            <LinkIcon className="w-3.5 h-3.5 text-[#D9B76C] shrink-0" />
+                            <span className="truncate">
+                              {linkedCustomer ? (
+                                <>
+                                  <strong className="font-bold">{linkedCustomer.name}</strong>{' '}
+                                  <span className="text-[#647777]">({linkedCustomer.code})</span>
+                                </>
+                              ) : (
+                                <span className="text-amber-700 italic">Unlinked Customer</span>
+                              )}
+                            </span>
+                          </div>
+                        ) : user.role === 'ADMIN' ? (
+                          <span className="text-xs text-[#647777] flex items-center gap-1.5">
+                            <Shield className="w-3.5 h-3.5 text-[#D9B76C]" />
+                            Full Admin System Scope
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#647777]">
+                            Staff Operations & Billing
+                          </span>
+                        )}
+                      </td>
 
-                    <button
-                      onClick={() =>
-                        updateUser(user.id, {
-                          status: user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
-                        })
-                      }
-                      className={`p-2 rounded-xl border cursor-pointer ${
-                        user.status === 'ACTIVE'
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                          : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
-                      }`}
-                      title={user.status === 'ACTIVE' ? 'Account Active (Click to Disable)' : 'Account Disabled (Click to Activate)'}
-                    >
-                      {user.status === 'ACTIVE' ? <UserCheckIcon className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
-                    </button>
+                      {/* Status */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateUser(user.id, {
+                              status: user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
+                            })
+                          }
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors cursor-pointer ${
+                            user.status === 'ACTIVE'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                              : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                          }`}
+                          title={
+                            user.status === 'ACTIVE'
+                              ? 'Account Active (Click to Disable)'
+                              : 'Account Disabled (Click to Activate)'
+                          }
+                        >
+                          {user.status === 'ACTIVE' ? (
+                            <>
+                              <UserCheckIcon className="w-3 h-3 text-emerald-600" />
+                              Active
+                            </>
+                          ) : (
+                            <>
+                              <UserX className="w-3 h-3 text-rose-600" />
+                              Disabled
+                            </>
+                          )}
+                        </button>
+                      </td>
 
-                    <button
-                      onClick={() => deleteUser(user.id)}
-                      className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 cursor-pointer"
-                      title="Delete User"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </SBGCard>
-          );
-        })}
-      </div>
+                      {/* Session State */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        {isCurrent ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0F5C5B] bg-[#0F5C5B]/10 px-2.5 py-1 rounded-full border border-[#0F5C5B]/20">
+                            ✓ Active Session
+                          </span>
+                        ) : (
+                          <SBGButton
+                            variant="outline"
+                            size="sm"
+                            className="text-xs py-1 px-2.5"
+                            onClick={() => switchUserRole(user.role)}
+                          >
+                            Switch Profile
+                          </SBGButton>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(user)}
+                            className="p-1.5 rounded-lg bg-white/80 hover:bg-white text-[#173333] border border-[#DCE5E3] cursor-pointer transition-colors shadow-2xs"
+                            title="Edit User"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {!isCurrent && (
+                            <button
+                              type="button"
+                              onClick={() => deleteUser(user.id)}
+                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 cursor-pointer transition-colors shadow-2xs"
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </SBGCard>
 
       {/* Add / Edit User Modal */}
       <SBGModal
