@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   Customer,
   Order,
@@ -863,29 +863,40 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [erpSyncItems, setErpSyncItems] = useState<ERPCommercialSyncItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
-  const [rate24k, setRate24k] = useState<number>(11904.65);
-  const [rate995, setRate995] = useState<number>(11845.13);
-  const [rate916, setRate916] = useState<number>(10904.66);
+  const [rate24k, setRate24k] = useState<number>(12900);
+  const [rate995, setRate995] = useState<number>(12835.5);
+  const [rate916, setRate916] = useState<number>(11816.4);
   const [selectedPurity, setSelectedPurityState] = useState<'995' | '916'>(() => {
     const saved = localStorage.getItem('sbg_purity');
     return saved === '916' ? '916' : '995';
   });
-  const [goldRate24hChange, setGoldRate24hChange] = useState<number>(+0.24);
-  const [goldRateSource, setGoldRateSource] = useState<string>('Yahoo Finance (Live)');
-  const [isGoldRateLive, setIsGoldRateLive] = useState<boolean>(true);
+  const [goldRate24hChange, setGoldRate24hChange] = useState<number>(0);
+  const [goldRateSource, setGoldRateSource] = useState<string>('Loading...');
+  const [isGoldRateLive, setIsGoldRateLive] = useState<boolean>(false);
 
   const [goldMarketRate, setGoldMarketRateState] = useState<number>(() => {
-    return selectedPurity === '916' ? 10904.66 : 11845.13;
+    const saved = localStorage.getItem('sbg_gold_rate');
+    if (saved) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    const savedPurity = localStorage.getItem('sbg_purity');
+    return savedPurity === '916' ? 11816.4 : 12835.5;
   });
 
-  const [lastRateUpdate, setLastRateUpdate] = useState<string>('22 Sep 2026, 10:15 AM');
+  // Ref to always have current purity value inside async callbacks (avoids stale closure)
+  const selectedPurityRef = useRef<'995' | '916'>(localStorage.getItem('sbg_purity') === '916' ? '916' : '995');
+
+  const [lastRateUpdate, setLastRateUpdate] = useState<string>('—');
   const [defaultGSTRate, setDefaultGSTRate] = useState<number>(3.0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'SYNCED' | 'SYNCING' | 'OFFLINE'>('SYNCED');
 
   const setSelectedPurity = (purity: '995' | '916') => {
     setSelectedPurityState(purity);
+    selectedPurityRef.current = purity;
     localStorage.setItem('sbg_purity', purity);
+    // Immediately switch displayed rate without waiting for next fetch
     setGoldMarketRateState(purity === '916' ? rate916 : rate995);
   };
 
@@ -900,7 +911,8 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsGoldRateLive(data.isLive);
       setGoldRateSource(data.source);
 
-      const activeRate = selectedPurity === '916' ? data.rate916 : data.rate995;
+      // Use ref to always read the current purity — avoids stale closure bug
+      const activeRate = selectedPurityRef.current === '916' ? data.rate916 : data.rate995;
       setGoldMarketRateState(activeRate);
       localStorage.setItem('sbg_gold_rate', activeRate.toString());
     } catch (e) {
@@ -908,12 +920,13 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Live fetch on mount & 5-minute interval
+  // Live fetch on mount & every 5 minutes — dependency-free so interval is stable
   useEffect(() => {
     refreshLiveGoldRate();
     const interval = setInterval(refreshLiveGoldRate, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [selectedPurity]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Supabase Realtime Gold Rate Channel Subscription for multi-user sync
   useEffect(() => {
