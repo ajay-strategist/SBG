@@ -145,17 +145,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setSelectedTxCustId(undefined);
-                setIsTxModalOpen(true);
-              }}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#D9B76C] to-[#C7A250] text-[#173333] font-bold text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all hover:brightness-105 active:scale-[0.98]"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ New Transaction</span>
-            </button>
-
-            <button
               onClick={() => setIsModalOpen(true)}
               className="px-4 py-2.5 rounded-2xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs shadow-md shadow-[#0F5C5B]/20 flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
             >
