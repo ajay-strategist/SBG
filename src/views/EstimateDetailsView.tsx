@@ -81,18 +81,61 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
 
   // Determine transaction nature & components
   const isPurchase = estimate.transactionType === 'PURCHASE' || estimate.direction === 'RECEIPT';
+  const isFix = estimate.settlementMode === 'FIX' || estimate.settlementMode === 'CASH_ONLY';
   const goldPureWT = (estimate.totals.goldPureWT && estimate.totals.goldPureWT > 0)
     ? estimate.totals.goldPureWT
     : estimate.items.filter((i) => i.category === 'GOLD').reduce((sum, i) => sum + (i.pureWT || 0), 0);
   const remainingCash = estimate.totals.remainingCashValue ?? Math.max(0, estimate.totals.grandTotal - (estimate.totals.goldValue ?? 0));
 
-  const deltaPureWT = estimate.settlementMode === 'CASH_ONLY'
+  const deltaPureWT = isFix
     ? 0
     : (isPurchase ? -goldPureWT : goldPureWT);
 
-  const deltaMC = estimate.settlementMode === 'CASH_ONLY'
+  const deltaMC = isFix
     ? (isPurchase ? -estimate.totals.grandTotal : estimate.totals.grandTotal)
     : (isPurchase ? -remainingCash : remainingCash);
+
+  const handleToggleSettlementMode = async (newMode: 'FIX' | 'UNFIX') => {
+    if (!rawEstimate) return;
+    const isNowFix = newMode === 'FIX';
+    const goldPureToAdjust = estimate.totals.goldPureWT ?? estimate.totals.totalPureWT;
+    const remainingCashToAdjust = estimate.totals.remainingCashValue ?? Math.max(0, estimate.totals.grandTotal - (estimate.totals.goldValue ?? 0));
+
+    const newDeltaPureWT = isNowFix ? 0 : (isPurchase ? -goldPureToAdjust : goldPureToAdjust);
+    const newDeltaAmount = isNowFix
+      ? (isPurchase ? -estimate.totals.grandTotal : estimate.totals.grandTotal)
+      : (isPurchase ? -remainingCashToAdjust : remainingCashToAdjust);
+
+    const prevWT = rawEstimate.previousBalanceWT ?? customer?.currentWT ?? 0;
+    const prevMC = rawEstimate.previousBalanceMC ?? customer?.currentMC ?? 0;
+
+    const newBalWT = Number((prevWT + newDeltaPureWT).toFixed(3));
+    const newBalMC = Number((prevMC + newDeltaAmount).toFixed(2));
+
+    await updateEstimate(rawEstimate.id, {
+      ...rawEstimate,
+      settlementMode: newMode,
+      deltaPureWT: newDeltaPureWT,
+      deltaAmount: newDeltaAmount,
+      newBalanceWT: newBalWT,
+      newBalanceMC: newBalMC,
+      balanceComparison: {
+        ...rawEstimate.balanceComparison,
+        ledgerOldPureWT: prevWT,
+        ledgerOldAmount: prevMC,
+        ledgerNewPureWT: newBalWT,
+        ledgerNewAmount: newBalMC,
+        deltaPureWT: newDeltaPureWT,
+        deltaAmount: newDeltaAmount,
+        pureWTDiff: 0,
+        amountDiff: 0,
+        isReconciled: true,
+      },
+    });
+
+    setShowToast(`Settlement switched to ${newMode === 'FIX' ? 'FIX (100% Cash)' : 'UNFIX (Gold WT + Remaining Cash)'}!`);
+    setTimeout(() => setShowToast(null), 5000);
+  };
 
   const handleToggleTransactionType = async (newType: 'PURCHASE' | 'SALE') => {
     if (!rawEstimate) return;
@@ -102,8 +145,10 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
     const goldPureToAdjust = estimate.totals.goldPureWT ?? estimate.totals.totalPureWT;
     const remainingCashToAdjust = estimate.totals.remainingCashValue ?? Math.max(0, estimate.totals.grandTotal - (estimate.totals.goldValue ?? 0));
 
-    const newDeltaPureWT = isNowPurchase ? -goldPureToAdjust : goldPureToAdjust;
-    const newDeltaAmount = isNowPurchase ? -remainingCashToAdjust : remainingCashToAdjust;
+    const newDeltaPureWT = isFix ? 0 : (isNowPurchase ? -goldPureToAdjust : goldPureToAdjust);
+    const newDeltaAmount = isFix
+      ? (isNowPurchase ? -estimate.totals.grandTotal : estimate.totals.grandTotal)
+      : (isNowPurchase ? -remainingCashToAdjust : remainingCashToAdjust);
 
     const prevWT = rawEstimate.previousBalanceWT ?? customer?.currentWT ?? 0;
     const prevMC = rawEstimate.previousBalanceMC ?? customer?.currentMC ?? 0;
@@ -473,15 +518,23 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                   <td className="py-3 px-3 text-right font-mono">{item.nos}</td>
                   <td className="py-3 px-3 text-right font-mono">{item.grossWT.toFixed(3)}g</td>
                   <td className="py-3 px-3 text-right font-mono text-[#647777]">
-                    {item.stoneWT.toFixed(3)}g
+                    <div>{item.stoneWT.toFixed(3)}g</div>
+                    {(item.stoneWTCarats || item.stoneWT > 0) ? (
+                      <div className="text-[10px] text-blue-700 font-semibold">
+                        {(item.stoneWTCarats || (item.stoneWT / 0.2)).toFixed(2)}ct
+                      </div>
+                    ) : null}
                   </td>
                   <td className="py-3 px-3 text-right font-mono">{item.netWT.toFixed(3)}g</td>
-                  <td className="py-3 px-3 text-right font-mono">{item.touch.toFixed(2)}%</td>
+                  <td className="py-3 px-3 text-right font-mono">{item.touch > 0 ? `${item.touch.toFixed(2)}%` : '-'}</td>
                   <td className="py-3 px-3 text-right font-mono font-bold text-[#0F5C5B]">
                     {item.pureWT.toFixed(3)}g
                   </td>
                   <td className="py-3 px-3 text-right font-mono text-[#647777]">
-                    ₹{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}{item.rateUnit === 'PER_CT' ? '/ct' : item.rateUnit === 'PER_G' ? '/g' : ''}
+                    ₹{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    <span className="text-[10px] font-semibold text-[#0F5C5B] ml-0.5">
+                      {item.rateUnit === 'PER_CT' ? '/ct' : item.rateUnit === 'PER_G' ? '/g' : item.rateUnit === 'PER_PIECE' ? '/pc' : ''}
+                    </span>
                   </td>
                   <td className="py-3 px-3 text-right font-mono font-bold text-sm text-[#0F5C5B]">
                     <SBGCurrency value={item.amount} />
@@ -769,8 +822,30 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Inline switcher */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Fix / Unfix Switcher */}
+                  <div className="flex items-center rounded-lg bg-white border border-[#DCE5E3] p-0.5 text-[11px] shadow-2xs">
+                    <button
+                      onClick={() => handleToggleSettlementMode('UNFIX')}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                        !isFix ? 'bg-[#0F5C5B] text-white shadow-xs' : 'text-[#647777] hover:text-[#0F5C5B]'
+                      }`}
+                      title="Unfix: Gold as Gold, remaining in Cash"
+                    >
+                      ⚖️ Unfix
+                    </button>
+                    <button
+                      onClick={() => handleToggleSettlementMode('FIX')}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                        isFix ? 'bg-[#0F5C5B] text-white shadow-xs' : 'text-[#647777] hover:text-[#0F5C5B]'
+                      }`}
+                      title="Fix: 100% Cash payment"
+                    >
+                      🔒 Fix
+                    </button>
+                  </div>
+
+                  {/* Purchase / Sale Switcher */}
                   <div className="flex items-center rounded-lg bg-white border border-[#DCE5E3] p-0.5 text-[11px] shadow-2xs">
                     <button
                       onClick={() => handleToggleTransactionType('PURCHASE')}
@@ -824,11 +899,20 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                           {isPurchase ? '−' : '+'}
                         </span>
                         <div>
-                          <div className="font-bold">{isPurchase ? 'Purchase Adjustment (Receipt − Credit)' : 'Sale Adjustment (Issue + Debit)'}</div>
+                          <div className="font-bold flex items-center gap-1.5">
+                            <span>{isPurchase ? 'Purchase Adjustment (Receipt − Credit)' : 'Sale Adjustment (Issue + Debit)'}</span>
+                            <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-black/5 text-[#0F5C5B]">
+                              {isFix ? '🔒 FIX (100% CASH)' : '⚖️ UNFIX (GOLD + CASH)'}
+                            </span>
+                          </div>
                           <div className="text-[10px] font-normal text-[#647777]">
-                            {isPurchase
-                              ? 'Pure Gold WT credited to Gold account; Remaining Cash (MC, Stones & GST) credited to Cash balance'
-                              : 'Pure Gold WT debited to Gold account; Remaining Cash debited to Cash balance'}
+                            {isFix
+                              ? (isPurchase
+                                  ? 'Fix Mode: Entire Grand Total (all Gold + Stones + MC + GST) is credited to Cash balance; Gold balance is untouched (0.000g).'
+                                  : 'Fix Mode: Entire Grand Total (all Gold + Stones + MC + GST) is debited to Cash balance; Gold balance is untouched (0.000g).')
+                              : (isPurchase
+                                  ? 'Unfix Mode: Pure Gold WT credited to Gold account; Remaining Cash (MC, Stones & GST) credited to Cash balance.'
+                                  : 'Unfix Mode: Pure Gold WT debited to Gold account; Remaining Cash debited to Cash balance.')}
                           </div>
                         </div>
                       </td>

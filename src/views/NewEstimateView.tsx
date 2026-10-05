@@ -86,8 +86,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   const [transactionType, setTransactionType] = useState<'PURCHASE' | 'SALE'>(
     existingEstimate?.transactionType || 'PURCHASE'
   );
-  const [settlementMode, setSettlementMode] = useState<'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY'>(
-    existingEstimate?.settlementMode || 'GOLD_AND_CASH'
+  const [settlementMode, setSettlementMode] = useState<'FIX' | 'UNFIX' | 'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY'>(
+    (existingEstimate?.settlementMode as any) || 'UNFIX'
   );
 
   // Load existing line items or fresh defaults
@@ -255,6 +255,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         nos: 1,
         grossWT: 0,
         stoneWT: 0,
+        stoneWTUnit: category === 'DIAMOND' || category === 'PRECIOUS_STONE' ? 'ct' : 'g',
         touch: category === 'GOLD' ? 91.6 : 0,
         rate: defaultRate,
         rateUnit: defaultUnit,
@@ -536,40 +537,40 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
 
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider text-[#0F5C5B] block mb-1.5">
-              Ledger Balance Adjustment Mode
+              Ledger Balance Adjustment Mode (Fix / Unfix)
             </label>
             <div className="flex rounded-xl bg-[#0F5C5B]/5 p-1 border border-[#DCE5E3]">
               <button
                 type="button"
-                onClick={() => setSettlementMode('GOLD_AND_CASH')}
+                onClick={() => setSettlementMode('UNFIX')}
                 className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  settlementMode === 'GOLD_AND_CASH'
+                  settlementMode === 'UNFIX' || settlementMode === 'GOLD_AND_CASH'
                     ? 'bg-[#0F5C5B] text-white shadow-xs'
                     : 'text-[#647777] hover:text-[#0F5C5B]'
                 }`}
               >
-                Pure Gold WT + Remaining Cash (Split)
+                ⚖️ UNFIX (Gold as Gold + Cash)
               </button>
               <button
                 type="button"
-                onClick={() => setSettlementMode('CASH_ONLY')}
+                onClick={() => setSettlementMode('FIX')}
                 className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  settlementMode === 'CASH_ONLY'
+                  settlementMode === 'FIX' || settlementMode === 'CASH_ONLY'
                     ? 'bg-[#0F5C5B] text-white shadow-xs'
                     : 'text-[#647777] hover:text-[#0F5C5B]'
                 }`}
               >
-                Full Cash Only
+                🔒 FIX (100% Cash)
               </button>
             </div>
             <p className="text-[11px] text-[#526B6A] mt-1.5">
-              {settlementMode === 'GOLD_AND_CASH' ? (
+              {settlementMode === 'FIX' || settlementMode === 'CASH_ONLY' ? (
                 <span>
-                  <strong>Split:</strong> Pure Gold WT ({(calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT).toFixed(3)}g) adjusts Gold Balance, remaining <SBGCurrency value={calculatedEstimate.totals.remainingCashValue ?? 0} /> (MC, Stones & GST) adjusts Cash Balance.
+                  <strong>Fix:</strong> Entire payment is in Cash (<SBGCurrency value={calculatedEstimate.totals.grandTotal} /> including all GST). Gold Balance is untouched (0.000g).
                 </span>
               ) : (
                 <span>
-                  <strong>Full Cash:</strong> Entire Grand Total is adjusted to Cash Balance with zero weight impact.
+                  <strong>Unfix:</strong> Pay Gold as Gold: Pure Gold WT ({(calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT).toFixed(3)}g) adjusts Gold Balance, remaining <SBGCurrency value={calculatedEstimate.totals.remainingCashValue ?? 0} /> (MC, Stones & GST) adjusts Cash Balance.
                 </span>
               )}
             </p>
@@ -694,7 +695,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 <th className="py-2.5 px-2 min-w-[110px]">Category</th>
                 <th className="py-2.5 px-2 text-right w-16">Nos</th>
                 <th className="py-2.5 px-2 text-right w-24">Gross WT (g)</th>
-                <th className="py-2.5 px-2 text-right w-24">Stone WT (g)</th>
+                <th className="py-2.5 px-2 text-right min-w-[130px]">Stone WT</th>
                 <th className="py-2.5 px-2 text-right w-20">Net WT</th>
                 <th className="py-2.5 px-2 text-right w-20">Touch %</th>
                 <th className="py-2.5 px-2 text-right w-20 font-bold text-[#0F5C5B]">Pure WT</th>
@@ -748,13 +749,32 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                     />
                   </td>
                   <td className="py-2.5 px-2 text-right">
-                    <input
-                      type="number"
-                      step="0.001"
-                      value={line.stoneWT}
-                      onChange={(e) => handleUpdateLine(idx, { stoneWT: parseFloat(e.target.value) || 0 })}
-                      className="w-20 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono text-[#647777]"
-                    />
+                    <div className="flex items-center justify-end gap-1">
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={line.stoneWT === 0 ? '' : line.stoneWT}
+                        onChange={(e) => handleUpdateLine(idx, { stoneWT: parseFloat(e.target.value) || 0 })}
+                        placeholder="0.000"
+                        className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono text-[#647777]"
+                      />
+                      <select
+                        value={line.stoneWTUnit || 'g'}
+                        onChange={(e) => handleUpdateLine(idx, { stoneWTUnit: e.target.value as 'g' | 'ct' })}
+                        className="text-[10px] px-1 py-1 bg-white border border-[#DCE5E3] rounded-lg font-bold text-[#0F5C5B] cursor-pointer"
+                        title="Stone Weight Unit: Grams (g) or Carats (ct)"
+                      >
+                        <option value="g">g</option>
+                        <option value="ct">ct</option>
+                      </select>
+                    </div>
+                    {(Number(line.stoneWT) > 0 || (line.stoneWTCarats && line.stoneWTCarats > 0)) && (
+                      <div className="text-[9px] text-right font-mono text-[#0F5C5B] font-medium mt-0.5">
+                        {line.stoneWTUnit === 'ct'
+                          ? `≈ ${((line.stoneWT || 0) * 0.2).toFixed(3)}g`
+                          : `≈ ${((line.stoneWT || 0) / 0.2).toFixed(2)}ct`}
+                      </div>
+                    )}
                   </td>
                   <td className="py-2.5 px-2 text-right font-mono font-medium text-[#173333]">
                     {line.netWT.toFixed(3)}
@@ -1069,12 +1089,13 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
 
             {(() => {
               const isPurchase = transactionType === 'PURCHASE';
+              const isFix = settlementMode === 'FIX' || settlementMode === 'CASH_ONLY';
               const goldPureToAdjust = calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT;
-              const remainingCashToAdjust = settlementMode === 'CASH_ONLY'
+              const remainingCashToAdjust = isFix
                 ? calculatedEstimate.totals.grandTotal
                 : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal);
 
-              const displayDeltaPureWT = settlementMode === 'CASH_ONLY'
+              const displayDeltaPureWT = isFix
                 ? 0
                 : (isPurchase ? -goldPureToAdjust : goldPureToAdjust);
               const displayDeltaAmount = isPurchase ? -remainingCashToAdjust : remainingCashToAdjust;
@@ -1144,12 +1165,13 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           <div className="glass-panel p-5 space-y-3 border-l-4 border-l-[#D9B76C] flex flex-col justify-between">
             {(() => {
               const isPurchase = transactionType === 'PURCHASE';
+              const isFix = settlementMode === 'FIX' || settlementMode === 'CASH_ONLY';
               const goldPureToAdjust = calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT;
-              const remainingCashToAdjust = settlementMode === 'CASH_ONLY'
+              const remainingCashToAdjust = isFix
                 ? calculatedEstimate.totals.grandTotal
                 : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal);
 
-              const displayDeltaPureWT = settlementMode === 'CASH_ONLY'
+              const displayDeltaPureWT = isFix
                 ? 0
                 : (isPurchase ? -goldPureToAdjust : goldPureToAdjust);
               const displayDeltaAmount = isPurchase ? -remainingCashToAdjust : remainingCashToAdjust;

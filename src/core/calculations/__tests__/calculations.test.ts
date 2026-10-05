@@ -10,6 +10,7 @@ import {
   calculateTotalAmount,
   calculateRunningBalances,
   calculateEstimateSheet,
+  calculateEstimateLine,
   calculateSettlement,
   roundWeight,
   roundCurrency,
@@ -263,6 +264,71 @@ describe('SBG Core Calculation Engine', () => {
       expect(estimate.previousBalanceMC).toBe(-5263.51);
       expect(estimate.balanceComparison.deltaPureWT).toBe(estimate.totals.goldPureWT);
       expect(estimate.newBalanceWT).toBe(roundWeight(prevWT + estimate.totals.goldPureWT!));
+    });
+
+    it('correctly handles Stone WT entered in Carats (ct) vs Grams (g)', () => {
+      // 18 CT GLD RIN with Stone WT entered as 0.90 ct (should convert to 0.180 g)
+      const line = calculateEstimateLine({
+        item: '18 CT GLD RIN',
+        category: 'GOLD',
+        grossWT: 7.802,
+        stoneWT: 0.90, // 0.90 carats
+        stoneWTUnit: 'ct',
+        touch: 76.0,
+        rate: 11845.13,
+        rateUnit: 'PER_G',
+      });
+
+      expect(line.stoneWT).toBe(0.180); // 0.90 * 0.200 = 0.180g
+      expect(line.stoneWTCarats).toBe(0.90);
+      expect(line.netWT).toBe(7.622); // 7.802 - 0.180 = 7.622g
+      expect(line.pureWT).toBe(5.793); // 7.622 * 0.76 = 5.793g
+      expect(line.amount).toBe(68618.84); // 5.793 * 11845.13 = 68618.84
+    });
+
+    it('treats Net WT as Pure WT for diamonds/stones and calculates carat amounts', () => {
+      // DMD item entered with 1.330 ct at ₹70,443.61/ct
+      const diamondLine = calculateEstimateLine({
+        item: 'DMD',
+        category: 'DIAMOND',
+        grossWT: 1.330,
+        stoneWT: 0.000,
+        stoneWTUnit: 'ct',
+        touch: 0.0,
+        rate: 70443.61,
+        rateUnit: 'PER_CT',
+      });
+
+      // Net WT acts as Pure WT
+      expect(diamondLine.netWT).toBe(1.330);
+      expect(diamondLine.pureWT).toBe(1.330);
+      // Carat rate calculated accurately (1.330 * 70443.61 = 93690.00)
+      expect(diamondLine.amount).toBe(93690.00);
+    });
+
+    it('handles FIX settlement mode: 100% Cash balance adjustment with 0 Gold balance impact', () => {
+      const estimate = calculateEstimateSheet({
+        estimateNo: 'EST-FIX-01',
+        transactionType: 'PURCHASE',
+        settlementMode: 'FIX',
+        goldRate: 11845.13,
+        items: [
+          {
+            item: '18 CT GLD RIN',
+            category: 'GOLD',
+            grossWT: 7.802,
+            stoneWT: 0.180,
+            touch: 76.0,
+            rate: 11845.13,
+            rateUnit: 'PER_G',
+          },
+        ],
+      }, 3.0);
+
+      // Gold Pure WT is NOT adjusted in FIX mode
+      expect(estimate.balanceComparison.deltaPureWT).toBe(0);
+      // Entire Grand Total (with GST) is adjusted in Cash balance
+      expect(estimate.balanceComparison.deltaAmount).toBe(-estimate.totals.grandTotal);
     });
   });
 

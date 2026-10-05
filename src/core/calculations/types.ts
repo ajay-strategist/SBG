@@ -64,6 +64,7 @@ export interface EstimateLineItem {
   nos: number;
   grossWT: number;
   stoneWT: number; // in grams
+  stoneWTUnit?: 'g' | 'ct';
   stoneWTCarats?: number;
   netWT: number;
   touch: number; // percentage, e.g. 76 for 76%
@@ -87,7 +88,7 @@ export interface EstimateCostSheet {
   isGold: boolean;
   transactionType?: 'PURCHASE' | 'SALE';
   direction?: TransactionDirection;
-  settlementMode?: 'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY';
+  settlementMode?: 'FIX' | 'UNFIX' | 'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY';
   goldRate: number;
   goldRatePurity: number; // e.g. 99.5 or 100
   diamondRate?: number; // Master default diamond rate per ct (₹)

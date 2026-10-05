@@ -685,12 +685,14 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           nos: 1,
           grossWT: 1.330,
           stoneWT: 0.000,
+          stoneWTUnit: 'ct',
+          stoneWTCarats: 1.330,
           netWT: 1.330,
           touch: 0.0,
-          pureWT: 0.000,
+          pureWT: 1.330,
           rate: 70443.61,
           rateUnit: 'PER_CT',
-          amount: 0.00,
+          amount: 93689.99,
         },
         {
           id: 'item-6',
@@ -700,6 +702,8 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           nos: 1,
           grossWT: 3.200,
           stoneWT: 0.000,
+          stoneWTUnit: 'g',
+          stoneWTCarats: 16.00,
           netWT: 3.200,
           touch: 76.0,
           pureWT: 2.432,
@@ -717,7 +721,7 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           stoneWT: 0.000,
           netWT: 17.570,
           touch: 0.0,
-          pureWT: 0.000,
+          pureWT: 17.570,
           rate: 948.98,
           rateUnit: 'PER_G',
           amount: 16673.58,
@@ -725,26 +729,26 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ],
       totals: {
         goldValue: 158168.03,
-        diamondValue: 0,
+        diamondValue: 93689.99,
         psValue: 14000.00,
         mcValue: 16673.58,
-        taxableValue: 188841.61,
+        taxableValue: 282531.60,
         gstRate: 3.0,
-        gstAmount: 5665.25,
-        grandTotal: 194506.86,
+        gstAmount: 8475.95,
+        grandTotal: 291007.55,
         totalGrossWT: 40.576,
         totalStoneWT: 0.906,
         totalNetWT: 39.670,
-        totalPureWT: 15.785,
+        totalPureWT: 17.115,
         goldGrossWT: 18.476,
         goldStoneWT: 0.906,
         goldNetWT: 17.570,
         goldPureWT: 13.353,
-        remainingCashValue: 36338.83,
+        remainingCashValue: 132839.52,
         diamondGrossWT: 1.330,
         diamondStoneWT: 0,
         diamondCarats: 1.33,
-        diamondPureWT: 0,
+        diamondPureWT: 1.330,
         psGrossWT: 3.200,
         psStoneWT: 0,
         psCarats: 16.00,
@@ -752,22 +756,22 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       transactionType: 'PURCHASE',
       direction: 'RECEIPT',
-      settlementMode: 'GOLD_AND_CASH',
+      settlementMode: 'UNFIX',
       previousBalanceWT: 3.353,
       previousBalanceMC: -21859.00,
       newBalanceWT: -10.000,
-      newBalanceMC: -58197.83,
+      newBalanceMC: -154698.52,
       balanceComparison: {
         gSheetOldPureWT: 3.353,
         gSheetOldAmount: -21859.00,
         gSheetNewPureWT: -10.000,
-        gSheetNewAmount: -58197.83,
+        gSheetNewAmount: -154698.52,
         ledgerOldPureWT: 3.353,
         ledgerOldAmount: -21859.00,
         ledgerNewPureWT: -10.000,
-        ledgerNewAmount: -58197.83,
+        ledgerNewAmount: -154698.52,
         deltaPureWT: -13.353,
-        deltaAmount: -36338.83,
+        deltaAmount: -132839.52,
         pureWTDiff: 0,
         amountDiff: 0,
         isReconciled: true,
@@ -1456,11 +1460,14 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const isPurchase = est.transactionType === 'PURCHASE' || est.direction === 'RECEIPT';
     const sign = isPurchase ? -1 : 1;
-    const goldPureToAdjust = est.totals.goldPureWT ?? est.totals.totalPureWT;
-    const remainingCash = est.totals.remainingCashValue ?? Math.max(0, est.totals.grandTotal - est.totals.goldValue);
+    const isFix = est.settlementMode === 'FIX' || est.settlementMode === 'CASH_ONLY';
+    const goldPureToAdjust = isFix ? 0 : (est.totals.goldPureWT ?? est.totals.totalPureWT);
+    const cashToAdjust = isFix
+      ? est.totals.grandTotal
+      : (est.totals.remainingCashValue ?? Math.max(0, est.totals.grandTotal - (est.totals.goldValue ?? 0)));
 
     const deltaPureWT = est.balanceComparison?.deltaPureWT ?? roundWeight(sign * goldPureToAdjust);
-    const deltaAmount = est.balanceComparison?.deltaAmount ?? roundCurrency(sign * remainingCash);
+    const deltaAmount = est.balanceComparison?.deltaAmount ?? roundCurrency(sign * cashToAdjust);
 
     const newWT = roundWeight(prevWT + deltaPureWT);
     const newMC = roundCurrency(prevMC + deltaAmount);
@@ -1624,11 +1631,14 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const isPurchase = merged.transactionType === 'PURCHASE' || merged.direction === 'RECEIPT';
       const sign = isPurchase ? -1 : 1;
-      const goldPureToAdjust = merged.totals.goldPureWT ?? merged.totals.totalPureWT;
-      const remainingCash = merged.totals.remainingCashValue ?? Math.max(0, merged.totals.grandTotal - (merged.totals.goldValue ?? 0));
+      const isFix = merged.settlementMode === 'FIX' || merged.settlementMode === 'CASH_ONLY';
+      const goldPureToAdjust = isFix ? 0 : (merged.totals.goldPureWT ?? merged.totals.totalPureWT);
+      const cashToAdjust = isFix
+        ? merged.totals.grandTotal
+        : (merged.totals.remainingCashValue ?? Math.max(0, merged.totals.grandTotal - (merged.totals.goldValue ?? 0)));
 
       const deltaPureWT = merged.balanceComparison?.deltaPureWT ?? roundWeight(sign * goldPureToAdjust);
-      const deltaAmount = merged.balanceComparison?.deltaAmount ?? roundCurrency(sign * remainingCash);
+      const deltaAmount = merged.balanceComparison?.deltaAmount ?? roundCurrency(sign * cashToAdjust);
 
       const newWT = roundWeight(prevWT + deltaPureWT);
       const newMC = roundCurrency(prevMC + deltaAmount);

@@ -9,29 +9,41 @@ export function calculateEstimateLine(
   defaultGoldRate: number = 0
 ): EstimateLineItem {
   const grossWT = Number(line.grossWT) || 0;
-  const stoneWT = Number(line.stoneWT) || 0;
+  const stoneWTInput = Number(line.stoneWT) || 0;
+  const stoneWTUnit: 'g' | 'ct' = line.stoneWTUnit === 'ct' ? 'ct' : 'g';
   const nos = Number(line.nos) || 1;
   const touch = Number(line.touch) || 0;
   const rate = Number(line.rate) ?? defaultGoldRate;
   const rateUnit = line.rateUnit || 'PER_G';
   const category = line.category || 'GOLD';
 
-  // Net WT = Gross - Stone
-  const netWT = roundWeight(Math.max(0, grossWT - stoneWT));
+  // Normalize Stone WT into grams and carats
+  let stoneWTInGrams = 0;
+  let stoneWTCarats = 0;
 
-  // Pure WT = Net WT * (Touch / 100)
-  const pureWT = touch > 0 ? roundWeight(netWT * (touch / 100)) : 0;
+  if (stoneWTUnit === 'ct') {
+    stoneWTCarats = stoneWTInput;
+    stoneWTInGrams = roundWeight(stoneWTInput * 0.2); // 1 ct = 0.200 g
+  } else {
+    stoneWTInGrams = roundWeight(stoneWTInput);
+    stoneWTCarats = roundWeight(stoneWTInput / 0.2); // 1 g = 5.000 ct
+  }
 
-  // Calculate Stone carats if stone weight is present, or if entered in grossWT for diamond / per_ct unit
-  const effectiveCarats = line.stoneWTCarats ?? (stoneWT > 0 ? roundWeight(stoneWT / 0.2) : (rateUnit === 'PER_CT' || category === 'DIAMOND' ? grossWT : 0));
-  const stoneWTCarats = effectiveCarats;
+  // Net WT = Gross - Stone WT in Grams
+  const netWT = roundWeight(Math.max(0, grossWT - stoneWTInGrams));
+
+  // Pure WT: For gold with touch, compute Net WT * Touch%.
+  // For other items (or when touch is 0), Net WT is treated as Pure WT to finalize calculation.
+  const pureWT = (touch > 0 && category === 'GOLD')
+    ? roundWeight(netWT * (touch / 100))
+    : (touch > 0 ? roundWeight(netWT * (touch / 100)) : netWT);
 
   // Line amount calculation based on category & unit
   let calculatedAmount = 0;
   switch (rateUnit) {
     case 'PER_G':
-      // If gold, multiply by Pure WT if touch is applied, or Net WT
-      if (category === 'GOLD' && pureWT > 0) {
+      // If gold with touch, multiply by Pure WT if touch is applied, else Net WT
+      if (category === 'GOLD' && touch > 0 && pureWT > 0) {
         calculatedAmount = pureWT * rate;
       } else {
         calculatedAmount = (netWT > 0 ? netWT : grossWT) * rate;
@@ -39,8 +51,20 @@ export function calculateEstimateLine(
       break;
 
     case 'PER_CT': {
-      const carats = stoneWTCarats > 0 ? stoneWTCarats : (stoneWT > 0 ? (stoneWT / 0.2) : (grossWT > 0 ? grossWT : 0));
-      calculatedAmount = carats * rate;
+      // Determine effective carats:
+      // 1. If explicit stone carats provided > 0
+      // 2. If stone weight entered in grams, convert to carats
+      // 3. For pure diamond/gemstone items without stone wt, convert gross/net weight to carats
+      let effectiveCarats = 0;
+      if (line.stoneWTCarats && line.stoneWTCarats > 0) {
+        effectiveCarats = line.stoneWTCarats;
+      } else if (stoneWTCarats > 0) {
+        effectiveCarats = stoneWTCarats;
+      } else if (category === 'DIAMOND' || category === 'PRECIOUS_STONE' || rateUnit === 'PER_CT') {
+        const baseWT = netWT > 0 ? netWT : grossWT;
+        effectiveCarats = stoneWTUnit === 'ct' ? baseWT : roundWeight(baseWT / 0.2);
+      }
+      calculatedAmount = effectiveCarats * rate;
       break;
     }
 
@@ -70,7 +94,8 @@ export function calculateEstimateLine(
     category,
     nos,
     grossWT: roundWeight(grossWT),
-    stoneWT: roundWeight(stoneWT),
+    stoneWT: stoneWTInGrams,
+    stoneWTUnit,
     stoneWTCarats,
     netWT,
     touch: roundPurity(touch),
@@ -192,21 +217,23 @@ export function calculateEstimateSheet(
   const transactionType = sheet.transactionType || (sheet.direction === 'ISSUE' ? 'SALE' : 'PURCHASE');
   const direction: TransactionDirection = sheet.direction || (transactionType === 'PURCHASE' ? 'RECEIPT' : 'ISSUE');
   const sign = direction === 'RECEIPT' ? -1 : 1;
-  const settlementMode = sheet.settlementMode || (sheet.isGold !== false ? 'GOLD_AND_CASH' : 'CASH_ONLY');
+  const rawMode = sheet.settlementMode || (sheet.isGold !== false ? 'UNFIX' : 'FIX');
+  const settlementMode = (rawMode === 'CASH_ONLY' || rawMode === 'FIX')
+    ? 'FIX'
+    : (rawMode === 'GOLD_ONLY' ? 'GOLD_ONLY' : 'UNFIX');
 
   let deltaPureWT = 0;
   let deltaAmount = 0;
 
-  if (settlementMode === 'GOLD_AND_CASH') {
-    // Total Pure WT of Gold is adjusted to the Gold balance (Negative if Purchase, Positive if Sale)
-    const goldPureToAdjust = goldPureWT > 0 ? goldPureWT : totalPureWT;
-    deltaPureWT = roundWeight(sign * goldPureToAdjust);
-    // Remaining (MC + Stones + GST) is adjusted to Cash balance (Negative if Purchase, Positive if Sale)
-    deltaAmount = roundCurrency(sign * remainingCashValue);
-  } else if (settlementMode === 'CASH_ONLY') {
-    // Full Cash: all value adjusted to Cash balance
+  if (settlementMode === 'FIX') {
+    // FIX: 100% Cash Settlement (Gold Balance = 0, Grand Total + All GST adjusted in Cash)
     deltaPureWT = 0;
     deltaAmount = roundCurrency(sign * grandTotal);
+  } else if (settlementMode === 'UNFIX') {
+    // UNFIX: Gold portion settled as Pure Gold WT, Remaining (Diamonds + Stones + MC + GST) in Cash
+    const goldPureToAdjust = goldPureWT > 0 ? goldPureWT : totalPureWT;
+    deltaPureWT = roundWeight(sign * goldPureToAdjust);
+    deltaAmount = roundCurrency(sign * remainingCashValue);
   } else if (settlementMode === 'GOLD_ONLY') {
     // Settle all in pure gold weight equivalent
     deltaPureWT = roundWeight(sign * totalPureWT);
