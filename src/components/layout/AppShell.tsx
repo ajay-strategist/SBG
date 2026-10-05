@@ -136,12 +136,12 @@ export const AppShell: React.FC<AppShellProps> = ({
 
       {/* Desktop Left Sidebar (Emerald Gradient & Gold Accents) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 bg-gradient-to-b from-[#093E3C] via-[#073331] to-[#052524] text-white flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:static ${
+        className={`fixed inset-y-0 left-0 z-30 bg-gradient-to-b from-[#093E3C] via-[#073331] to-[#052524] text-white flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:shrink-0 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-72'}`}
       >
         {/* Brand Header */}
-        <div className={`p-4 border-b border-white/10 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+        <div className={`p-4 border-b border-white/10 shrink-0 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 flex items-center justify-center shrink-0">
               <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
@@ -175,7 +175,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {/* Collapsed Expand Quick Button */}
         {sidebarCollapsed && (
-          <div className="hidden lg:flex justify-center my-2">
+          <div className="hidden lg:flex justify-center my-2 shrink-0">
             <button
               onClick={() => setSidebarCollapsed(false)}
               title="Expand Panel"
@@ -188,7 +188,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {/* Market Gold Rate Luxury Card */}
         {!sidebarCollapsed ? (
-          <div className="mx-3.5 my-3 p-3.5 rounded-2xl bg-white/10 border border-[#D9B76C]/30 backdrop-blur-md relative overflow-hidden shadow-lg animate-fadeIn">
+          <div className="mx-3.5 my-3 p-3.5 rounded-2xl bg-white/10 border border-[#D9B76C]/30 backdrop-blur-md relative overflow-hidden shadow-lg animate-fadeIn shrink-0">
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] text-[#E7CCA0] font-bold uppercase tracking-wider flex items-center gap-1.5">
@@ -339,7 +339,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {/* Slogan Banner in Sidebar (Expanded only) */}
         {!sidebarCollapsed && (
-          <div className="mx-3.5 my-2 p-3 rounded-xl bg-black/20 border border-white/10 text-left animate-fadeIn">
+          <div className="mx-3.5 my-2 p-3 rounded-xl bg-black/20 border border-white/10 text-left animate-fadeIn shrink-0">
             <p className="text-[10px] font-serif italic text-[#E7CCA0] leading-tight">
               Trusted Numbers
             </p>
@@ -350,7 +350,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         )}
 
         {/* Active User Profile Footer */}
-        <div className="p-3 border-t border-white/10 bg-black/25 relative">
+        <div className="p-3 border-t border-white/10 bg-black/25 relative shrink-0">
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
             <div
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}

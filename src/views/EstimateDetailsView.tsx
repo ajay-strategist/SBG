@@ -542,39 +542,6 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 </tr>
               ))}
             </tbody>
-            <tfoot className="border-t-2 border-[#0F5C5B] bg-[#0F5C5B]/5 font-mono font-bold text-xs">
-              <tr>
-                <td colSpan={3} className="py-2.5 px-3 font-sans font-bold text-[#0F5C5B] text-right uppercase text-[10px]">
-                  Total Pure WT & Sheet Summary:
-                </td>
-                <td className="py-2.5 px-3 text-right">
-                  {estimate.items.reduce((sum, it) => sum + (Number(it.nos) || 0), 0)}
-                </td>
-                <td className="py-2.5 px-3 text-right">
-                  {estimate.totals.totalGrossWT.toFixed(3)}g
-                </td>
-                <td className="py-2.5 px-3 text-right text-[#647777]">
-                  {estimate.totals.totalStoneWT.toFixed(3)}g
-                </td>
-                <td className="py-2.5 px-3 text-right text-[#173333]">
-                  {estimate.totals.totalNetWT.toFixed(3)}g
-                </td>
-                <td className="py-2.5 px-3 text-right text-[#647777] text-[10px]">
-                  {estimate.totals.totalNetWT > 0
-                    ? ((estimate.totals.totalPureWT / estimate.totals.totalNetWT) * 100).toFixed(2) + '%'
-                    : '-'}
-                </td>
-                <td className="py-2.5 px-3 text-right text-[#0F5C5B] text-sm font-black">
-                  {estimate.totals.totalPureWT.toFixed(3)}g
-                </td>
-                <td className="py-2.5 px-3 text-right font-sans font-semibold text-[10px] text-[#647777]">
-                  Taxable Total:
-                </td>
-                <td className="py-2.5 px-3 text-right text-[#0F5C5B] text-sm font-black">
-                  <SBGCurrency value={estimate.totals.taxableValue} />
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
 

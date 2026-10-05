@@ -839,40 +839,6 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 </tr>
               ))}
             </tbody>
-            <tfoot className="border-t-2 border-[#0F5C5B] bg-[#0F5C5B]/5 font-mono font-bold text-xs">
-              <tr>
-                <td colSpan={3} className="py-2.5 px-2 font-sans font-bold text-[#0F5C5B] text-right uppercase text-[10px]">
-                  Total Pure WT & Sheet Summary:
-                </td>
-                <td className="py-2.5 px-2 text-right">
-                  {calculatedEstimate.items.reduce((sum, it) => sum + (Number(it.nos) || 0), 0)}
-                </td>
-                <td className="py-2.5 px-2 text-right">
-                  {calculatedEstimate.totals.totalGrossWT.toFixed(3)}g
-                </td>
-                <td className="py-2.5 px-2 text-right text-[#647777]">
-                  {calculatedEstimate.totals.totalStoneWT.toFixed(3)}g
-                </td>
-                <td className="py-2.5 px-2 text-right text-[#173333]">
-                  {calculatedEstimate.totals.totalNetWT.toFixed(3)}g
-                </td>
-                <td className="py-2.5 px-2 text-right text-[#647777] text-[10px]">
-                  {calculatedEstimate.totals.totalNetWT > 0
-                    ? ((calculatedEstimate.totals.totalPureWT / calculatedEstimate.totals.totalNetWT) * 100).toFixed(2) + '%'
-                    : '-'}
-                </td>
-                <td className="py-2.5 px-2 text-right text-[#0F5C5B] text-sm font-black">
-                  {calculatedEstimate.totals.totalPureWT.toFixed(3)}g
-                </td>
-                <td colSpan={2} className="py-2.5 px-2 text-right font-sans font-semibold text-[10px] text-[#647777]">
-                  Taxable Total:
-                </td>
-                <td className="py-2.5 px-2 text-right text-[#0F5C5B] text-sm font-black">
-                  <SBGCurrency value={calculatedEstimate.totals.taxableValue} />
-                </td>
-                <td></td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </SBGCard>
