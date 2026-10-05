@@ -375,52 +375,6 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
         </div>
       </div>
 
-      {/* Validation Checklist & Balance Impact Banner Panel */}
-      <div className="glass-panel p-5 space-y-4 no-print">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#DCE5E3] pb-3 gap-2">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
-              Estimate Balance Impact & Ledger Verification
-            </h3>
-            <SBGBadge variant={estimate.status === 'CONFIRMED' ? 'success' : 'warning'}>
-              {estimate.status === 'CONFIRMED' ? 'In Customer Ledger' : 'Draft Estimate'}
-            </SBGBadge>
-          </div>
-          <span className="text-xs text-[#647777]">
-            Account: <strong>{customer?.name || estimate.customerName}</strong> | Closing Gold:{' '}
-            <strong className="text-[#0F5C5B]">{newWT.toFixed(3)}g</strong> | Closing Amount:{' '}
-            <strong className="text-[#0F5C5B]">₹{newMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs">
-          {[
-            { label: 'Prev Gold WT', value: `${prevWT.toFixed(3)}g`, color: 'text-[#647777]' },
-            { label: 'Prev Cash Balance', value: `₹${prevMC.toLocaleString('en-IN')}`, color: 'text-[#647777]' },
-            {
-              label: `${isPurchase ? '−' : '+'} Pure Gold Adjusted`,
-              value: `${deltaPureWT >= 0 ? '+' : '−'}${Math.abs(deltaPureWT).toFixed(3)}g`,
-              color: isPurchase ? 'text-amber-800 font-bold' : 'text-[#0F5C5B] font-bold',
-            },
-            {
-              label: `${isPurchase ? '−' : '+'} Remaining Cash`,
-              value: `${deltaMC >= 0 ? '+' : '−'}₹${Math.abs(deltaMC).toLocaleString('en-IN')}`,
-              color: isPurchase ? 'text-amber-800 font-bold' : 'text-[#0F5C5B] font-bold',
-            },
-            { label: '= New Gold Balance', value: `${newWT.toFixed(3)}g`, color: 'text-[#0F5C5B] font-bold' },
-            { label: '= New Cash Balance', value: `₹${newMC.toLocaleString('en-IN')}`, color: 'text-[#0F5C5B] font-bold' },
-          ].map((chk, i) => (
-            <div key={i} className="bg-white/80 p-2.5 rounded-xl border border-white/80 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-[#647777] uppercase block">{chk.label}</span>
-                <span className={`font-mono text-xs ${chk.color}`}>{chk.value}</span>
-              </div>
-              <CheckCircle2 className="w-4 h-4 text-[#3E8B68]" />
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Main Printable Estimate Cost Sheet */}
       <div className="glass-panel p-6 sm:p-10 space-y-8 bg-white/90 shadow-lg print:shadow-none print:border-none print:p-0">
         {/* Top Invoice Header */}
