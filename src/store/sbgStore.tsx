@@ -1542,10 +1542,10 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const isPurchase = est.transactionType === 'PURCHASE' || est.direction === 'RECEIPT';
     const sign = isPurchase ? -1 : 1;
     const isFix = est.settlementMode === 'FIX' || est.settlementMode === 'CASH_ONLY';
-    const goldPureToAdjust = isFix ? 0 : (est.totals.goldPureWT ?? est.totals.totalPureWT);
+    const goldPureToAdjust = isFix ? 0 : (est.totals.settledGoldWT ?? est.totals.goldPureWT ?? est.totals.totalPureWT);
     const cashToAdjust = isFix
       ? est.totals.grandTotal
-      : (est.totals.remainingCashValue ?? Math.max(0, est.totals.grandTotal - (est.totals.goldValue ?? 0)));
+      : (est.totals.settledCashAmount ?? est.totals.remainingCashValue ?? Math.max(0, est.totals.grandTotal - (est.totals.goldValue ?? 0)));
 
     const deltaPureWT = est.balanceComparison?.deltaPureWT ?? roundWeight(sign * goldPureToAdjust);
     const deltaAmount = est.balanceComparison?.deltaAmount ?? roundCurrency(sign * cashToAdjust);

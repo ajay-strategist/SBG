@@ -93,6 +93,28 @@ export interface EstimateLineItem {
   subItems?: EstimateSubItem[];
 }
 
+export type UnfixPresetType =
+  | 'B2B_WITHOUT_MC'
+  | 'B2B_WITH_MC'
+  | 'ALL_IN_GOLD'
+  | 'CUSTOM';
+
+export interface UnfixComponentSettlement {
+  goldMetalMode: 'GOLD' | 'CASH' | 'SPLIT';
+  goldGSTMode: 'GOLD' | 'CASH';
+  mcMode: 'GOLD' | 'CASH';
+  stonesMode: 'GOLD' | 'CASH';
+  expensesMode: 'GOLD' | 'CASH';
+  goldPaidInMetalGrams?: number; // When goldMetalMode is 'SPLIT'
+}
+
+export interface AdditionalExpenses {
+  huidCharges?: number;
+  courierCharges?: number;
+  otherCharges?: number;
+  otherChargesRemarks?: string;
+}
+
 export interface EstimateCostSheet {
   id: string;
   estimateNo: string;
@@ -107,6 +129,9 @@ export interface EstimateCostSheet {
   transactionType?: 'PURCHASE' | 'SALE';
   direction?: TransactionDirection;
   settlementMode?: 'FIX' | 'UNFIX' | 'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY';
+  unfixPreset?: UnfixPresetType;
+  unfixComponentSettlement?: UnfixComponentSettlement;
+  additionalExpenses?: AdditionalExpenses;
   goldRate: number;
   goldRatePurity: number; // e.g. 99.5 or 100
   diamondRate?: number; // Master default diamond rate per ct (₹)
@@ -122,11 +147,17 @@ export interface EstimateCostSheet {
     diamondValue: number;
     psValue: number;
     mcValue: number;
+    huidCharges?: number;
+    courierCharges?: number;
+    otherCharges?: number;
+    totalExpenses?: number;
     taxableValue: number;
     gstRate: number; // percentage, e.g. 3
     gstAmount: number;
     grandTotal: number;
     remainingCashValue?: number; // grandTotal - goldValue (or non-metal cash total)
+    settledGoldWT?: number; // Total grams posting to Gold Ledger
+    settledCashAmount?: number; // Total ₹ posting to Cash/MC Ledger
     totalGrossWT: number;
     totalStoneWT: number;
     totalNetWT: number;

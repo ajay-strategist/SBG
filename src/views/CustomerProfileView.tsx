@@ -26,6 +26,9 @@ import {
   Trash2,
   Palette,
   ExternalLink,
+  CheckCircle,
+  AlertTriangle,
+  Eye,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -40,10 +43,12 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
 }) => {
   const {
     customers,
+    estimates,
     getCustomerTransactions,
     deleteTransaction,
   } = useSBG();
 
+  const [activeProfileTab, setActiveProfileTab] = useState<'ledger' | 'estimates'>('ledger');
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
   const [useSheetTheme, setUseSheetTheme] = useState(true);
@@ -62,6 +67,9 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   }
 
   const customerLedger = getCustomerTransactions(customer.id);
+  const customerEstimates = (estimates || [])
+    .filter((e) => e.customerId === customer.id)
+    .sort((a, b) => new Date(b.estimateDate).getTime() - new Date(a.estimateDate).getTime() || b.estimateNo.localeCompare(a.estimateNo));
 
   const handleExportCSV = () => {
     const headers = [
@@ -149,14 +157,6 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             Export Sheet
           </SBGButton>
           <SBGButton
-            variant="gold"
-            size="sm"
-            icon={<Coins className="w-4 h-4" />}
-            onClick={() => onNavigate('new-settlement', customer.id)}
-          >
-            Settle Account
-          </SBGButton>
-          <SBGButton
             variant="primary"
             size="sm"
             icon={<PlusCircle className="w-4 h-4" />}
@@ -207,8 +207,50 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             />
           </div>
         </div>
+        {/* Navigation Tabs: Ledger vs Estimates */}
+        <div className="flex items-center justify-between border-b border-black/10 pb-3 gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveProfileTab('ledger')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                activeProfileTab === 'ledger'
+                  ? 'bg-[#0F5C5B] text-white shadow-xs'
+                  : 'bg-white/80 text-[#647777] border border-[#DCE5E3] hover:text-[#173333]'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Ledger ({customerLedger.length})</span>
+            </button>
 
-        {/* Commercial Ledger */}
+            <button
+              type="button"
+              onClick={() => setActiveProfileTab('estimates')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                activeProfileTab === 'estimates'
+                  ? 'bg-[#0F5C5B] text-white shadow-xs'
+                  : 'bg-white/80 text-[#647777] border border-[#DCE5E3] hover:text-[#173333]'
+              }`}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Estimates ({customerEstimates.length})</span>
+            </button>
+          </div>
+
+          {activeProfileTab === 'estimates' && (
+            <button
+              type="button"
+              onClick={() => onNavigate('new-estimate', customer.id)}
+              className="px-3.5 py-1.5 rounded-xl bg-[#E5C378] hover:bg-[#D9B76C] text-[#3D2D0C] font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>+ Create Estimate for {customer.name}</span>
+            </button>
+          )}
+        </div>
+
+        {/* Tab 1: Commercial Ledger */}
+        {activeProfileTab === 'ledger' && (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -367,7 +409,144 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
               </table>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Tab 2: Customer Estimates & Cost Sheets */}
+        {activeProfileTab === 'estimates' && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
+                  Customer Estimates & Cost Sheets
+                </h3>
+                <p className="text-[11px] text-[#647777]">
+                  Showing all estimates belonging to {customer.name} (Sorted Latest to Oldest)
+                </p>
+              </div>
+
+              <span className="text-xs font-semibold text-[#526B6A]">
+                Total: <strong className="text-[#173333]">{customerEstimates.length}</strong> Estimate{customerEstimates.length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto bg-white/80 rounded-xl border border-[#DCE5E3] shadow-xs">
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-[#0F5C5B]/10 text-[#0F5C5B] border-b border-[#DCE5E3] uppercase font-bold text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3 px-3">ESTIMATE NO.</th>
+                    <th className="py-3 px-3">DATE</th>
+                    <th className="py-3 px-3">NATURE</th>
+                    <th className="py-3 px-3 text-right">PURE WT (g)</th>
+                    <th className="py-3 px-3 text-right">TAXABLE VALUE</th>
+                    <th className="py-3 px-3 text-right">GST (3%)</th>
+                    <th className="py-3 px-3 text-right font-bold text-[#0F5C5B]">GRAND TOTAL</th>
+                    <th className="py-3 px-3 text-center">RECONCILIATION</th>
+                    <th className="py-3 px-3 text-center">STATUS</th>
+                    <th className="py-3 px-3 text-center">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#DCE5E3]/60">
+                  {customerEstimates.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-10 text-center text-[#647777]">
+                        <FileSpreadsheet className="w-8 h-8 mx-auto text-[#647777]/40 mb-2" />
+                        <p className="font-semibold text-xs">No estimates recorded for {customer.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('new-estimate', customer.id)}
+                          className="mt-2 text-xs font-bold text-[#0F5C5B] hover:underline cursor-pointer"
+                        >
+                          + Create first estimate
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    customerEstimates.map((est) => {
+                      const isReconciled = est.balanceComparison?.isReconciled ?? true;
+                      return (
+                        <tr
+                          key={est.id}
+                          onClick={() => onNavigate('estimate-details', est.id)}
+                          className="hover:bg-white/90 transition-colors cursor-pointer"
+                        >
+                          <td className="py-3 px-3 font-mono font-bold text-[#0F5C5B]">
+                            {est.estimateNo}
+                          </td>
+                          <td className="py-3 px-3 text-[#647777] font-mono">
+                            {est.estimateDate}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                est.transactionType === 'PURCHASE'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {est.transactionType || 'SALE'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono font-bold text-[#0F5C5B]">
+                            {est.totals.totalPureWT.toFixed(3)} g
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono font-semibold text-[#173333]">
+                            ₹{est.totals.taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono text-[#647777]">
+                            ₹{est.totals.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono font-bold text-xs text-[#0F5C5B]">
+                            ₹{est.totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                isReconciled
+                                  ? 'bg-[#E6F8F2] text-[#1A825B]'
+                                  : 'bg-[#FEF5E6] text-[#B87B1D]'
+                              }`}
+                            >
+                              {isReconciled ? (
+                                <CheckCircle className="w-3 h-3" />
+                              ) : (
+                                <AlertTriangle className="w-3 h-3" />
+                              )}
+                              {isReconciled ? 'Reconciled' : 'Attention'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${
+                                est.status === 'CONFIRMED'
+                                  ? 'bg-[#E6F8F2] text-[#1A825B]'
+                                  : est.status === 'PENDING'
+                                  ? 'bg-[#FEF5E6] text-[#B87B1D]'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {est.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => onNavigate('estimate-details', est.id)}
+                              className="p-1 rounded text-[#0F5C5B] hover:bg-[#0F5C5B]/10 transition-colors cursor-pointer"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Transaction Modal (Purchase/Sale Cost Sheet or Gold/Cash Receipt/Payment) */}
       <TransactionModal

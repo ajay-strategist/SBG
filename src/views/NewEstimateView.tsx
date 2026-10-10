@@ -16,6 +16,9 @@ import {
   EstimateSubItem,
   EstimateItemCategory,
   RateUnit,
+  UnfixPresetType,
+  UnfixComponentSettlement,
+  AdditionalExpenses,
 } from '../core/calculations';
 import {
   FileSpreadsheet,
@@ -36,6 +39,11 @@ import {
   ChevronRight,
   CornerDownRight,
   Layers,
+  Coins,
+  Truck,
+  ShieldCheck,
+  Sliders,
+  Info,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -106,6 +114,38 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   const [settlementMode, setSettlementMode] = useState<'FIX' | 'UNFIX' | 'GOLD_AND_CASH' | 'CASH_ONLY' | 'GOLD_ONLY'>(
     (existingEstimate?.settlementMode as any) || 'UNFIX'
   );
+  const [unfixPreset, setUnfixPreset] = useState<UnfixPresetType>(
+    existingEstimate?.unfixPreset || 'B2B_WITHOUT_MC'
+  );
+  const [huidCharges, setHuidCharges] = useState<number>(
+    existingEstimate?.additionalExpenses?.huidCharges || 0
+  );
+  const [courierCharges, setCourierCharges] = useState<number>(
+    existingEstimate?.additionalExpenses?.courierCharges || 0
+  );
+  const [otherCharges, setOtherCharges] = useState<number>(
+    existingEstimate?.additionalExpenses?.otherCharges || 0
+  );
+  const [otherChargesRemarks, setOtherChargesRemarks] = useState<string>(
+    existingEstimate?.additionalExpenses?.otherChargesRemarks || ''
+  );
+  const [customSettlement, setCustomSettlement] = useState<UnfixComponentSettlement>(
+    existingEstimate?.unfixComponentSettlement || {
+      goldMetalMode: 'GOLD',
+      goldGSTMode: 'GOLD',
+      mcMode: 'CASH',
+      stonesMode: 'CASH',
+      expensesMode: 'CASH',
+      goldPaidInMetalGrams: 0,
+    }
+  );
+  const [showExpensesSection, setShowExpensesSection] = useState<boolean>(
+    Boolean(
+      (existingEstimate?.additionalExpenses?.huidCharges && existingEstimate.additionalExpenses.huidCharges > 0) ||
+      (existingEstimate?.additionalExpenses?.courierCharges && existingEstimate.additionalExpenses.courierCharges > 0) ||
+      (existingEstimate?.additionalExpenses?.otherCharges && existingEstimate.additionalExpenses.otherCharges > 0)
+    )
+  );
 
   useEffect(() => {
     if (targetId === 'SALE' || targetId === 'PURCHASE') {
@@ -170,6 +210,23 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       setRemarks(existingEstimate.remarks || '');
       setTransactionType(existingEstimate.transactionType || 'PURCHASE');
       setSettlementMode(existingEstimate.settlementMode || 'GOLD_AND_CASH');
+      if (existingEstimate.unfixPreset) setUnfixPreset(existingEstimate.unfixPreset);
+      if (existingEstimate.additionalExpenses) {
+        setHuidCharges(existingEstimate.additionalExpenses.huidCharges || 0);
+        setCourierCharges(existingEstimate.additionalExpenses.courierCharges || 0);
+        setOtherCharges(existingEstimate.additionalExpenses.otherCharges || 0);
+        setOtherChargesRemarks(existingEstimate.additionalExpenses.otherChargesRemarks || '');
+        if (
+          (existingEstimate.additionalExpenses.huidCharges && existingEstimate.additionalExpenses.huidCharges > 0) ||
+          (existingEstimate.additionalExpenses.courierCharges && existingEstimate.additionalExpenses.courierCharges > 0) ||
+          (existingEstimate.additionalExpenses.otherCharges && existingEstimate.additionalExpenses.otherCharges > 0)
+        ) {
+          setShowExpensesSection(true);
+        }
+      }
+      if (existingEstimate.unfixComponentSettlement) {
+        setCustomSettlement(existingEstimate.unfixComponentSettlement);
+      }
       if (existingEstimate.items && existingEstimate.items.length > 0) {
         setItems(existingEstimate.items);
       }
@@ -200,6 +257,14 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       unfixGoldRate: unfixGoldRate || undefined,
       transactionType,
       settlementMode,
+      unfixPreset,
+      unfixComponentSettlement: unfixPreset === 'CUSTOM' ? customSettlement : undefined,
+      additionalExpenses: {
+        huidCharges: Number(huidCharges) || 0,
+        courierCharges: Number(courierCharges) || 0,
+        otherCharges: Number(otherCharges) || 0,
+        otherChargesRemarks: otherChargesRemarks || undefined,
+      },
       direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
       remarks,
       items: items as any,
@@ -416,23 +481,30 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       return;
     }
 
+    const payload = {
+      ...calculatedEstimate,
+      transactionType,
+      settlementMode,
+      unfixPreset,
+      unfixComponentSettlement: unfixPreset === 'CUSTOM' ? customSettlement : undefined,
+      additionalExpenses: {
+        huidCharges: Number(huidCharges) || 0,
+        courierCharges: Number(courierCharges) || 0,
+        otherCharges: Number(otherCharges) || 0,
+        otherChargesRemarks: otherChargesRemarks || undefined,
+      },
+      direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
+    };
+
     if (existingEstimate) {
       updateEstimate(existingEstimate.id, {
-        ...calculatedEstimate,
+        ...payload,
         id: existingEstimate.id,
-        transactionType,
-        settlementMode,
-        direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
         status: existingEstimate.status || 'DRAFT',
       });
       onNavigate('estimate-details', existingEstimate.id);
     } else {
-      addEstimate({
-        ...calculatedEstimate,
-        transactionType,
-        settlementMode,
-        direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
-      });
+      addEstimate(payload);
       onNavigate('estimate-details', calculatedEstimate.id);
     }
   };
@@ -444,13 +516,14 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
     }
 
     const estId = existingEstimate ? existingEstimate.id : `est-${Date.now()}`;
-    const goldPureToAdjust = calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT;
-    const remainingCashToAdjust = calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal;
+    const isFix = settlementMode === 'FIX' || settlementMode === 'CASH_ONLY';
+    const settledGold = calculatedEstimate.totals.settledGoldWT ?? (isFix ? 0 : (calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT));
+    const settledCash = calculatedEstimate.totals.settledCashAmount ?? (isFix ? calculatedEstimate.totals.grandTotal : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal));
 
     const deltaPureWT = calculatedEstimate.balanceComparison?.deltaPureWT ??
-      (transactionType === 'PURCHASE' ? -goldPureToAdjust : goldPureToAdjust);
+      (transactionType === 'PURCHASE' ? -settledGold : settledGold);
     const deltaAmount = calculatedEstimate.balanceComparison?.deltaAmount ??
-      (transactionType === 'PURCHASE' ? -remainingCashToAdjust : remainingCashToAdjust);
+      (transactionType === 'PURCHASE' ? -settledCash : settledCash);
 
     const prevWT = selectedCustomer?.currentWT || 0;
     const prevMC = selectedCustomer?.currentMC || 0;
@@ -463,6 +536,14 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       status: 'CONFIRMED' as const,
       transactionType,
       settlementMode,
+      unfixPreset,
+      unfixComponentSettlement: unfixPreset === 'CUSTOM' ? customSettlement : undefined,
+      additionalExpenses: {
+        huidCharges: Number(huidCharges) || 0,
+        courierCharges: Number(courierCharges) || 0,
+        otherCharges: Number(otherCharges) || 0,
+        otherChargesRemarks: otherChargesRemarks || undefined,
+      },
       direction: transactionType === 'PURCHASE' ? ('RECEIPT' as const) : ('ISSUE' as const),
       previousBalanceWT: prevWT,
       previousBalanceMC: prevMC,
@@ -614,93 +695,438 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         </div>
 
         {/* Transaction Nature & Ledger Settlement Controls */}
-        <div className="p-4 bg-white/90 rounded-2xl border border-[#DCE5E3] grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-[#0F5C5B] block mb-1.5">
-              Estimate Nature / Transaction Type
-            </label>
-            <div className="flex rounded-xl bg-[#0F5C5B]/5 p-1 border border-[#DCE5E3]">
-              <button
-                type="button"
-                onClick={() => setTransactionType('PURCHASE')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  transactionType === 'PURCHASE'
-                    ? 'bg-[#0F5C5B] text-white shadow-xs'
-                    : 'text-[#647777] hover:text-[#0F5C5B]'
-                }`}
-              >
-                <span>PURCHASE (Receipt −)</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${transactionType === 'PURCHASE' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#647777]'}`}>
-                  Negative Adjust
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTransactionType('SALE')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  transactionType === 'SALE'
-                    ? 'bg-[#D9B76C] text-[#173333] shadow-xs'
-                    : 'text-[#647777] hover:text-[#0F5C5B]'
-                }`}
-              >
-                <span>SALE (Issue +)</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${transactionType === 'SALE' ? 'bg-black/15 text-[#173333]' : 'bg-black/5 text-[#647777]'}`}>
-                  Positive Adjust
-                </span>
-              </button>
+        <div className="p-4 bg-white/90 rounded-2xl border border-[#DCE5E3] space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-[#0F5C5B] block mb-1.5">
+                Estimate Nature / Transaction Type
+              </label>
+              <div className="flex rounded-xl bg-[#0F5C5B]/5 p-1 border border-[#DCE5E3]">
+                <button
+                  type="button"
+                  onClick={() => setTransactionType('PURCHASE')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    transactionType === 'PURCHASE'
+                      ? 'bg-[#0F5C5B] text-white shadow-xs'
+                      : 'text-[#647777] hover:text-[#0F5C5B]'
+                  }`}
+                >
+                  <span>PURCHASE (Receipt −)</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${transactionType === 'PURCHASE' ? 'bg-white/20 text-white' : 'bg-black/5 text-[#647777]'}`}>
+                    Negative Adjust
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTransactionType('SALE')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    transactionType === 'SALE'
+                      ? 'bg-[#D9B76C] text-[#173333] shadow-xs'
+                      : 'text-[#647777] hover:text-[#0F5C5B]'
+                  }`}
+                >
+                  <span>SALE (Issue +)</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${transactionType === 'SALE' ? 'bg-black/15 text-[#173333]' : 'bg-black/5 text-[#647777]'}`}>
+                    Positive Adjust
+                  </span>
+                </button>
+              </div>
+              <p className="text-[11px] text-[#526B6A] mt-1.5">
+                {transactionType === 'PURCHASE' ? (
+                  <span>
+                    <strong>Purchase:</strong> Customer supplies ornaments/gold to SBG. Pure Gold WT & charges are adjusted in <strong>Negative (−)</strong> to credit the customer balance.
+                  </span>
+                ) : (
+                  <span>
+                    <strong>Sale:</strong> SBG delivers ornaments to customer. Pure Gold WT & charges are adjusted in <strong>Positive (+)</strong> to debit the customer balance.
+                  </span>
+                )}
+              </p>
             </div>
-            <p className="text-[11px] text-[#526B6A] mt-1.5">
-              {transactionType === 'PURCHASE' ? (
-                <span>
-                  <strong>Purchase:</strong> Customer supplies ornaments/gold to SBG. Pure Gold WT & remaining charges are adjusted in <strong>Negative (−)</strong> to credit the customer ledger balance.
-                </span>
-              ) : (
-                <span>
-                  <strong>Sale:</strong> SBG delivers ornaments to customer. Pure Gold WT & charges are adjusted in <strong>Positive (+)</strong>.
-                </span>
-              )}
-            </p>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-[#0F5C5B] block mb-1.5">
+                Ledger Balance Settlement Mode
+              </label>
+              <div className="flex rounded-xl bg-[#0F5C5B]/5 p-1 border border-[#DCE5E3]">
+                <button
+                  type="button"
+                  onClick={() => setSettlementMode('UNFIX')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    settlementMode === 'UNFIX' || settlementMode === 'GOLD_AND_CASH'
+                      ? 'bg-[#0F5C5B] text-white shadow-xs'
+                      : 'text-[#647777] hover:text-[#0F5C5B]'
+                  }`}
+                >
+                  <span>⚖️ UNFIX (Metal & B2B)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettlementMode('FIX')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    settlementMode === 'FIX' || settlementMode === 'CASH_ONLY'
+                      ? 'bg-[#0F5C5B] text-white shadow-xs'
+                      : 'text-[#647777] hover:text-[#0F5C5B]'
+                  }`}
+                >
+                  <span>🔒 FIX (100% Cash)</span>
+                </button>
+              </div>
+              <p className="text-[11px] text-[#526B6A] mt-1.5">
+                {settlementMode === 'FIX' || settlementMode === 'CASH_ONLY' ? (
+                  <span>
+                    <strong>Fix Mode:</strong> Entire estimate (<SBGCurrency value={calculatedEstimate.totals.grandTotal} />) settled in Cash. Customer Gold Balance is untouched (0.000g).
+                  </span>
+                ) : (
+                  <span>
+                    <strong>Unfix Mode:</strong> Customer pays pure gold weight in Gold, and non-metal charges in Cash or Gold based on B2B preset.
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
 
-          <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-[#0F5C5B] block mb-1.5">
-              Ledger Balance Adjustment Mode (Fix / Unfix)
-            </label>
-            <div className="flex rounded-xl bg-[#0F5C5B]/5 p-1 border border-[#DCE5E3]">
-              <button
-                type="button"
-                onClick={() => setSettlementMode('UNFIX')}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  settlementMode === 'UNFIX' || settlementMode === 'GOLD_AND_CASH'
-                    ? 'bg-[#0F5C5B] text-white shadow-xs'
-                    : 'text-[#647777] hover:text-[#0F5C5B]'
-                }`}
-              >
-                ⚖️ UNFIX (Gold as Gold + Cash)
-              </button>
-              <button
-                type="button"
-                onClick={() => setSettlementMode('FIX')}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  settlementMode === 'FIX' || settlementMode === 'CASH_ONLY'
-                    ? 'bg-[#0F5C5B] text-white shadow-xs'
-                    : 'text-[#647777] hover:text-[#0F5C5B]'
-                }`}
-              >
-                🔒 FIX (100% Cash)
-              </button>
-            </div>
-            <p className="text-[11px] text-[#526B6A] mt-1.5">
-              {settlementMode === 'FIX' || settlementMode === 'CASH_ONLY' ? (
-                <span>
-                  <strong>Fix:</strong> Entire payment is in Cash (<SBGCurrency value={calculatedEstimate.totals.grandTotal} /> including all GST). Gold Balance is untouched (0.000g).
+          {/* UNFIX Options & B2B Settlement Presets */}
+          {(settlementMode === 'UNFIX' || settlementMode === 'GOLD_AND_CASH') && (
+            <div className="pt-3 border-t border-[#DCE5E3] space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-1.5">
+                  <Coins className="w-3.5 h-3.5 text-[#D9B76C]" /> Select B2B Unfix Settlement Type:
                 </span>
-              ) : (
-                <span>
-                  <strong>Unfix:</strong> Pay Gold as Gold: Pure Gold WT ({(calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT).toFixed(3)}g) adjusts Gold Balance, remaining <SBGCurrency value={calculatedEstimate.totals.remainingCashValue ?? 0} /> (MC, Stones & GST) adjusts Cash Balance.
+                <span className="text-[11px] text-[#647777]">
+                  Click one preset below to automatically distribute between Gold grams & Cash rupees:
+                </span>
+              </div>
+
+              {/* 4 Preset Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {/* 1. B2B - Without MC */}
+                <button
+                  type="button"
+                  onClick={() => setUnfixPreset('B2B_WITHOUT_MC')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    unfixPreset === 'B2B_WITHOUT_MC'
+                      ? 'bg-[#0F5C5B]/10 border-[#0F5C5B] ring-2 ring-[#0F5C5B]/20 shadow-xs'
+                      : 'bg-white hover:bg-[#F9FBFA] border-[#DCE5E3]'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0F5C5B]">B2B - Without MC</span>
+                      {unfixPreset === 'B2B_WITHOUT_MC' && (
+                        <span className="w-2 h-2 rounded-full bg-[#0F5C5B]" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-[#647777] block mt-1">
+                      Most common wholesaler settlement
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono space-y-0.5 border-t border-[#DCE5E3]/60 pt-1.5">
+                    <div className="text-[#0F5C5B] font-semibold">🪙 Gold & Gold GST: in Gold</div>
+                    <div className="text-[#8C6A23]">💵 MC & Other: in Cash</div>
+                  </div>
+                </button>
+
+                {/* 2. B2B - With MC */}
+                <button
+                  type="button"
+                  onClick={() => setUnfixPreset('B2B_WITH_MC')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    unfixPreset === 'B2B_WITH_MC'
+                      ? 'bg-[#0F5C5B]/10 border-[#0F5C5B] ring-2 ring-[#0F5C5B]/20 shadow-xs'
+                      : 'bg-white hover:bg-[#F9FBFA] border-[#DCE5E3]'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0F5C5B]">B2B - With MC</span>
+                      {unfixPreset === 'B2B_WITH_MC' && (
+                        <span className="w-2 h-2 rounded-full bg-[#0F5C5B]" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-[#647777] block mt-1">
+                      Making charges converted to gold
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono space-y-0.5 border-t border-[#DCE5E3]/60 pt-1.5">
+                    <div className="text-[#0F5C5B] font-semibold">🪙 Gold, GST & MC: in Gold</div>
+                    <div className="text-[#8C6A23]">💵 Stones & Exp: in Cash</div>
+                  </div>
+                </button>
+
+                {/* 3. All in Gold */}
+                <button
+                  type="button"
+                  onClick={() => setUnfixPreset('ALL_IN_GOLD')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    unfixPreset === 'ALL_IN_GOLD'
+                      ? 'bg-[#D9B76C]/15 border-[#D9B76C] ring-2 ring-[#D9B76C]/30 shadow-xs'
+                      : 'bg-white hover:bg-[#F9FBFA] border-[#DCE5E3]'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#8C6A23]">All in Gold (100%)</span>
+                      {unfixPreset === 'ALL_IN_GOLD' && (
+                        <span className="w-2 h-2 rounded-full bg-[#D9B76C]" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-[#647777] block mt-1">
+                      Entire estimate paid in pure gold
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono space-y-0.5 border-t border-[#DCE5E3]/60 pt-1.5">
+                    <div className="text-[#0F5C5B] font-semibold">🪙 100% of Bill: in Gold</div>
+                    <div className="text-[#2E8B57] font-bold">💵 Cash Amount: ₹0.00</div>
+                  </div>
+                </button>
+
+                {/* 4. Custom & Split Gold */}
+                <button
+                  type="button"
+                  onClick={() => setUnfixPreset('CUSTOM')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    unfixPreset === 'CUSTOM'
+                      ? 'bg-[#0F5C5B]/10 border-[#0F5C5B] ring-2 ring-[#0F5C5B]/20 shadow-xs'
+                      : 'bg-white hover:bg-[#F9FBFA] border-[#DCE5E3]'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0F5C5B]">Custom & Split Gold</span>
+                      {unfixPreset === 'CUSTOM' && (
+                        <span className="w-2 h-2 rounded-full bg-[#0F5C5B]" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-[#647777] block mt-1">
+                      Pay part gold metal + part cash
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono space-y-0.5 border-t border-[#DCE5E3]/60 pt-1.5">
+                    <div className="text-[#0F5C5B] font-semibold">⚙️ Custom item toggles</div>
+                    <div className="text-[#647777]">⚖️ Split Gold Weight option</div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Custom & Split Gold Options Drawer */}
+              {unfixPreset === 'CUSTOM' && (
+                <div className="p-3.5 bg-[#0F5C5B]/5 rounded-xl border border-[#0F5C5B]/20 space-y-3">
+                  <div className="text-xs font-bold text-[#0F5C5B] flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5" /> Custom Settlement Configuration:
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {/* Metal Settlement Choice */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-[#647777]">
+                        Gold Metal Value ({(calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT).toFixed(3)}g)
+                      </label>
+                      <select
+                        value={customSettlement.goldMetalMode}
+                        onChange={(e) =>
+                          setCustomSettlement((prev) => ({
+                            ...prev,
+                            goldMetalMode: e.target.value as any,
+                          }))
+                        }
+                        className="w-full text-xs font-medium py-1.5 px-2 rounded-lg bg-white border border-[#DCE5E3]"
+                      >
+                        <option value="GOLD">🪙 Pay 100% in Pure Gold (g)</option>
+                        <option value="CASH">💵 Pay 100% in Cash (₹)</option>
+                        <option value="SPLIT">⚖️ Split: Part Gold Metal + Part Cash</option>
+                      </select>
+                    </div>
+
+                    {/* Split Gold Input */}
+                    {customSettlement.goldMetalMode === 'SPLIT' && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-[#0F5C5B]">
+                          Physical Gold Weight to Pay (g)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.001"
+                          placeholder="e.g. 10.000"
+                          value={customSettlement.goldPaidInMetalGrams || ''}
+                          onChange={(e) =>
+                            setCustomSettlement((prev) => ({
+                              ...prev,
+                              goldPaidInMetalGrams: parseFloat(e.target.value) || 0,
+                            }))
+                          }
+                          className="w-full text-xs font-mono font-bold py-1.5 px-2 rounded-lg bg-white border border-[#0F5C5B] text-[#0F5C5B]"
+                        />
+                      </div>
+                    )}
+
+                    {/* Gold GST Toggle */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-[#647777]">
+                        Gold GST Settlement
+                      </label>
+                      <select
+                        value={customSettlement.goldGSTMode}
+                        onChange={(e) =>
+                          setCustomSettlement((prev) => ({
+                            ...prev,
+                            goldGSTMode: e.target.value as any,
+                          }))
+                        }
+                        className="w-full text-xs font-medium py-1.5 px-2 rounded-lg bg-white border border-[#DCE5E3]"
+                      >
+                        <option value="GOLD">🪙 Pay in Gold (g)</option>
+                        <option value="CASH">💵 Pay in Cash (₹)</option>
+                      </select>
+                    </div>
+
+                    {/* Making Charges Toggle */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-[#647777]">
+                        Making Charges (MC) Settlement
+                      </label>
+                      <select
+                        value={customSettlement.mcMode}
+                        onChange={(e) =>
+                          setCustomSettlement((prev) => ({
+                            ...prev,
+                            mcMode: e.target.value as any,
+                          }))
+                        }
+                        className="w-full text-xs font-medium py-1.5 px-2 rounded-lg bg-white border border-[#DCE5E3]"
+                      >
+                        <option value="CASH">💵 Pay in Cash (₹)</option>
+                        <option value="GOLD">🪙 Pay in Gold (g)</option>
+                      </select>
+                    </div>
+
+                    {/* Diamonds & Stones Toggle */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-[#647777]">
+                        Stones & Diamonds Settlement
+                      </label>
+                      <select
+                        value={customSettlement.stonesMode}
+                        onChange={(e) =>
+                          setCustomSettlement((prev) => ({
+                            ...prev,
+                            stonesMode: e.target.value as any,
+                          }))
+                        }
+                        className="w-full text-xs font-medium py-1.5 px-2 rounded-lg bg-white border border-[#DCE5E3]"
+                      >
+                        <option value="CASH">💵 Pay in Cash (₹)</option>
+                        <option value="GOLD">🪙 Pay in Gold (g)</option>
+                      </select>
+                    </div>
+
+                    {/* Additional Expenses Toggle */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-[#647777]">
+                        Additional Company Expenses
+                      </label>
+                      <select
+                        value={customSettlement.expensesMode}
+                        onChange={(e) =>
+                          setCustomSettlement((prev) => ({
+                            ...prev,
+                            expensesMode: e.target.value as any,
+                          }))
+                        }
+                        className="w-full text-xs font-medium py-1.5 px-2 rounded-lg bg-white border border-[#DCE5E3]"
+                      >
+                        <option value="CASH">💵 Pay in Cash (₹)</option>
+                        <option value="GOLD">🪙 Pay in Gold (g)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Additional Company Expenses Section */}
+          <div className="pt-3 border-t border-[#DCE5E3]">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowExpensesSection(!showExpensesSection)}
+                className="text-xs font-bold text-[#0F5C5B] hover:underline flex items-center gap-1.5 cursor-pointer"
+              >
+                <Truck className="w-3.5 h-3.5 text-[#D9B76C]" />
+                <span>Additional Company Expenses (HUID, Courier, Misc)</span>
+                <span className="text-[10px] text-[#647777] font-normal">
+                  {showExpensesSection ? '(Click to collapse)' : '(Click to add)'}
+                </span>
+              </button>
+              {(huidCharges > 0 || courierCharges > 0 || otherCharges > 0) && (
+                <span className="text-xs font-mono font-bold text-[#0F5C5B]">
+                  Total Expenses: <SBGCurrency value={huidCharges + courierCharges + otherCharges} />
                 </span>
               )}
-            </p>
+            </div>
+
+            {showExpensesSection && (
+              <div className="mt-3 p-3 bg-gray-50/70 rounded-xl border border-[#DCE5E3] grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <SBGInput
+                  label="HUID Charges (₹)"
+                  type="number"
+                  step="1"
+                  placeholder="0.00"
+                  value={huidCharges || ''}
+                  onChange={(e) => setHuidCharges(parseFloat(e.target.value) || 0)}
+                />
+                <SBGInput
+                  label="Courier / Freight (₹)"
+                  type="number"
+                  step="1"
+                  placeholder="0.00"
+                  value={courierCharges || ''}
+                  onChange={(e) => setCourierCharges(parseFloat(e.target.value) || 0)}
+                />
+                <SBGInput
+                  label="Other Charges (₹)"
+                  type="number"
+                  step="1"
+                  placeholder="0.00"
+                  value={otherCharges || ''}
+                  onChange={(e) => setOtherCharges(parseFloat(e.target.value) || 0)}
+                />
+                <SBGInput
+                  label="Other Charges Remarks"
+                  type="text"
+                  placeholder="e.g. Hallmarking, Insurance"
+                  value={otherChargesRemarks}
+                  onChange={(e) => setOtherChargesRemarks(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Live Ledger Settlement Impact Summary Banner */}
+          <div className="p-3.5 bg-gradient-to-r from-[#0F5C5B]/10 via-[#0F5C5B]/5 to-[#D9B76C]/10 rounded-xl border border-[#0F5C5B]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-[#647777] block">
+                Live Settlement Distribution
+              </span>
+              <div className="font-semibold text-[#173333] flex flex-wrap items-center gap-3 mt-0.5">
+                <span className="flex items-center gap-1.5 font-mono font-bold text-[#0F5C5B] bg-white/80 px-2.5 py-1 rounded-lg border border-[#0F5C5B]/20">
+                  <Coins className="w-3.5 h-3.5 text-[#D9B76C]" /> Pure Gold to Settle:{' '}
+                  <span className="text-sm">{(calculatedEstimate.totals.settledGoldWT ?? 0).toFixed(3)} g</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-mono font-bold text-[#8C6A23] bg-white/80 px-2.5 py-1 rounded-lg border border-[#D9B76C]/30">
+                  <Wallet className="w-3.5 h-3.5 text-[#8C6A23]" /> Cash to Settle:{' '}
+                  <span className="text-sm"><SBGCurrency value={calculatedEstimate.totals.settledCashAmount ?? 0} /></span>
+                </span>
+              </div>
+            </div>
+            <div className="text-[11px] text-[#526B6A] font-medium sm:text-right">
+              {transactionType === 'PURCHASE' ? (
+                <span>Crediting customer balance (Negative −)</span>
+              ) : (
+                <span>Debiting customer balance (Positive +)</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1448,15 +1874,11 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             {(() => {
               const isPurchase = transactionType === 'PURCHASE';
               const isFix = settlementMode === 'FIX' || settlementMode === 'CASH_ONLY';
-              const goldPureToAdjust = calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT;
-              const remainingCashToAdjust = isFix
-                ? calculatedEstimate.totals.grandTotal
-                : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal);
+              const settledGold = calculatedEstimate.totals.settledGoldWT ?? (isFix ? 0 : (calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT));
+              const settledCash = calculatedEstimate.totals.settledCashAmount ?? (isFix ? calculatedEstimate.totals.grandTotal : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal));
 
-              const displayDeltaPureWT = isFix
-                ? 0
-                : (isPurchase ? -goldPureToAdjust : goldPureToAdjust);
-              const displayDeltaAmount = isPurchase ? -remainingCashToAdjust : remainingCashToAdjust;
+              const displayDeltaPureWT = isPurchase ? -settledGold : settledGold;
+              const displayDeltaAmount = isPurchase ? -settledCash : settledCash;
 
               const currentWT = selectedCustomer?.currentWT || 0;
               const currentMC = selectedCustomer?.currentMC || 0;
@@ -1477,7 +1899,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
 
                   <div className="pt-2 border-t border-[#DCE5E3]">
                     <span className={`block text-[10px] uppercase font-bold ${isPurchase ? 'text-amber-700' : 'text-[#0F5C5B]'}`}>
-                      2. ({isPurchase ? '−' : '+'}) {isPurchase ? 'Purchase Pure Gold' : 'Sale Pure Gold'}
+                      2. ({isPurchase ? '−' : '+'}) {isPurchase ? 'Purchase Settled Gold' : 'Sale Settled Gold'}
                     </span>
                     <span className={`font-mono font-bold text-sm ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
                       {displayDeltaPureWT >= 0 ? '+' : '−'} {Math.abs(displayDeltaPureWT).toFixed(3)} g
@@ -1489,13 +1911,13 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
 
                   <div className="pt-2 border-t border-[#DCE5E3]">
                     <span className={`block text-[10px] uppercase font-bold ${isPurchase ? 'text-amber-700' : 'text-[#0F5C5B]'}`}>
-                      2. ({isPurchase ? '−' : '+'}) {isPurchase ? 'Purchase Remaining Cash' : 'Sale Remaining Cash'}
+                      2. ({isPurchase ? '−' : '+'}) {isPurchase ? 'Purchase Settled Cash' : 'Sale Settled Cash'}
                     </span>
                     <span className={`font-mono font-bold text-sm ${isPurchase ? 'text-amber-800' : 'text-[#0F5C5B]'}`}>
                       {displayDeltaAmount >= 0 ? '+' : '−'} <SBGCurrency value={Math.abs(displayDeltaAmount)} />
                     </span>
                     <span className="text-[10px] text-[#647777] block font-mono">
-                      (MC, Stones & GST to Cash Balance)
+                      (Adjusts Customer Cash Balance)
                     </span>
                   </div>
 
@@ -1524,15 +1946,21 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             {(() => {
               const isPurchase = transactionType === 'PURCHASE';
               const isFix = settlementMode === 'FIX' || settlementMode === 'CASH_ONLY';
-              const goldPureToAdjust = calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT;
-              const remainingCashToAdjust = isFix
-                ? calculatedEstimate.totals.grandTotal
-                : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal);
+              const settledGold = calculatedEstimate.totals.settledGoldWT ?? (isFix ? 0 : (calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT));
+              const settledCash = calculatedEstimate.totals.settledCashAmount ?? (isFix ? calculatedEstimate.totals.grandTotal : (calculatedEstimate.totals.remainingCashValue ?? calculatedEstimate.totals.grandTotal));
 
-              const displayDeltaPureWT = isFix
-                ? 0
-                : (isPurchase ? -goldPureToAdjust : goldPureToAdjust);
-              const displayDeltaAmount = isPurchase ? -remainingCashToAdjust : remainingCashToAdjust;
+              const displayDeltaPureWT = isPurchase ? -settledGold : settledGold;
+              const displayDeltaAmount = isPurchase ? -settledCash : settledCash;
+
+              const modeLabel = isFix
+                ? 'FIX (100% Cash)'
+                : unfixPreset === 'B2B_WITHOUT_MC'
+                ? 'UNFIX: B2B - Without MC'
+                : unfixPreset === 'B2B_WITH_MC'
+                ? 'UNFIX: B2B - With MC'
+                : unfixPreset === 'ALL_IN_GOLD'
+                ? 'UNFIX: All in Gold (100%)'
+                : 'UNFIX: Custom & Split Gold';
 
               return (
                 <div>
@@ -1540,7 +1968,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                     <span className="text-xs font-bold uppercase tracking-wider text-[#8C6A23] flex items-center gap-1.5">
                       <Wallet className="w-3.5 h-3.5" /> Ledger Posting Action
                     </span>
-                    <SBGBadge variant="gold">Ledger Hook</SBGBadge>
+                    <SBGBadge variant="gold">{modeLabel}</SBGBadge>
                   </div>
 
                   <div className="mt-3 space-y-2 text-xs text-[#526B6A]">

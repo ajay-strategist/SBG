@@ -625,27 +625,6 @@ export const AppShell: React.FC<AppShellProps> = ({
                         </div>
                       </div>
                     </button>
-
-                    {/* Direct Ledger Entry */}
-                    <button
-                      onClick={() => {
-                        setIsTxDropdownOpen(false);
-                        onNavigate('new-transaction');
-                      }}
-                      className="w-full px-3.5 py-2.5 text-left text-xs hover:bg-[#0F5C5B]/5 flex items-center gap-3 transition-colors cursor-pointer group border-t border-[#EFECE6]"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-gray-50 text-gray-700 flex items-center justify-center font-bold text-sm">
-                        📝
-                      </div>
-                      <div>
-                        <div className="font-bold text-[#173333] group-hover:text-[#0F5C5B]">
-                          Direct Ledger Voucher
-                        </div>
-                        <div className="text-[10px] text-[#647777]">
-                          Single-entry journal / manual adjustment
-                        </div>
-                      </div>
-                    </button>
                   </div>
                 </>
               )}

@@ -25,14 +25,16 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
   const { estimates, customers, confirmEstimate, deleteEstimate } = useSBG();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredEstimates = estimates.filter((e) => {
-    const cust = customers.find((c) => c.id === e.customerId);
-    return (
-      e.estimateNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (e.customerRef && e.customerRef.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (cust && cust.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  });
+  const filteredEstimates = estimates
+    .filter((e) => {
+      const cust = customers.find((c) => c.id === e.customerId);
+      return (
+        e.estimateNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (e.customerRef && e.customerRef.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (cust && cust.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    })
+    .sort((a, b) => new Date(b.estimateDate).getTime() - new Date(a.estimateDate).getTime() || b.estimateNo.localeCompare(a.estimateNo));
 
   return (
     <div className="space-y-6">

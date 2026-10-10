@@ -385,138 +385,277 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Table View */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#E2E8E6] uppercase font-bold text-[10px] tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4 w-10">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.length > 0 && selectedIds.length === filteredCustomers.length}
-                    onChange={handleSelectAll}
-                    className="rounded border-[#DCE5E3] text-[#0F5C5B] focus:ring-[#0F5C5B]"
-                  />
-                </th>
-                <th className="py-3.5 px-4">CUSTOMER</th>
-                <th className="py-3.5 px-4">CODE</th>
-                <th className="py-3.5 px-4 text-right">CURRENT PURE WT (g)</th>
-                <th className="py-3.5 px-4 text-right">CURRENT MC (₹)</th>
-                <th className="py-3.5 px-4 text-center">OPEN ORDERS</th>
-                <th className="py-3.5 px-4 text-center">STATUS</th>
-                <th className="py-3.5 px-4 text-center">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EFECE6]">
-              {filteredCustomers.length === 0 ? (
+        {/* View Mode Switching: Table vs Grid */}
+        {viewMode === 'list' ? (
+          /* Table View */
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#E2E8E6] uppercase font-bold text-[10px] tracking-wider">
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#647777]">
-                    <Users className="w-10 h-10 mx-auto text-[#647777]/40 mb-2" />
-                    <p className="font-semibold text-sm">No customers in database</p>
-                    <p className="text-xs text-[#647777]/70 mt-1">
-                      Click &quot;Add New Customer&quot; to create your first customer profile.
-                    </p>
-                  </td>
+                  <th className="py-3.5 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length > 0 && selectedIds.length === filteredCustomers.length}
+                      onChange={handleSelectAll}
+                      className="rounded border-[#DCE5E3] text-[#0F5C5B] focus:ring-[#0F5C5B]"
+                    />
+                  </th>
+                  <th className="py-3.5 px-4">CUSTOMER</th>
+                  <th className="py-3.5 px-4">CODE</th>
+                  <th className="py-3.5 px-4 text-right">CURRENT PURE WT (g)</th>
+                  <th className="py-3.5 px-4 text-right">CURRENT MC (₹)</th>
+                  <th className="py-3.5 px-4 text-center">OPEN ORDERS</th>
+                  <th className="py-3.5 px-4 text-center">STATUS</th>
+                  <th className="py-3.5 px-4 text-center">ACTIONS</th>
                 </tr>
-              ) : (
-                filteredCustomers.map((cust) => {
+              </thead>
+              <tbody className="divide-y divide-[#EFECE6]">
+                {filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-[#647777]">
+                      <Users className="w-10 h-10 mx-auto text-[#647777]/40 mb-2" />
+                      <p className="font-semibold text-sm">No customers in database</p>
+                      <p className="text-xs text-[#647777]/70 mt-1">
+                        Click &quot;Add New Customer&quot; to create your first customer profile.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCustomers.map((cust) => {
+                    const openOrdersCount = orders.filter(
+                      (o) => o.customerId === cust.id && o.status !== 'SETTLED' && o.status !== 'COMPLETED' && o.status !== 'CANCELLED'
+                    ).length;
+                    const isSelected = selectedIds.includes(cust.id);
+
+                    return (
+                      <tr
+                        key={cust.id}
+                        className={`hover:bg-[#FAF8F5] transition-colors cursor-pointer ${
+                          isSelected ? 'bg-[#FAF8F5]' : ''
+                        }`}
+                        onClick={() => onNavigate('customer-profile', cust.id)}
+                      >
+                        <td
+                          className="py-4 px-4"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleSelect(cust.id);
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(cust.id)}
+                            className="rounded border-[#DCE5E3] text-[#0F5C5B] focus:ring-[#0F5C5B]"
+                          />
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="font-bold text-[#173333] text-xs">
+                            {cust.name}
+                          </div>
+                          <div className="text-[11px] text-[#647777] mt-0.5">
+                            {cust.city || 'Mumbai, Maharashtra'}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 font-mono font-semibold text-[#173333]">
+                          {cust.code}
+                        </td>
+                        <td className="py-4 px-4 text-right font-mono font-bold">
+                          <span
+                            className={
+                              cust.currentWT < 0
+                                ? 'text-[#C24141]'
+                                : cust.currentWT > 0
+                                ? 'text-[#1B7C5A]'
+                                : 'text-[#647777]'
+                            }
+                          >
+                            {cust.currentWT.toFixed(3)}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right font-mono font-bold text-[#173333]">
+                          {cust.currentMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#FAF0DC] text-[#7A5B18] font-bold text-xs">
+                            {openOrdersCount}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wide ${
+                              cust.status === 'ACTIVE'
+                                ? 'bg-[#E6F8F2] text-[#1A825B]'
+                                : 'bg-[#FEECEC] text-[#C24141]'
+                            }`}
+                          >
+                            {cust.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td
+                          className="py-4 px-4 text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-center gap-1.5 text-[#647777]">
+                            <button
+                              onClick={() => onNavigate('customer-profile', cust.id)}
+                              className="p-1.5 rounded-lg hover:bg-white hover:text-[#0F5C5B] transition-colors cursor-pointer"
+                              title="View Profile"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              className="p-1.5 rounded-lg hover:bg-white hover:text-[#173333] transition-colors cursor-pointer"
+                              title="More options"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* Cards Grid View */
+          <div className="p-6">
+            {filteredCustomers.length === 0 ? (
+              <div className="py-12 text-center text-[#647777]">
+                <Users className="w-10 h-10 mx-auto text-[#647777]/40 mb-2" />
+                <p className="font-semibold text-sm">No customers in database</p>
+                <p className="text-xs text-[#647777]/70 mt-1">
+                  Click &quot;Add New Customer&quot; to create your first customer profile.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredCustomers.map((cust) => {
                   const openOrdersCount = orders.filter(
                     (o) => o.customerId === cust.id && o.status !== 'SETTLED' && o.status !== 'COMPLETED' && o.status !== 'CANCELLED'
                   ).length;
                   const isSelected = selectedIds.includes(cust.id);
 
                   return (
-                    <tr
+                    <div
                       key={cust.id}
-                      className={`hover:bg-[#FAF8F5] transition-colors cursor-pointer ${
-                        isSelected ? 'bg-[#FAF8F5]' : ''
-                      }`}
                       onClick={() => onNavigate('customer-profile', cust.id)}
+                      className={`group relative rounded-2xl border transition-all duration-200 cursor-pointer p-5 bg-white hover:shadow-md hover:border-[#0F5C5B]/40 flex flex-col justify-between ${
+                        isSelected ? 'border-[#0F5C5B] ring-2 ring-[#0F5C5B]/20 bg-[#FAF9F6]' : 'border-[#E2E8E6]'
+                      }`}
                     >
-                      <td
-                        className="py-4 px-4"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleSelect(cust.id);
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleSelect(cust.id)}
-                          className="rounded border-[#DCE5E3] text-[#0F5C5B] focus:ring-[#0F5C5B]"
-                        />
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="font-bold text-[#173333] text-xs">
-                          {cust.name}
-                        </div>
-                        <div className="text-[11px] text-[#647777] mt-0.5">
-                          {cust.city || 'Mumbai, Maharashtra'}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 font-mono font-semibold text-[#173333]">
-                        {cust.code}
-                      </td>
-                      <td className="py-4 px-4 text-right font-mono font-bold">
-                        <span
-                          className={
-                            cust.currentWT < 0
-                              ? 'text-[#C24141]'
-                              : cust.currentWT > 0
-                              ? 'text-[#1B7C5A]'
-                              : 'text-[#647777]'
-                          }
-                        >
-                          {cust.currentWT.toFixed(3)}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-right font-mono font-bold text-[#173333]">
-                        {cust.currentMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#FAF0DC] text-[#7A5B18] font-bold text-xs">
-                          {openOrdersCount}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wide ${
-                            cust.status === 'ACTIVE'
-                              ? 'bg-[#E6F8F2] text-[#1A825B]'
-                              : 'bg-[#FEECEC] text-[#C24141]'
-                          }`}
-                        >
-                          {cust.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td
-                        className="py-4 px-4 text-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-center gap-1.5 text-[#647777]">
-                          <button
-                            onClick={() => onNavigate('customer-profile', cust.id)}
-                            className="p-1.5 rounded-lg hover:bg-white hover:text-[#0F5C5B] transition-colors cursor-pointer"
-                            title="View Profile"
+                      {/* Top Header */}
+                      <div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F5C5B] to-[#174847] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                              {cust.name.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-sm text-[#173333] group-hover:text-[#0F5C5B] transition-colors leading-tight">
+                                {cust.name}
+                              </h3>
+                              <p className="text-[11px] text-[#647777] mt-0.5">
+                                {cust.city || 'Mumbai, Maharashtra'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${
+                              cust.status === 'ACTIVE'
+                                ? 'bg-[#E6F8F2] text-[#1A825B]'
+                                : 'bg-[#FEECEC] text-[#C24141]'
+                            }`}
                           >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                            {cust.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+
+                        {/* Customer Code & Open Orders Pill */}
+                        <div className="flex items-center gap-2 mt-3.5">
+                          <span className="font-mono text-[10px] font-bold text-[#7A6126] bg-[#FAF3E0] px-2 py-0.5 rounded-md border border-[#F0E2BE]">
+                            {cust.code}
+                          </span>
+                          <span className="text-[10px] font-semibold text-[#526B6A] bg-[#F2FAF8] px-2 py-0.5 rounded-md border border-[#D5EAE5]">
+                            📦 {openOrdersCount} Open Order{openOrdersCount === 1 ? '' : 's'}
+                          </span>
+                        </div>
+
+                        {/* Balances Grid */}
+                        <div className="grid grid-cols-2 gap-2.5 mt-4 pt-3.5 border-t border-[#EFECE6]">
+                          <div className="p-2.5 rounded-xl bg-[#FAF9F6] border border-[#EFECE6]">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-[#7A8A88] block">
+                              Pure Gold (g)
+                            </span>
+                            <span
+                              className={`font-mono font-bold text-sm block mt-0.5 ${
+                                cust.currentWT < 0
+                                  ? 'text-[#C24141]'
+                                  : cust.currentWT > 0
+                                  ? 'text-[#1B7C5A]'
+                                  : 'text-[#647777]'
+                              }`}
+                            >
+                              {cust.currentWT.toFixed(3)} g
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-[#FAF9F6] border border-[#EFECE6]">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-[#7A8A88] block">
+                              Making Charge (₹)
+                            </span>
+                            <span
+                              className={`font-mono font-bold text-sm block mt-0.5 ${
+                                cust.currentMC < 0
+                                  ? 'text-[#C24141]'
+                                  : cust.currentMC > 0
+                                  ? 'text-[#1B7C5A]'
+                                  : 'text-[#173333]'
+                              }`}
+                            >
+                              ₹{cust.currentMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Footer Actions */}
+                      <div className="mt-4 pt-3 border-t border-[#EFECE6] flex items-center justify-between text-xs">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onNavigate('customer-profile', cust.id);
+                          }}
+                          className="text-[#0F5C5B] font-bold text-xs hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View Profile</span>
+                        </button>
+
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
-                            className="p-1.5 rounded-lg hover:bg-white hover:text-[#173333] transition-colors cursor-pointer"
-                            title="More options"
+                            type="button"
+                            onClick={() => {
+                              setSelectedTxCustId(cust.id);
+                              setIsTxModalOpen(true);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-[#0F5C5B]/10 hover:bg-[#0F5C5B] hover:text-white text-[#0F5C5B] font-semibold text-[11px] transition-colors cursor-pointer"
                           >
-                            <MoreHorizontal className="w-4 h-4" />
+                            + Transact
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Table Footer & Pagination */}
         <div className="px-6 py-4 border-t border-[#E2E8E6] flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-[#647777]">

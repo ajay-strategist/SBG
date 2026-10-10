@@ -84,29 +84,35 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
   // Determine transaction nature & components
   const isPurchase = estimate.transactionType === 'PURCHASE' || estimate.direction === 'RECEIPT';
   const isFix = estimate.settlementMode === 'FIX' || estimate.settlementMode === 'CASH_ONLY';
-  const goldPureWT = (estimate.totals.goldPureWT && estimate.totals.goldPureWT > 0)
-    ? estimate.totals.goldPureWT
-    : estimate.items.filter((i) => i.category === 'GOLD').reduce((sum, i) => sum + (i.pureWT || 0), 0);
-  const remainingCash = estimate.totals.remainingCashValue ?? Math.max(0, estimate.totals.grandTotal - (estimate.totals.goldValue ?? 0));
+  const settledGoldWT = estimate.totals?.settledGoldWT !== undefined
+    ? estimate.totals.settledGoldWT
+    : (isFix ? 0 : (estimate.totals.goldPureWT ?? estimate.totals.totalPureWT));
+  const settledCashAmount = estimate.totals?.settledCashAmount !== undefined
+    ? estimate.totals.settledCashAmount
+    : (isFix ? estimate.totals.grandTotal : (estimate.totals.remainingCashValue ?? estimate.totals.grandTotal));
 
-  const deltaPureWT = isFix
-    ? 0
-    : (isPurchase ? -goldPureWT : goldPureWT);
-
-  const deltaMC = isFix
-    ? (isPurchase ? -estimate.totals.grandTotal : estimate.totals.grandTotal)
-    : (isPurchase ? -remainingCash : remainingCash);
+  const deltaPureWT = isPurchase ? -settledGoldWT : settledGoldWT;
+  const deltaMC = isPurchase ? -settledCashAmount : settledCashAmount;
 
   const handleToggleSettlementMode = async (newMode: 'FIX' | 'UNFIX') => {
     if (!rawEstimate) return;
     const isNowFix = newMode === 'FIX';
-    const goldPureToAdjust = estimate.totals.goldPureWT ?? estimate.totals.totalPureWT;
-    const remainingCashToAdjust = estimate.totals.remainingCashValue ?? Math.max(0, estimate.totals.grandTotal - (estimate.totals.goldValue ?? 0));
 
-    const newDeltaPureWT = isNowFix ? 0 : (isPurchase ? -goldPureToAdjust : goldPureToAdjust);
-    const newDeltaAmount = isNowFix
-      ? (isPurchase ? -estimate.totals.grandTotal : estimate.totals.grandTotal)
-      : (isPurchase ? -remainingCashToAdjust : remainingCashToAdjust);
+    const recalculated = calculateEstimateSheet({
+      ...rawEstimate,
+      settlementMode: newMode,
+      direction: isPurchase ? ('RECEIPT' as const) : ('ISSUE' as const),
+    });
+
+    const settledGold = recalculated.totals?.settledGoldWT !== undefined
+      ? recalculated.totals.settledGoldWT
+      : (isNowFix ? 0 : (recalculated.totals.goldPureWT ?? recalculated.totals.totalPureWT));
+    const settledCash = recalculated.totals?.settledCashAmount !== undefined
+      ? recalculated.totals.settledCashAmount
+      : (isNowFix ? recalculated.totals.grandTotal : (recalculated.totals.remainingCashValue ?? recalculated.totals.grandTotal));
+
+    const newDeltaPureWT = isPurchase ? -settledGold : settledGold;
+    const newDeltaAmount = isPurchase ? -settledCash : settledCash;
 
     const prevWT = rawEstimate.previousBalanceWT ?? customer?.currentWT ?? 0;
     const prevMC = rawEstimate.previousBalanceMC ?? customer?.currentMC ?? 0;
@@ -116,6 +122,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
 
     await updateEstimate(rawEstimate.id, {
       ...rawEstimate,
+      ...recalculated,
       settlementMode: newMode,
       deltaPureWT: newDeltaPureWT,
       deltaAmount: newDeltaAmount,
@@ -135,7 +142,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
       },
     });
 
-    setShowToast(`Settlement switched to ${newMode === 'FIX' ? 'FIX (100% Cash)' : 'UNFIX (Gold WT + Remaining Cash)'}!`);
+    setShowToast(`Settlement switched to ${newMode === 'FIX' ? 'FIX (100% Cash)' : 'UNFIX'}!`);
     setTimeout(() => setShowToast(null), 5000);
   };
 
@@ -787,17 +794,33 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                         <span>Taxable Value:</span>
                         <span className="font-bold text-[#173333]"><SBGCurrency value={estimate.totals.taxableValue} /></span>
                       </div>
+                      {((estimate.totals.totalExpenses ?? 0) > 0) && (
+                        <div className="flex justify-between text-[10px] text-[#647777]">
+                          <span>Company Expenses:</span>
+                          <span className="font-semibold text-[#173333]"><SBGCurrency value={estimate.totals.totalExpenses ?? 0} /></span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-[10px] text-[#647777]">
                         <span>GST ({estimate.totals.gstRate}%):</span>
                         <span><SBGCurrency value={estimate.totals.gstAmount} /></span>
                       </div>
                     </div>
                   </div>
-                  <div className="pt-2 mt-2 border-t-2 border-[#0F5C5B]/30 flex justify-between items-center text-xs font-black">
-                    <span className="text-[#0F5C5B] text-[10px] uppercase">Total Amount:</span>
-                    <span className="font-mono text-sm text-[#0F5C5B]">
-                      <SBGCurrency value={estimate.totals.grandTotal} />
-                    </span>
+                  <div className="pt-2 mt-2 border-t-2 border-[#0F5C5B]/30 space-y-1">
+                    <div className="flex justify-between items-center text-xs font-black">
+                      <span className="text-[#0F5C5B] text-[10px] uppercase">Grand Total:</span>
+                      <span className="font-mono text-sm text-[#0F5C5B]">
+                        <SBGCurrency value={estimate.totals.grandTotal} />
+                      </span>
+                    </div>
+                    <div className="pt-1 border-t border-[#0F5C5B]/15 flex justify-between text-[10px] font-mono">
+                      <span className="text-[#0F5C5B] font-bold">Gold Settlement:</span>
+                      <span className="font-bold text-[#0F5C5B]">{(estimate.totals.settledGoldWT ?? 0).toFixed(3)} g</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] font-mono">
+                      <span className="text-[#8C6A23] font-bold">Cash Settlement:</span>
+                      <span className="font-bold text-[#8C6A23]"><SBGCurrency value={estimate.totals.settledCashAmount ?? 0} /></span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -914,7 +937,15 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                           <div className="font-bold flex items-center gap-1.5">
                             <span>{isPurchase ? 'Purchase Adjustment (Receipt − Credit)' : 'Sale Adjustment (Issue + Debit)'}</span>
                             <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-black/5 text-[#0F5C5B]">
-                              {isFix ? '🔒 FIX (100% CASH)' : '⚖️ UNFIX (GOLD + CASH)'}
+                              {isFix
+                                ? '🔒 FIX (100% CASH)'
+                                : estimate.unfixPreset === 'B2B_WITHOUT_MC'
+                                ? '⚖️ UNFIX: B2B - Without MC'
+                                : estimate.unfixPreset === 'B2B_WITH_MC'
+                                ? '⚖️ UNFIX: B2B - With MC'
+                                : estimate.unfixPreset === 'ALL_IN_GOLD'
+                                ? '⚖️ UNFIX: All in Gold (100%)'
+                                : '⚖️ UNFIX: Custom / Split Gold'}
                             </span>
                           </div>
                           <div className="text-[10px] font-normal text-[#647777]">
@@ -923,21 +954,21 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                                   ? 'Fix Mode: Entire Grand Total (all Gold + Stones + MC + GST) is credited to Cash balance; Gold balance is untouched (0.000g).'
                                   : 'Fix Mode: Entire Grand Total (all Gold + Stones + MC + GST) is debited to Cash balance; Gold balance is untouched (0.000g).')
                               : (isPurchase
-                                  ? 'Unfix Mode: Pure Gold WT credited to Gold account; Remaining Cash (MC, Stones & GST) credited to Cash balance.'
-                                  : 'Unfix Mode: Pure Gold WT debited to Gold account; Remaining Cash debited to Cash balance.')}
+                                  ? `Unfix Mode: Pure Gold (${Math.abs(deltaPureWT).toFixed(3)}g) credited to Gold balance; Cash (₹${Math.abs(deltaMC).toLocaleString('en-IN')}) credited to Cash balance.`
+                                  : `Unfix Mode: Pure Gold (${Math.abs(deltaPureWT).toFixed(3)}g) debited to Gold balance; Cash (₹${Math.abs(deltaMC).toLocaleString('en-IN')}) debited to Cash balance.`)}
                           </div>
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-right font-bold">
                         <div>{deltaPureWT >= 0 ? '+' : '−'} {Math.abs(deltaPureWT).toFixed(3)} g</div>
                         <div className="text-[10px] font-normal text-[#647777]">
-                          (Pure Gold Metal)
+                          (Pure Gold to Settle)
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-right font-bold">
                         <div>{deltaMC >= 0 ? '+' : '−'} <SBGCurrency value={Math.abs(deltaMC)} /></div>
                         <div className="text-[10px] font-normal text-[#647777]">
-                          (Remaining Cash)
+                          (Cash to Settle)
                         </div>
                       </td>
                     </tr>

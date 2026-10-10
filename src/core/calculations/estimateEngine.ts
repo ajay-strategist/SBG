@@ -1,5 +1,12 @@
 import { roundWeight, roundCurrency, roundPurity } from './mathUtils';
-import { EstimateCostSheet, EstimateLineItem, EstimateSubItem, TransactionDirection } from './types';
+import {
+  EstimateCostSheet,
+  EstimateLineItem,
+  EstimateSubItem,
+  TransactionDirection,
+  UnfixPresetType,
+  UnfixComponentSettlement,
+} from './types';
 
 /**
  * Calculates a single Estimate sub-item (e.g. Gold, Rubie, Diamond, Emerald, Making Charges).
@@ -356,10 +363,20 @@ export function calculateEstimateSheet(
   mcValue = roundCurrency(mcValue);
   otherValue = roundCurrency(otherValue);
 
-  const taxableValue = roundCurrency(goldValue + diamondValue + psValue + mcValue + otherValue);
+  // Additional Company Expenses (HUID, Courier, Misc)
+  const huidCharges = roundCurrency(Number(sheet.additionalExpenses?.huidCharges) || 0);
+  const courierCharges = roundCurrency(Number(sheet.additionalExpenses?.courierCharges) || 0);
+  const otherCharges = roundCurrency(Number(sheet.additionalExpenses?.otherCharges) || 0);
+  const totalExpenses = roundCurrency(huidCharges + courierCharges + otherCharges);
+
+  const taxableValue = roundCurrency(goldValue + diamondValue + psValue + mcValue + otherValue + totalExpenses);
   const gstRate = Number(gstPercentage) || 3.0;
   const gstAmount = roundCurrency(taxableValue * (gstRate / 100));
   const grandTotal = roundCurrency(taxableValue + gstAmount);
+
+  // Component-specific GST breakdown
+  const goldGstAmount = roundCurrency(goldValue * (gstRate / 100));
+  const nonGoldGstAmount = roundCurrency(Math.max(0, gstAmount - goldGstAmount));
 
   // Remaining non-metal cash charges: Making charges, Diamonds, Gemstones, and associated GST
   const remainingCashValue = roundCurrency(Math.max(0, grandTotal - goldValue));
@@ -373,23 +390,104 @@ export function calculateEstimateSheet(
     ? 'FIX'
     : (rawMode === 'GOLD_ONLY' ? 'GOLD_ONLY' : 'UNFIX');
 
-  let deltaPureWT = 0;
-  let deltaAmount = 0;
+  const unfixPreset: UnfixPresetType = sheet.unfixPreset || 'B2B_WITHOUT_MC';
+  const effectiveGoldRate = goldRate > 0 ? goldRate : 1;
+  const goldPureToAdjust = goldPureWT > 0 ? goldPureWT : totalPureWT;
+
+  let settledGoldWT = 0;
+  let settledCashAmount = 0;
 
   if (settlementMode === 'FIX') {
     // FIX: 100% Cash Settlement (Gold Balance = 0, Grand Total + All GST adjusted in Cash)
-    deltaPureWT = 0;
-    deltaAmount = roundCurrency(sign * grandTotal);
-  } else if (settlementMode === 'UNFIX') {
-    // UNFIX: Gold portion settled as Pure Gold WT, Remaining (Diamonds + Stones + MC + GST) in Cash
-    const goldPureToAdjust = goldPureWT > 0 ? goldPureWT : totalPureWT;
-    deltaPureWT = roundWeight(sign * goldPureToAdjust);
-    deltaAmount = roundCurrency(sign * remainingCashValue);
+    settledGoldWT = 0;
+    settledCashAmount = grandTotal;
   } else if (settlementMode === 'GOLD_ONLY') {
     // Settle all in pure gold weight equivalent
-    deltaPureWT = roundWeight(sign * totalPureWT);
-    deltaAmount = 0;
+    settledGoldWT = roundWeight(totalPureWT + (grandTotal - goldValue) / effectiveGoldRate);
+    settledCashAmount = 0;
+  } else {
+    // UNFIX settlement modes
+    if (!sheet.unfixPreset && !sheet.unfixComponentSettlement) {
+      // Default / standard UNFIX: Pure gold weight in Gold, remaining cash charges in Cash
+      settledGoldWT = roundWeight(goldPureToAdjust);
+      settledCashAmount = roundCurrency(remainingCashValue);
+    } else if (unfixPreset === 'B2B_WITHOUT_MC') {
+      // B2B-Without MC: Gold & its GST in Gold; MC & remaining charges in Cash
+      const goldGstInGold = roundWeight(goldGstAmount / effectiveGoldRate);
+      settledGoldWT = roundWeight(goldPureToAdjust + goldGstInGold);
+      settledCashAmount = roundCurrency(mcValue + diamondValue + psValue + otherValue + totalExpenses + nonGoldGstAmount);
+    } else if (unfixPreset === 'B2B_WITH_MC') {
+      // B2B-With MC: Gold, its GST, and Making Charges in Gold; remaining in Cash
+      const goldGstInGold = roundWeight(goldGstAmount / effectiveGoldRate);
+      const mcInGold = roundWeight(mcValue / effectiveGoldRate);
+      settledGoldWT = roundWeight(goldPureToAdjust + goldGstInGold + mcInGold);
+      settledCashAmount = roundCurrency(diamondValue + psValue + otherValue + totalExpenses + nonGoldGstAmount);
+    } else if (unfixPreset === 'ALL_IN_GOLD') {
+      // All-inclusive Gold: Gold, GST, MC, Stones, HUID, Courier all in Gold
+      const nonGoldInGold = roundWeight((grandTotal - goldValue) / effectiveGoldRate);
+      settledGoldWT = roundWeight(goldPureToAdjust + nonGoldInGold);
+      settledCashAmount = 0;
+    } else {
+      // CUSTOM / Component-level selection
+      const custom: UnfixComponentSettlement = sheet.unfixComponentSettlement || {
+        goldMetalMode: 'GOLD',
+        goldGSTMode: 'GOLD',
+        mcMode: 'CASH',
+        stonesMode: 'CASH',
+        expensesMode: 'CASH',
+      };
+
+      // 1. Gold Metal
+      if (custom.goldMetalMode === 'GOLD') {
+        settledGoldWT += goldPureToAdjust;
+      } else if (custom.goldMetalMode === 'CASH') {
+        settledCashAmount += goldValue;
+      } else if (custom.goldMetalMode === 'SPLIT') {
+        const metalPaid = Math.max(0, Math.min(goldPureToAdjust, Number(custom.goldPaidInMetalGrams) || 0));
+        const unpaidGoldWT = Math.max(0, goldPureToAdjust - metalPaid);
+        settledGoldWT += metalPaid;
+        settledCashAmount += roundCurrency(unpaidGoldWT * effectiveGoldRate);
+      }
+
+      // 2. Gold GST
+      if (custom.goldGSTMode === 'GOLD') {
+        settledGoldWT += roundWeight(goldGstAmount / effectiveGoldRate);
+      } else {
+        settledCashAmount += goldGstAmount;
+      }
+
+      // 3. Making Charges
+      if (custom.mcMode === 'GOLD') {
+        settledGoldWT += roundWeight(mcValue / effectiveGoldRate);
+      } else {
+        settledCashAmount += mcValue;
+      }
+
+      // 4. Stones & Diamonds
+      const stonesTotal = diamondValue + psValue + otherValue;
+      if (custom.stonesMode === 'GOLD') {
+        settledGoldWT += roundWeight(stonesTotal / effectiveGoldRate);
+      } else {
+        settledCashAmount += stonesTotal;
+      }
+
+      // 5. Additional Expenses (HUID, Courier)
+      if (custom.expensesMode === 'GOLD') {
+        settledGoldWT += roundWeight(totalExpenses / effectiveGoldRate);
+      } else {
+        settledCashAmount += totalExpenses;
+      }
+
+      // Remaining Non-Gold GST stays in Cash
+      settledCashAmount += nonGoldGstAmount;
+
+      settledGoldWT = roundWeight(settledGoldWT);
+      settledCashAmount = roundCurrency(settledCashAmount);
+    }
   }
+
+  const deltaPureWT = roundWeight(sign * settledGoldWT);
+  const deltaAmount = roundCurrency(sign * settledCashAmount);
 
   // Balance comparisons
   const existingOldPureWT = sheet.balanceComparison?.ledgerOldPureWT ?? sheet.previousBalanceWT ?? 0;
@@ -421,6 +519,9 @@ export function calculateEstimateSheet(
     transactionType,
     direction,
     settlementMode,
+    unfixPreset,
+    unfixComponentSettlement: sheet.unfixComponentSettlement,
+    additionalExpenses: sheet.additionalExpenses,
     goldRate,
     goldRatePurity: sheet.goldRatePurity || 99.5,
     unfixGoldRate: sheet.unfixGoldRate,
@@ -432,11 +533,17 @@ export function calculateEstimateSheet(
       diamondValue,
       psValue,
       mcValue,
+      huidCharges,
+      courierCharges,
+      otherCharges,
+      totalExpenses,
       taxableValue,
       gstRate,
       gstAmount,
       grandTotal,
       remainingCashValue,
+      settledGoldWT,
+      settledCashAmount,
       totalGrossWT: roundWeight(totalGrossWT),
       totalStoneWT: roundWeight(totalStoneWT),
       totalNetWT: roundWeight(totalNetWT),

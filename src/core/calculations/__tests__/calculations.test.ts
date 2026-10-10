@@ -378,6 +378,168 @@ describe('SBG Core Calculation Engine', () => {
       // Entire Grand Total (with GST) is adjusted in Cash balance
       expect(estimate.balanceComparison.deltaAmount).toBe(-estimate.totals.grandTotal);
     });
+
+    it('calculates UNFIX B2B_WITHOUT_MC: Gold and Gold GST in Gold, MC & Expenses in Cash', () => {
+      const estimate = calculateEstimateSheet({
+        estimateNo: 'EST-UNFIX-B2B1',
+        transactionType: 'SALE',
+        settlementMode: 'UNFIX',
+        unfixPreset: 'B2B_WITHOUT_MC',
+        goldRate: 10000,
+        additionalExpenses: {
+          huidCharges: 90,
+          courierCharges: 250,
+        },
+        items: [
+          {
+            item: 'Gold Ring',
+            category: 'GOLD',
+            grossWT: 10.0,
+            stoneWT: 0,
+            touch: 100, // 10g pure gold
+            rate: 10000,
+            rateUnit: 'PER_G',
+          },
+          {
+            item: 'Making Charge',
+            category: 'MAKING_CHARGE',
+            grossWT: 0,
+            stoneWT: 0,
+            touch: 0,
+            rate: 5000, // ₹5000 MC
+            rateUnit: 'LUMP_SUM',
+            amount: 5000,
+          },
+        ],
+      }, 3.0);
+
+      // Gold metal value = 10g * 10,000 = 1,00,000.
+      // Gold GST (3%) = 3,000.
+      // Converted Gold GST in grams = 3,000 / 10,000 = 0.300 g.
+      // Total Gold settled = 10.000 + 0.300 = 10.300 g.
+      expect(estimate.totals.settledGoldWT).toBe(10.300);
+      expect(estimate.balanceComparison.deltaPureWT).toBe(10.300);
+
+      // Cash settled = MC (5000) + HUID (90) + Courier (250) + Non-Gold GST (3% of 5340 = 160.20)
+      // 5000 + 90 + 250 + 160.20 = 5500.20
+      expect(estimate.totals.settledCashAmount).toBe(5500.20);
+      expect(estimate.balanceComparison.deltaAmount).toBe(5500.20);
+    });
+
+    it('calculates UNFIX B2B_WITH_MC: Gold, Gold GST, and Making Charges in Gold', () => {
+      const estimate = calculateEstimateSheet({
+        estimateNo: 'EST-UNFIX-B2B2',
+        transactionType: 'SALE',
+        settlementMode: 'UNFIX',
+        unfixPreset: 'B2B_WITH_MC',
+        goldRate: 10000,
+        additionalExpenses: {
+          courierCharges: 500,
+        },
+        items: [
+          {
+            item: 'Gold Ring',
+            category: 'GOLD',
+            grossWT: 10.0,
+            stoneWT: 0,
+            touch: 100,
+            rate: 10000,
+            rateUnit: 'PER_G',
+          },
+          {
+            item: 'Making Charge',
+            category: 'MAKING_CHARGE',
+            grossWT: 0,
+            stoneWT: 0,
+            touch: 0,
+            rate: 5000,
+            rateUnit: 'LUMP_SUM',
+            amount: 5000, // ₹5000 / 10000 = 0.500 g
+          },
+        ],
+      }, 3.0);
+
+      // Gold (10.000g) + Gold GST (0.300g) + MC (0.500g) = 10.800g
+      expect(estimate.totals.settledGoldWT).toBe(10.800);
+      expect(estimate.balanceComparison.deltaPureWT).toBe(10.800);
+
+      // Courier (500) + Non-Gold GST (165.00) = 665.00
+      expect(estimate.totals.settledCashAmount).toBe(665.00);
+      expect(estimate.balanceComparison.deltaAmount).toBe(665.00);
+    });
+
+    it('calculates UNFIX ALL_IN_GOLD: All charges converted to Pure Gold weight with 0 Cash', () => {
+      const estimate = calculateEstimateSheet({
+        estimateNo: 'EST-UNFIX-ALLGOLD',
+        transactionType: 'SALE',
+        settlementMode: 'UNFIX',
+        unfixPreset: 'ALL_IN_GOLD',
+        goldRate: 10000,
+        items: [
+          {
+            item: 'Gold Ring',
+            category: 'GOLD',
+            grossWT: 10.0,
+            stoneWT: 0,
+            touch: 100,
+            rate: 10000,
+            rateUnit: 'PER_G',
+          },
+          {
+            item: 'Making Charge',
+            category: 'MAKING_CHARGE',
+            grossWT: 0,
+            stoneWT: 0,
+            touch: 0,
+            rate: 5000,
+            rateUnit: 'LUMP_SUM',
+            amount: 5000,
+          },
+        ],
+      }, 3.0);
+
+      expect(estimate.totals.settledCashAmount).toBe(0);
+      expect(estimate.balanceComparison.deltaAmount).toBe(0);
+      expect(estimate.totals.settledGoldWT).toBeGreaterThan(10);
+    });
+
+    it('calculates UNFIX SPLIT Gold: pays partial gold in metal, remainder in cash', () => {
+      const estimate = calculateEstimateSheet({
+        estimateNo: 'EST-UNFIX-SPLIT',
+        transactionType: 'SALE',
+        settlementMode: 'UNFIX',
+        unfixPreset: 'CUSTOM',
+        unfixComponentSettlement: {
+          goldMetalMode: 'SPLIT',
+          goldPaidInMetalGrams: 6.0, // 6g in metal, 4g converted to cash
+          goldGSTMode: 'GOLD',
+          mcMode: 'CASH',
+          stonesMode: 'CASH',
+          expensesMode: 'CASH',
+        },
+        goldRate: 10000,
+        items: [
+          {
+            item: 'Gold Bar',
+            category: 'GOLD',
+            grossWT: 10.0,
+            stoneWT: 0,
+            touch: 100, // 10g pure
+            rate: 10000,
+            rateUnit: 'PER_G',
+          },
+        ],
+      }, 3.0);
+
+      // Gold GST = 3000 / 10000 = 0.300g
+      // 6.000g in metal + 0.300g GST in gold = 6.300g settled in gold
+      expect(estimate.totals.settledGoldWT).toBe(6.300);
+      expect(estimate.balanceComparison.deltaPureWT).toBe(6.300);
+
+      // Remaining 4.000g gold * 10000 = ₹40,000 cash
+      expect(estimate.totals.settledCashAmount).toBe(40000);
+      expect(estimate.balanceComparison.deltaAmount).toBe(40000);
+    });
   });
 
   describe('Settlement Engine', () => {
