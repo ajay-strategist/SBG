@@ -48,6 +48,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordFeedback, setPasswordFeedback] = useState<{ message: string; isError: boolean } | null>(null);
 
+  const isAdmin = currentUser.role === 'ADMIN';
+
   const handleUpdatePassword = () => {
     setPasswordFeedback(null);
     if (!newPassword || newPassword.length < 4) {
@@ -66,8 +68,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
     setTimeout(() => setPasswordFeedback(null), 4000);
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!isAdmin) return;
+
     const parsedRate = parseFloat(rateInput);
     const parsedGST = parseFloat(gstInput);
 
@@ -84,6 +88,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
   };
 
   const handleSyncDatabase = async () => {
+    if (!isAdmin) return;
     await refreshFromDatabase();
     setAlertMessage('Synced live data with Supabase DB!');
     setSaveAlert(true);
@@ -91,6 +96,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
   };
 
   const handleClearAll = () => {
+    if (!isAdmin) return;
     if (window.confirm('Are you sure you want to clear all local data? This will reset all customers, orders, transactions, estimates, and settlements to zero.')) {
       clearAllData();
       setAlertMessage('All data cleared. System reset to zero state.');
@@ -105,10 +111,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-[#0F5C5B] flex items-center gap-2.5">
-            <SettingsIcon className="w-6 h-6 text-[#0F5C5B]" /> System Configuration & Settings
+            <SettingsIcon className="w-6 h-6 text-[#0F5C5B]" />
+            {isAdmin ? 'System Configuration & Settings' : 'Account Settings & Security'}
           </h2>
           <p className="text-xs text-[#647777] mt-0.5">
-            Global market rates, default GST percentages, company entity details, and state maintenance
+            {isAdmin
+              ? 'Global market rates, default GST percentages, company entity details, and state maintenance'
+              : `Manage personal credentials and password security for ${currentUser.name} (${currentUser.role})`}
           </p>
         </div>
 
@@ -119,60 +128,64 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
         )}
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        {/* Metal Rates & Tax Parameters */}
-        <SBGCard variant="glass" className="p-6 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
-            <Sparkles className="w-4 h-4" /> Market Rates & Financial Defaults
-          </h3>
+      <div className="space-y-6">
+        {/* Metal Rates & Tax Parameters — Admin Only */}
+        {isAdmin && (
+          <div className="space-y-6">
+            <SBGCard variant="glass" className="p-6 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
+                <Sparkles className="w-4 h-4" /> Market Rates & Financial Defaults
+              </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SBGInput
-              label="Standard Gold Market Rate (₹/g - 99.5 purity)"
-              type="number"
-              step="0.01"
-              suffixText="₹/g"
-              value={rateInput}
-              onChange={(e) => setRateInput(e.target.value)}
-              helperText="Default rate applied when generating new estimates and cost sheets"
-              required
-            />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SBGInput
+                  label="Standard Gold Market Rate (₹/g - 99.5 purity)"
+                  type="number"
+                  step="0.01"
+                  suffixText="₹/g"
+                  value={rateInput}
+                  onChange={(e) => setRateInput(e.target.value)}
+                  helperText="Default rate applied when generating new estimates and cost sheets"
+                  required
+                />
 
-            <SBGInput
-              label="Default Jewellery GST Rate (%)"
-              type="number"
-              step="0.1"
-              suffixText="%"
-              value={gstInput}
-              onChange={(e) => setGstInput(e.target.value)}
-              helperText="Standard Indian GST on precious metal jewellery (default 3.0%)"
-              required
-            />
+                <SBGInput
+                  label="Default Jewellery GST Rate (%)"
+                  type="number"
+                  step="0.1"
+                  suffixText="%"
+                  value={gstInput}
+                  onChange={(e) => setGstInput(e.target.value)}
+                  helperText="Standard Indian GST on precious metal jewellery (default 3.0%)"
+                  required
+                />
+              </div>
+            </SBGCard>
+
+            {/* Commercial Legal Entity — Admin Only */}
+            <SBGCard variant="glass" className="p-6 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
+                <Building className="w-4 h-4" /> Commercial Legal Entity
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SBGInput
+                  label="Company Name"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
+
+                <SBGInput
+                  label="GSTIN / Corporate Tax ID"
+                  value={companyGST}
+                  onChange={(e) => setCompanyGST(e.target.value)}
+                />
+              </div>
+            </SBGCard>
           </div>
-        </SBGCard>
+        )}
 
-        {/* Company Identity */}
-        <SBGCard variant="glass" className="p-6 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
-            <Building className="w-4 h-4" /> Commercial Legal Entity
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SBGInput
-              label="Company Name"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-            />
-
-            <SBGInput
-              label="GSTIN / Corporate Tax ID"
-              value={companyGST}
-              onChange={(e) => setCompanyGST(e.target.value)}
-            />
-          </div>
-        </SBGCard>
-
-        {/* Account Security & Password Management */}
+        {/* Account Security & Password Management — Permitted for Both Admin & Staff */}
         <SBGCard variant="glass" className="p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
@@ -180,10 +193,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
                 <ShieldCheck className="w-4 h-4" /> Account Security & Password
               </h3>
               <p className="text-xs text-[#647777] mt-0.5">
-                Active administrator credentials ({currentUser.email || currentUser.username})
+                Active {isAdmin ? 'administrator' : 'staff'} credentials ({currentUser.email || currentUser.username})
               </p>
             </div>
-            <SBGBadge variant="teal" className="self-start sm:self-auto">
+            <SBGBadge variant={isAdmin ? 'gold' : 'teal'} className="self-start sm:self-auto">
               Role: {currentUser.role}
             </SBGBadge>
           </div>
@@ -191,7 +204,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
           <div className="bg-[#F6F8F7] p-4 rounded-2xl border border-[#DCE5E3]/80 space-y-3">
             <div className="text-xs font-bold text-[#173333] flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-[#0F5C5B]" />
-              <span>Change Administrator Password</span>
+              <span>Change {isAdmin ? 'Administrator' : 'Staff'} Password</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <SBGInput
@@ -235,47 +248,52 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
           </div>
         </SBGCard>
 
-        {/* Database & Local Cache Management */}
-        <SBGCard variant="glass" className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
-              <RotateCcw className="w-4 h-4" /> Database & Storage Management
-            </h3>
-            <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-[#0F5C5B]/10 text-[#0F5C5B] font-bold">
-              Status: {syncStatus}
-            </span>
+        {/* Database & Local Cache Management — Admin Only */}
+        {isAdmin && (
+          <SBGCard variant="glass" className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" /> Database & Storage Management
+              </h3>
+              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-[#0F5C5B]/10 text-[#0F5C5B] font-bold">
+                Status: {syncStatus}
+              </span>
+            </div>
+
+            <p className="text-xs text-[#647777]">
+              Sync with the connected Supabase cloud database or clear all local caches to reset numbers to fresh state.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleSyncDatabase}
+                className="px-4 py-2 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>{isLoading ? 'Syncing...' : 'Sync with Supabase DB'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all"
+              >
+                <span>Clear All Data (Reset to Zero)</span>
+              </button>
+            </div>
+          </SBGCard>
+        )}
+
+        {/* Save Configuration Button — Admin Only */}
+        {isAdmin && (
+          <div className="flex justify-end items-center pt-2">
+            <SBGButton variant="primary" type="button" onClick={() => handleSave()} icon={<Save className="w-4 h-4" />}>
+              Save Configuration
+            </SBGButton>
           </div>
-
-          <p className="text-xs text-[#647777]">
-            Sync with the connected Supabase cloud database or clear all local caches to reset numbers to fresh state.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleSyncDatabase}
-              className="px-4 py-2 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>{isLoading ? 'Syncing...' : 'Sync with Supabase DB'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all"
-            >
-              <span>Clear All Data (Reset to Zero)</span>
-            </button>
-          </div>
-        </SBGCard>
-
-        <div className="flex justify-end items-center pt-2">
-          <SBGButton variant="primary" type="submit" icon={<Save className="w-4 h-4" />}>
-            Save Configuration
-          </SBGButton>
-        </div>
-      </form>
+        )}
+      </div>
     </div>
   );
 };

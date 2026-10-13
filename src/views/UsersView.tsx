@@ -32,12 +32,13 @@ export const UsersView: React.FC<UsersViewProps> = () => {
   const {
     availableUsers,
     currentUser,
-    switchUserRole,
     addUser,
     updateUser,
     deleteUser,
     customers,
   } = useSBG();
+
+  const isAdmin = currentUser.role === 'ADMIN';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'STAFF' | 'CLIENT'>('ALL');
@@ -65,6 +66,7 @@ export const UsersView: React.FC<UsersViewProps> = () => {
   });
 
   const handleOpenAddModal = () => {
+    if (!isAdmin) return;
     setEditingUserId(null);
     setFormData({
       name: '',
@@ -79,6 +81,7 @@ export const UsersView: React.FC<UsersViewProps> = () => {
   };
 
   const handleOpenEditModal = (user: UserAccount) => {
+    if (!isAdmin) return;
     setEditingUserId(user.id);
     setFormData({
       name: user.name,
@@ -94,7 +97,7 @@ export const UsersView: React.FC<UsersViewProps> = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email) return;
+    if (!isAdmin || !formData.name || !formData.email) return;
 
     if (editingUserId) {
       updateUser(editingUserId, {
@@ -159,13 +162,20 @@ export const UsersView: React.FC<UsersViewProps> = () => {
           </p>
         </div>
 
-        <SBGButton
-          variant="primary"
-          icon={<Plus className="w-4 h-4" />}
-          onClick={handleOpenAddModal}
-        >
-          Add New User
-        </SBGButton>
+        {isAdmin ? (
+          <SBGButton
+            variant="primary"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={handleOpenAddModal}
+          >
+            Add New User
+          </SBGButton>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
+            <Shield className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>View Only — Only administrators can add or remove employees</span>
+          </div>
+        )}
       </div>
 
       {/* Filter & Search Toolbar */}
@@ -335,36 +345,58 @@ export const UsersView: React.FC<UsersViewProps> = () => {
 
                       {/* Status */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateUser(user.id, {
-                              status: user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
-                            })
-                          }
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors cursor-pointer ${
-                            user.status === 'ACTIVE'
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                              : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
-                          }`}
-                          title={
-                            user.status === 'ACTIVE'
-                              ? 'Account Active (Click to Disable)'
-                              : 'Account Disabled (Click to Activate)'
-                          }
-                        >
-                          {user.status === 'ACTIVE' ? (
-                            <>
-                              <UserCheckIcon className="w-3 h-3 text-emerald-600" />
-                              Active
-                            </>
-                          ) : (
-                            <>
-                              <UserX className="w-3 h-3 text-rose-600" />
-                              Disabled
-                            </>
-                          )}
-                        </button>
+                        {isAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateUser(user.id, {
+                                status: user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
+                              })
+                            }
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors cursor-pointer ${
+                              user.status === 'ACTIVE'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                            }`}
+                            title={
+                              user.status === 'ACTIVE'
+                                ? 'Account Active (Click to Disable)'
+                                : 'Account Disabled (Click to Activate)'
+                            }
+                          >
+                            {user.status === 'ACTIVE' ? (
+                              <>
+                                <UserCheckIcon className="w-3 h-3 text-emerald-600" />
+                                Active
+                              </>
+                            ) : (
+                              <>
+                                <UserX className="w-3 h-3 text-rose-600" />
+                                Disabled
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                              user.status === 'ACTIVE'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : 'bg-rose-50 border-rose-200 text-rose-700'
+                            }`}
+                          >
+                            {user.status === 'ACTIVE' ? (
+                              <>
+                                <UserCheckIcon className="w-3 h-3 text-emerald-600" />
+                                Active
+                              </>
+                            ) : (
+                              <>
+                                <UserX className="w-3 h-3 text-rose-600" />
+                                Disabled
+                              </>
+                            )}
+                          </span>
+                        )}
                       </td>
 
                       {/* Session State */}
@@ -374,40 +406,41 @@ export const UsersView: React.FC<UsersViewProps> = () => {
                             ✓ Active Session
                           </span>
                         ) : (
-                          <SBGButton
-                            variant="outline"
-                            size="sm"
-                            className="text-xs py-1 px-2.5"
-                            onClick={() => switchUserRole(user.role)}
-                          >
-                            Switch Profile
-                          </SBGButton>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#647777] bg-[#FAF9F6] border border-[#E2E8E6] px-2.5 py-1 rounded-full">
+                            Signed Out
+                          </span>
                         )}
                       </td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(user)}
-                            className="p-1.5 rounded-lg bg-white/80 hover:bg-white text-[#173333] border border-[#DCE5E3] cursor-pointer transition-colors shadow-2xs"
-                            title="Edit User"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-
-                          {!isCurrent && (
+                        {isAdmin ? (
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              onClick={() => deleteUser(user.id)}
-                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 cursor-pointer transition-colors shadow-2xs"
-                              title="Delete User"
+                              onClick={() => handleOpenEditModal(user)}
+                              className="p-1.5 rounded-lg bg-white/80 hover:bg-white text-[#173333] border border-[#DCE5E3] cursor-pointer transition-colors shadow-2xs"
+                              title="Edit User"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Edit2 className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                        </div>
+
+                            {!isCurrent && (
+                              <button
+                                type="button"
+                                onClick={() => deleteUser(user.id)}
+                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 cursor-pointer transition-colors shadow-2xs"
+                                title="Delete User"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-[#647777] opacity-60 italic pr-2">
+                            Read Only
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );

@@ -102,7 +102,6 @@ export const AppShell: React.FC<AppShellProps> = ({
   const {
     currentUser,
     logout,
-    switchUserRole,
     availableUsers,
     goldMarketRate,
     setGoldMarketRate,
@@ -180,8 +179,11 @@ export const AppShell: React.FC<AppShellProps> = ({
   ];
 
   const navItems = allNavItems.filter((item) => {
-    if (currentUser?.role === 'CLIENT' || currentUser?.role === 'STAFF') {
+    if (currentUser?.role === 'CLIENT') {
       return ['dashboard', 'customers', 'estimates'].includes(item.id);
+    }
+    if (currentUser?.role === 'STAFF') {
+      return ['dashboard', 'customers', 'estimates', 'settings'].includes(item.id);
     }
     return true;
   });
@@ -779,17 +781,19 @@ export const AppShell: React.FC<AppShellProps> = ({
                       <Settings className="w-3.5 h-3.5 text-[#0F5C5B]" />
                       <span>Settings & Security</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        onNavigate('users');
-                      }}
-                      className="w-full px-3.5 py-2 text-left text-xs text-[#173333] hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
-                    >
-                      <Users className="w-3.5 h-3.5 text-[#0F5C5B]" />
-                      <span>User Management</span>
-                    </button>
+                    {currentUser.role === 'ADMIN' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onNavigate('users');
+                        }}
+                        className="w-full px-3.5 py-2 text-left text-xs text-[#173333] hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Users className="w-3.5 h-3.5 text-[#0F5C5B]" />
+                        <span>User Management</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {

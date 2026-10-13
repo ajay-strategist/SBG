@@ -210,6 +210,10 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [availableUsers]);
 
   const addUser = (userData: Omit<UserAccount, 'id'>): UserAccount => {
+    if (currentUser.role !== 'ADMIN') {
+      logAudit('UNAUTHORIZED_ACTION', 'USERS', currentUser.id, `Unauthorized attempt by ${currentUser.name} (${currentUser.role}) to add an employee`);
+      throw new Error('Unauthorized: Only administrators can add employees.');
+    }
     const newUser: UserAccount = {
       ...userData,
       id: `usr-${Date.now()}`,
@@ -222,6 +226,11 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUser = (id: string, updates: Partial<UserAccount>) => {
+    // Only administrators can edit other employee accounts; users can update their own password
+    if (currentUser.role !== 'ADMIN' && currentUser.id !== id) {
+      logAudit('UNAUTHORIZED_ACTION', 'USERS', currentUser.id, `Unauthorized attempt by ${currentUser.name} (${currentUser.role}) to modify employee ${id}`);
+      throw new Error('Unauthorized: Only administrators can modify other employee accounts.');
+    }
     setAvailableUsers((prev) =>
       prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
     );
@@ -232,6 +241,10 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteUser = (id: string) => {
+    if (currentUser.role !== 'ADMIN') {
+      logAudit('UNAUTHORIZED_ACTION', 'USERS', currentUser.id, `Unauthorized attempt by ${currentUser.name} (${currentUser.role}) to delete employee ${id}`);
+      throw new Error('Unauthorized: Only administrators can remove employees.');
+    }
     setAvailableUsers((prev) => prev.filter((u) => u.id !== id));
     logAudit('DELETE_USER', 'USERS', id, `Deleted user ${id}`);
   };
@@ -1324,12 +1337,11 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  const switchUserRole = (role: UserAccount['role']) => {
-    const found = availableUsers.find((u) => u.role === role);
-    if (found) {
-      setCurrentUser(found);
-      logAudit('SWITCH_USER_ROLE', 'USERS', found.id, `Switched active profile to ${found.name}`);
-    }
+  const switchUserRole = (_role: UserAccount['role']) => {
+    // In-between profile switching is prohibited for both Admin and Staff.
+    // Users must sign out and authenticate with their credentials.
+    logAudit('SECURITY_WARNING', 'USERS', currentUser.id, `Profile switching in-between is prohibited. User ${currentUser.name} must sign out to change accounts.`);
+    console.warn('Profile switching in-between is prohibited. Please sign out and sign in with credentials.');
   };
 
   // Customer Management

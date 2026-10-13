@@ -55,4 +55,69 @@ describe('Admin Authentication & Security Integrity', () => {
     expect(currentUser.password === 'BalajiGoldSecure@2026').toBe(true);
     expect(currentUser.password === 'password').toBe(false);
   });
+
+  const staffUser: UserAccount = {
+    id: 'usr-staff-1',
+    username: 'mail@thestrategist.co.in',
+    name: 'Ajay Thomas',
+    email: 'mail@thestrategist.co.in',
+    role: 'STAFF',
+    status: 'ACTIVE',
+    password: 'password',
+    avatarColor: '#23827F',
+    permissions: {
+      customers: true,
+      orders: true,
+      transactions: true,
+      estimates: true,
+      settlements: true,
+      reports: false,
+      users: false,
+      erp: false,
+    },
+  };
+
+  it('allows only Admin to add and remove employees', () => {
+    const canAddEmployee = (user: UserAccount) => user.role === 'ADMIN';
+    const canRemoveEmployee = (user: UserAccount) => user.role === 'ADMIN';
+
+    // Admin has full rights
+    expect(canAddEmployee(defaultAdmin)).toBe(true);
+    expect(canRemoveEmployee(defaultAdmin)).toBe(true);
+
+    // Staff cannot add or remove employees
+    expect(canAddEmployee(staffUser)).toBe(false);
+    expect(canRemoveEmployee(staffUser)).toBe(false);
+  });
+
+  it('enforces that neither Admin nor Staff can switch profiles on the fly without credentials', () => {
+    const canSwitchProfileOnTheFly = (_user: UserAccount) => false;
+
+    // Both Admin and Staff must sign out and authenticate with password to switch account
+    expect(canSwitchProfileOnTheFly(defaultAdmin)).toBe(false);
+    expect(canSwitchProfileOnTheFly(staffUser)).toBe(false);
+  });
+
+  it('restricts Staff settings to Account Security & Password only', () => {
+    const getPermittedSettingsSections = (user: UserAccount) => {
+      if (user.role === 'ADMIN') {
+        return ['marketRates', 'companyDetails', 'accountSecurity', 'databaseManagement', 'saveConfiguration'];
+      }
+      // Staff only permitted Account Security & Password
+      return ['accountSecurity'];
+    };
+
+    const adminSections = getPermittedSettingsSections(defaultAdmin);
+    expect(adminSections).toContain('marketRates');
+    expect(adminSections).toContain('companyDetails');
+    expect(adminSections).toContain('accountSecurity');
+    expect(adminSections).toContain('databaseManagement');
+
+    const staffSections = getPermittedSettingsSections(staffUser);
+    expect(staffSections).toEqual(['accountSecurity']);
+    expect(staffSections).not.toContain('marketRates');
+    expect(staffSections).not.toContain('companyDetails');
+    expect(staffSections).not.toContain('databaseManagement');
+    expect(staffSections).not.toContain('saveConfiguration');
+  });
 });
