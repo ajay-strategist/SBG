@@ -882,7 +882,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
           {/* Left Card: Settlement Configuration */}
           <div className="lg:col-span-7 print:col-span-7 bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
             {/* Screen Header Controls */}
-            <div className="no-print flex items-center justify-between gap-3 pb-2.5 border-b border-[#DCE5E3] whitespace-nowrap">
+            <div className="no-print flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-[#DCE5E3]">
               <div className="flex items-center gap-2 shrink-0">
                 <div className="w-7 h-7 rounded-lg bg-[#0F5C5B] text-white flex items-center justify-center shrink-0">
                   <Scale className="w-4 h-4 text-white" />
@@ -890,13 +890,13 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 <span className="text-xs font-bold text-[#173333]">Settlement Configuration</span>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-semibold text-[#647777]">Preset:</span>
+                  <span className="text-[10px] font-bold text-[#647777] uppercase tracking-wider">Preset:</span>
                   <select
                     value={activePresetValue}
                     onChange={(e) => handlePresetChange(e.target.value)}
-                    className="text-xs font-medium py-1 px-2 rounded-lg bg-white border border-[#DCE5E3] text-[#173333] cursor-pointer"
+                    className="text-xs font-semibold py-1 px-2 rounded-lg bg-[#FAF9F6] border border-[#DCE5E3] text-[#173333] cursor-pointer"
                   >
                     <option value="B2B_WITHOUT_MC">B2B - Without MC</option>
                     <option value="B2B_WITH_MC">B2B - With MC</option>
@@ -907,7 +907,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] font-semibold text-[#647777] whitespace-nowrap">
+                  <span className="text-[10px] font-bold text-[#647777] uppercase tracking-wider whitespace-nowrap">
                     Gold Rate
                   </span>
                   <div className="flex items-center">
@@ -918,9 +918,9 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                       onChange={(e) => handleGoldRateChange(parseFloat(e.target.value) || 0)}
                       onFocus={(e) => e.target.select()}
                       placeholder={Number(estimate.goldRate) > 0 ? String(estimate.goldRate) : '0.00'}
-                      className="w-28 sm:w-32 text-xs font-mono font-bold bg-white px-2.5 py-1 rounded-l-lg border border-r-0 border-[#DCE5E3] text-[#173333] text-right focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-20 sm:w-24 text-xs font-mono font-bold bg-white px-2 py-1 rounded-l-lg border border-r-0 border-[#DCE5E3] text-[#173333] text-right focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="text-xs bg-gray-50 px-2 py-1 border border-[#DCE5E3] rounded-r-lg text-[#647777] font-medium border-l-0">
+                    <span className="text-xs bg-gray-50 px-1.5 py-1 border border-[#DCE5E3] rounded-r-lg text-[#647777] font-medium border-l-0">
                       /g
                     </span>
                     {unfixGoldRate > 0 && unfixGoldRate !== Number(estimate.goldRate) ? (
@@ -960,13 +960,13 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
 
             {/* Table */}
             <div className="overflow-x-auto touch-scroll">
-              <table className="w-full min-w-[550px] print:min-w-0 text-left text-xs border-collapse">
+              <table className="w-full min-w-[560px] print:min-w-0 text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[#DCE5E3] text-[10px] font-bold uppercase tracking-wider text-[#647777] bg-gray-50/70">
-                    <th className="py-2 px-3">COMPONENT</th>
-                    <th className="py-2 px-3">SETTLEMENT MODE</th>
-                    <th className="py-2 px-3 text-right">GOLD WT (g)</th>
-                    <th className="py-2 px-3 text-right">AMOUNT (₹)</th>
+                    <th className="py-2.5 px-3 min-w-[140px]">COMPONENT</th>
+                    <th className="py-2.5 px-3 min-w-[130px]">SETTLEMENT MODE</th>
+                    <th className="py-2.5 px-3 text-right min-w-[95px] whitespace-nowrap">GOLD WT (g)</th>
+                    <th className="py-2.5 px-3 text-right min-w-[125px] whitespace-nowrap">AMOUNT (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#DCE5E3]/60 font-medium">
@@ -1061,14 +1061,14 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       {currentMetalMode === 'GOLD'
                         ? goldPureToAdjust.toFixed(3)
                         : currentMetalMode === 'SPLIT'
                         ? (customSettlement.goldPaidInMetalGrams || 0).toFixed(3)
                         : '0.000'}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       ₹ {goldMetalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -1091,10 +1091,10 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                         </select>
                       </div>
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       {currentGoldGstMode === 'GOLD' ? goldGstGrams.toFixed(3) : '0.000'}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       ₹ {goldGstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -1117,10 +1117,10 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                         </select>
                       </div>
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       {currentMcMode === 'GOLD' ? mcGrams.toFixed(3) : '0.000'}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       ₹ {mcValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -1143,10 +1143,10 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                         </select>
                       </div>
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       {currentStonesMode === 'GOLD' ? stonesGrams.toFixed(3) : '0.000'}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       ₹ {stonesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -1181,10 +1181,10 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                         </select>
                       </div>
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       {currentExpensesMode === 'GOLD' ? expensesGrams.toFixed(3) : '0.000'}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       ₹ {expensesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -1296,10 +1296,10 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                         </select>
                       </div>
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       {currentOtherGstMode === 'GOLD' ? otherGstGrams.toFixed(3) : '0.000'}
                     </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333]">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-[#173333] whitespace-nowrap">
                       ₹ {otherGstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -1309,10 +1309,10 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                     <td className="py-2.5 px-3 text-[#173333] font-bold text-xs" colSpan={2}>
                       Total to Settle
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-black text-xs text-[#173333]">
+                    <td className="py-2.5 px-3 text-right font-mono font-black text-xs text-[#173333] whitespace-nowrap">
                       {settledGoldWT.toFixed(3)}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-black text-xs text-[#173333]">
+                    <td className="py-2.5 px-3 text-right font-mono font-black text-xs text-[#173333] whitespace-nowrap">
                       ₹ {settledCashAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -1323,7 +1323,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
 
           {/* Right Card: Customer Ledger Balance Adjustment */}
           <div className="lg:col-span-5 print:col-span-5 bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 flex flex-col justify-between">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#DCE5E3]">
                 <div className="flex items-center gap-2">
@@ -1334,17 +1334,19 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 text-xs flex-wrap">
-                  <span className="text-[#647777]">
-                    Account: <strong className="text-[#173333] font-semibold">{customer?.name || estimate.customerName} ({customer?.code || 'ACC'})</strong>
+                  <span className="text-[#647777] text-[11px]">
+                    Account: <strong className="text-[#173333] font-bold">{customer?.name || estimate.customerName} ({customer?.code || 'ACC'})</strong>
                   </span>
-                  <span className="text-[#173333] font-semibold">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    isPurchase ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-[#E6F4F1] text-[#0F5C5B] border border-[#0F5C5B]/20'
+                  }`}>
                     {isPurchase ? 'Purchase (Receipt −)' : 'Sale (Issue +)'}
                   </span>
                 </div>
               </div>
 
               {/* Matrix Table */}
-              <div className="overflow-hidden rounded-xl border border-[#DCE5E3] bg-white">
+              <div className="overflow-hidden rounded-xl border border-[#DCE5E3] bg-white my-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-[#DCE5E3] text-[10px] font-bold uppercase tracking-wider">
@@ -1368,44 +1370,55 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                   <tbody className="divide-y divide-[#DCE5E3]/60 font-medium">
                     {/* Row 1: Previous Balance */}
                     <tr className="hover:bg-gray-50/50 transition-colors">
-                      <td className="py-2.5 px-3.5 text-[#173333] font-semibold">
+                      <td className="py-3 px-3.5 text-[#173333] font-semibold">
                         Previous Balance
                       </td>
-                      <td className="py-2.5 px-3 text-center font-mono font-bold text-xs text-[#173333] border-l border-[#DCE5E3]/60">
+                      <td className="py-3 px-3 text-center font-mono font-bold text-xs text-[#173333] border-l border-[#DCE5E3]/60 whitespace-nowrap">
                         {prevWT < 0 ? '−' : prevWT > 0 ? '+' : ''}{Math.abs(prevWT).toFixed(3)}
                       </td>
-                      <td className="py-2.5 px-3 text-right pr-4 font-mono font-bold text-xs text-[#173333] border-l border-[#DCE5E3]/60 whitespace-nowrap">
+                      <td className="py-3 px-3 text-right pr-4 font-mono font-bold text-xs text-[#173333] border-l border-[#DCE5E3]/60 whitespace-nowrap">
                         {prevMC < 0 ? '− ₹ ' : prevMC > 0 ? '+ ₹ ' : '₹ '}{Math.abs(prevMC).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
 
                     {/* Row 2: Estimate Impact */}
                     <tr className="hover:bg-gray-50/50 transition-colors">
-                      <td className="py-2.5 px-3.5 text-[#173333] font-semibold">
+                      <td className="py-3 px-3.5 text-[#173333] font-semibold">
                         Estimate Impact ({isPurchase ? '−' : '+'})
                       </td>
-                      <td className={`py-2.5 px-3 text-center font-mono font-bold text-xs border-l border-[#DCE5E3]/60 ${isPurchase ? 'text-rose-600' : 'text-[#0F5C5B]'}`}>
+                      <td className={`py-3 px-3 text-center font-mono font-bold text-xs border-l border-[#DCE5E3]/60 whitespace-nowrap ${isPurchase ? 'text-rose-600' : 'text-[#0F5C5B]'}`}>
                         {displayDeltaPureWT >= 0 ? '+' : '−'}{Math.abs(displayDeltaPureWT).toFixed(3)}
                       </td>
-                      <td className={`py-2.5 px-3 text-right pr-4 font-mono font-bold text-xs border-l border-[#DCE5E3]/60 whitespace-nowrap ${isPurchase ? 'text-rose-600' : 'text-[#0F5C5B]'}`}>
+                      <td className={`py-3 px-3 text-right pr-4 font-mono font-bold text-xs border-l border-[#DCE5E3]/60 whitespace-nowrap ${isPurchase ? 'text-rose-600' : 'text-[#0F5C5B]'}`}>
                         {displayDeltaAmount >= 0 ? '+ ₹ ' : '− ₹ '}{Math.abs(displayDeltaAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
 
                     {/* Row 3: New Balance (Hero Highlight Row) */}
                     <tr className="bg-[#FFF8EA] border-t-2 border-[#D9B76C]/40">
-                      <td className="py-3 px-3.5 font-black text-sm text-[#173333]">
+                      <td className="py-3.5 px-3.5 font-black text-sm text-[#173333]">
                         New Balance
                       </td>
-                      <td className={`py-3 px-3 text-center font-mono font-black text-base border-l border-[#DCE5E3]/60 ${newBalWT < 0 ? 'text-rose-600' : 'text-[#0F5C5B]'}`}>
+                      <td className={`py-3.5 px-3 text-center font-mono font-black text-base border-l border-[#DCE5E3]/60 whitespace-nowrap ${newBalWT < 0 ? 'text-rose-600' : 'text-[#0F5C5B]'}`}>
                         {newBalWT < 0 ? '−' : newBalWT > 0 ? '+' : ''}{Math.abs(newBalWT).toFixed(3)}
                       </td>
-                      <td className={`py-3 px-3 text-right pr-4 font-mono font-black text-base border-l border-[#DCE5E3]/60 whitespace-nowrap ${newBalMC < 0 ? 'text-rose-600' : 'text-[#0F5C5B]'}`}>
+                      <td className={`py-3.5 px-3 text-right pr-4 font-mono font-black text-base border-l border-[#DCE5E3]/60 whitespace-nowrap ${newBalMC < 0 ? 'text-rose-600' : 'text-[#0F5C5B]'}`}>
                         {newBalMC < 0 ? '− ₹ ' : newBalMC > 0 ? '+ ₹ ' : '₹ '}{Math.abs(newBalMC).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* Status Verification Footer */}
+              <div className="pt-2.5 border-t border-[#DCE5E3]/70 flex items-center justify-between text-[11px] text-[#647777]">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span className={`w-2 h-2 rounded-full ${estimate.status === 'CONFIRMED' ? 'bg-[#1A825B]' : 'bg-[#D9B76C]'}`}></span>
+                  <span>Ledger Status: <strong className="text-[#173333]">{estimate.status === 'CONFIRMED' ? 'Confirmed & Posted' : 'Draft Estimate'}</strong></span>
+                </div>
+                <span className="text-[10px] font-mono text-[#8C6D23] font-bold bg-[#FFF8EA] px-2 py-0.5 rounded border border-[#ECD9A5]/60">
+                  Dual-Ledger Sync
+                </span>
               </div>
             </div>
           </div>
