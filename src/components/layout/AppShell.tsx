@@ -254,7 +254,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             {!sidebarCollapsed && (
               <div className="animate-fadeIn">
                 <div className="flex items-center gap-1.5">
-                  <h1 className="font-cinzel font-bold text-lg tracking-wide text-white">SBG</h1>
+                  <span className="font-cinzel font-bold text-lg tracking-wide text-white">SBG</span>
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#D9B76C]/25 text-[#E7CCA0] border border-[#D9B76C]/40">
                     ERP
                   </span>

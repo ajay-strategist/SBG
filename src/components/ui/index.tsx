@@ -325,7 +325,12 @@ export const SBGModal: React.FC<SBGModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sbg-modal-title"
+    >
       <div
         className={cn(
           'w-full bg-white/95 backdrop-blur-xl border border-white/80 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]',
@@ -333,9 +338,11 @@ export const SBGModal: React.FC<SBGModalProps> = ({
         )}
       >
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#DCE5E3]/80 bg-[#0F5C5B]/5 shrink-0">
-          <h3 className="text-base sm:text-lg font-semibold text-[#0F5C5B]">{title}</h3>
+          <h3 id="sbg-modal-title" className="text-base sm:text-lg font-semibold text-[#0F5C5B]">{title}</h3>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close modal"
             className="p-1.5 rounded-lg text-[#647777] hover:text-[#173333] hover:bg-black/5 transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

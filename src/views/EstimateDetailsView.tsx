@@ -240,30 +240,25 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
   const currentExpensesMode = isFix ? 'CASH' : (unfixPreset === 'CUSTOM' ? customSettlement.expensesMode : (unfixPreset === 'ALL_IN_GOLD' ? 'GOLD' : 'CASH'));
   const currentOtherGstMode = isFix ? 'CASH' : (unfixPreset === 'CUSTOM' ? (customSettlement.otherGstMode || 'CASH') : (unfixPreset === 'ALL_IN_GOLD' ? 'GOLD' : 'CASH'));
 
-  const activePresetLabel = useMemo(() => {
-    switch (activePresetValue) {
-      case 'B2B_WITHOUT_MC': return 'B2B - Without MC';
-      case 'B2B_WITH_MC': return 'B2B - With MC';
-      case 'ALL_IN_GOLD': return 'All in Gold (100%)';
-      case 'FIX': return 'FIX (100% Cash)';
-      case 'CUSTOM': return 'Custom / Flexible';
-      default: return activePresetValue;
-    }
-  }, [activePresetValue]);
+  const activePresetLabel = 
+    activePresetValue === 'B2B_WITHOUT_MC' ? 'B2B - Without MC' :
+    activePresetValue === 'B2B_WITH_MC' ? 'B2B - With MC' :
+    activePresetValue === 'ALL_IN_GOLD' ? 'All in Gold (100%)' :
+    activePresetValue === 'FIX' ? 'FIX (100% Cash)' :
+    activePresetValue === 'CUSTOM' ? 'Custom / Flexible' :
+    activePresetValue;
 
-  const itemTableTotals = useMemo(() => {
-    return estimate.items.reduce(
-      (acc, item) => ({
-        nos: acc.nos + (item.nos || 1),
-        grossWT: acc.grossWT + (item.grossWT || 0),
-        stoneWT: acc.stoneWT + (item.stoneWT || 0),
-        netWT: acc.netWT + (item.netWT || 0),
-        pureWT: acc.pureWT + (item.pureWT || 0),
-        amount: acc.amount + (item.amount || 0),
-      }),
-      { nos: 0, grossWT: 0, stoneWT: 0, netWT: 0, pureWT: 0, amount: 0 }
-    );
-  }, [estimate.items]);
+  const itemTableTotals = estimate.items.reduce(
+    (acc, item) => ({
+      nos: acc.nos + (item.nos || 1),
+      grossWT: acc.grossWT + (item.grossWT || 0),
+      stoneWT: acc.stoneWT + (item.stoneWT || 0),
+      netWT: acc.netWT + (item.netWT || 0),
+      pureWT: acc.pureWT + (item.pureWT || 0),
+      amount: acc.amount + (item.amount || 0),
+    }),
+    { nos: 0, grossWT: 0, stoneWT: 0, netWT: 0, pureWT: 0, amount: 0 }
+  );
 
   const effectiveGoldRate = (unfixGoldRate && unfixGoldRate > 0) ? Number(unfixGoldRate) : (Number(estimate.goldRate) > 0 ? Number(estimate.goldRate) : 1);
   const goldPureToAdjust = estimate.totals.goldPureWT ?? estimate.totals.totalPureWT;
