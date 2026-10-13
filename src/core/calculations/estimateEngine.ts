@@ -130,11 +130,18 @@ export function calculateEstimateLine(
   let stoneWTCarats = 0;
 
   if (stoneWTUnit === 'ct') {
-    stoneWTCarats = stoneWTInput;
-    stoneWTInGrams = roundWeight(stoneWTInput * 0.2); // 1 ct = 0.200 g
+    const effectiveCarats =
+      line.stoneWTCarats !== undefined && line.stoneWTCarats > 0
+        ? line.stoneWTCarats
+        : stoneWTInput;
+    stoneWTCarats = effectiveCarats;
+    stoneWTInGrams = roundWeight(effectiveCarats * 0.2); // 1 ct = 0.200 g
   } else {
     stoneWTInGrams = roundWeight(stoneWTInput);
-    stoneWTCarats = roundWeight(stoneWTInput / 0.2); // 1 g = 5.000 ct
+    stoneWTCarats =
+      line.stoneWTCarats !== undefined && line.stoneWTCarats > 0 && roundWeight(stoneWTInput) === roundWeight(line.stoneWTCarats * 0.2)
+        ? line.stoneWTCarats
+        : roundWeight(stoneWTInput / 0.2); // 1 g = 5.000 ct
   }
 
   // Net WT = Gross - Stone WT in Grams
@@ -391,7 +398,9 @@ export function calculateEstimateSheet(
     : (rawMode === 'GOLD_ONLY' ? 'GOLD_ONLY' : 'UNFIX');
 
   const unfixPreset: UnfixPresetType = sheet.unfixPreset || 'B2B_WITHOUT_MC';
-  const effectiveGoldRate = goldRate > 0 ? goldRate : 1;
+  const effectiveGoldRate = (sheet.unfixGoldRate && sheet.unfixGoldRate > 0)
+    ? Number(sheet.unfixGoldRate)
+    : (goldRate > 0 ? goldRate : 1);
   const goldPureToAdjust = goldPureWT > 0 ? goldPureWT : totalPureWT;
 
   let settledGoldWT = 0;
@@ -443,7 +452,13 @@ export function calculateEstimateSheet(
       } else if (custom.goldMetalMode === 'CASH') {
         settledCashAmount += goldValue;
       } else if (custom.goldMetalMode === 'SPLIT') {
-        const metalPaid = Math.max(0, Math.min(goldPureToAdjust, Number(custom.goldPaidInMetalGrams) || 0));
+        let metalPaid = 0;
+        if (custom.goldPaidInMetalGrams !== undefined && custom.goldPaidInMetalGrams > 0) {
+          metalPaid = Math.max(0, Math.min(goldPureToAdjust, Number(custom.goldPaidInMetalGrams)));
+        } else if (custom.goldPaidInCashAmount !== undefined && custom.goldPaidInCashAmount > 0) {
+          const goldAmountPaid = Math.max(0, Math.min(goldValue, Number(custom.goldPaidInCashAmount)));
+          metalPaid = roundWeight(goldAmountPaid / effectiveGoldRate);
+        }
         const unpaidGoldWT = Math.max(0, goldPureToAdjust - metalPaid);
         settledGoldWT += metalPaid;
         settledCashAmount += roundCurrency(unpaidGoldWT * effectiveGoldRate);
@@ -478,8 +493,12 @@ export function calculateEstimateSheet(
         settledCashAmount += totalExpenses;
       }
 
-      // Remaining Non-Gold GST stays in Cash
-      settledCashAmount += nonGoldGstAmount;
+      // 6. Other GST
+      if (custom.otherGstMode === 'GOLD') {
+        settledGoldWT += roundWeight(nonGoldGstAmount / effectiveGoldRate);
+      } else {
+        settledCashAmount += nonGoldGstAmount;
+      }
 
       settledGoldWT = roundWeight(settledGoldWT);
       settledCashAmount = roundCurrency(settledCashAmount);
@@ -540,6 +559,8 @@ export function calculateEstimateSheet(
       taxableValue,
       gstRate,
       gstAmount,
+      goldGstAmount,
+      nonGoldGstAmount,
       grandTotal,
       remainingCashValue,
       settledGoldWT,

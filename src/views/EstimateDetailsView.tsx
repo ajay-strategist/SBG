@@ -791,7 +791,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                         <span className="font-black text-[#0F5C5B] text-xs">+{estimate.totals.totalPureWT.toFixed(3)} g</span>
                       </div>
                       <div className="flex justify-between text-[10px] text-[#647777]">
-                        <span>Taxable Value:</span>
+                        <span>Taxable Amount:</span>
                         <span className="font-bold text-[#173333]"><SBGCurrency value={estimate.totals.taxableValue} /></span>
                       </div>
                       {((estimate.totals.totalExpenses ?? 0) > 0) && (
@@ -808,7 +808,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                   </div>
                   <div className="pt-2 mt-2 border-t-2 border-[#0F5C5B]/30 space-y-1">
                     <div className="flex justify-between items-center text-xs font-black">
-                      <span className="text-[#0F5C5B] text-[10px] uppercase">Grand Total:</span>
+                      <span className="text-[#0F5C5B] text-[10px] uppercase">Total Amount:</span>
                       <span className="font-mono text-sm text-[#0F5C5B]">
                         <SBGCurrency value={estimate.totals.grandTotal} />
                       </span>

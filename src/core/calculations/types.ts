@@ -105,7 +105,9 @@ export interface UnfixComponentSettlement {
   mcMode: 'GOLD' | 'CASH';
   stonesMode: 'GOLD' | 'CASH';
   expensesMode: 'GOLD' | 'CASH';
-  goldPaidInMetalGrams?: number; // When goldMetalMode is 'SPLIT'
+  otherGstMode?: 'GOLD' | 'CASH';
+  goldPaidInMetalGrams?: number; // When goldMetalMode is 'SPLIT' (in grams)
+  goldPaidInCashAmount?: number; // When entering gold amount in ₹
 }
 
 export interface AdditionalExpenses {
@@ -154,6 +156,8 @@ export interface EstimateCostSheet {
     taxableValue: number;
     gstRate: number; // percentage, e.g. 3
     gstAmount: number;
+    goldGstAmount?: number;
+    nonGoldGstAmount?: number;
     grandTotal: number;
     remainingCashValue?: number; // grandTotal - goldValue (or non-metal cash total)
     settledGoldWT?: number; // Total grams posting to Gold Ledger

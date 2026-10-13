@@ -284,6 +284,12 @@ describe('SBG Core Calculation Engine', () => {
       expect(line.netWT).toBe(7.622); // 7.802 - 0.180 = 7.622g
       expect(line.pureWT).toBe(5.793); // 7.622 * 0.76 = 5.793g
       expect(line.amount).toBe(68618.84); // 5.793 * 11845.13 = 68618.84
+
+      // Recalculating the already calculated line item must NOT double-convert
+      const recalculatedLine = calculateEstimateLine(line);
+      expect(recalculatedLine.stoneWT).toBe(0.180);
+      expect(recalculatedLine.stoneWTCarats).toBe(0.90);
+      expect(recalculatedLine.netWT).toBe(7.622);
     });
 
     it('treats Net WT as Pure WT for diamonds/stones and calculates carat amounts', () => {

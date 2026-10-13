@@ -243,7 +243,7 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const defaultCustomersList: Customer[] = [
     {
       id: 'cust-tikvah',
-      code: 'SBG-C101',
+      code: 'SBG-TIKVAH',
       name: 'TIKVAH',
       phone: '+91 98200 12345',
       email: 'tikvah@sbgjewels.com',
@@ -252,8 +252,8 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       gstin: '27AAAAA0000A1Z5',
       openingWT: 0,
       openingMC: 0,
-      currentWT: 4.328,
-      currentMC: -5263.51,
+      currentWT: -10.000,
+      currentMC: -154698.53,
       status: 'ACTIVE',
       createdAt: '2026-05-01T00:00:00.000Z',
       updatedAt: '2026-09-11T00:00:00.000Z',
@@ -607,14 +607,18 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const defaultEstimatesList: EstimateCostSheet[] = [
     {
       id: 'est-301',
-      estimateNo: 'EST-2026-106',
-      estimateDate: '2026-09-23',
+      estimateNo: 'EST-2026-372',
+      estimateDate: '2026-10-12',
       customerId: 'cust-tikvah',
       customerName: 'TIKVAH',
       touchFixed: true,
       isGold: true,
       goldRate: 11845.13,
       goldRatePurity: 99.5,
+      diamondRate: 70443.61,
+      stoneRate: 4375,
+      mcRate: 948.98,
+      unfixPreset: 'B2B_WITHOUT_MC',
       remarks: 'Standard commercial estimate based on prevailing market gold rates and pure weights.',
       items: [
         {

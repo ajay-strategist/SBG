@@ -41,9 +41,7 @@ const MainApp: React.FC = () => {
 
   const handleNavigate = (tab: ActiveTab, entityId?: string) => {
     setCurrentTab(tab);
-    if (entityId !== undefined) {
-      setSelectedEntityId(entityId);
-    }
+    setSelectedEntityId(entityId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -84,7 +82,13 @@ const MainApp: React.FC = () => {
         {currentTab === 'estimates' && <EstimatesView onNavigate={handleNavigate} />}
         {(currentTab === 'new-estimate' || currentTab === 'edit-estimate') && (
           <NewEstimateView
-            targetId={selectedEntityId}
+            targetId={
+              currentTab === 'edit-estimate'
+                ? selectedEntityId
+                : selectedEntityId && !selectedEntityId.startsWith('est-')
+                ? selectedEntityId
+                : undefined
+            }
             isEditMode={currentTab === 'edit-estimate'}
             onNavigate={handleNavigate}
           />
