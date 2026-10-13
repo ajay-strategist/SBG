@@ -155,8 +155,13 @@ const SBGContext = createContext<SBGContextType | null>(null);
 
 export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const saved = localStorage.getItem('sbg_auth');
-    return saved !== null ? JSON.parse(saved) : true;
+    try {
+      const saved = localStorage.getItem('sbg_auth');
+      // ZERO-TRUST DEFAULT: If no stored auth exists (Incognito / first visit / signed out), must be false
+      return saved !== null ? JSON.parse(saved) === true : false;
+    } catch {
+      return false;
+    }
   });
 
   const [availableUsers, setAvailableUsers] = useState<UserAccount[]>(() => {
@@ -164,17 +169,27 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saved) {
       try {
         const parsed: UserAccount[] = JSON.parse(saved);
-        // Ensure stale demo accounts (usr-1, usr-2, usr-3) are purged
-        const hasOldDemo = parsed.some(
-          (u) => u.id === 'usr-1' || u.id === 'usr-2' || u.id === 'usr-3' || u.username === 'staff' || u.username === 'client'
-        );
-        const hasAdmin = parsed.some(
-          (u) =>
-            u.email.toLowerCase() === 'sreebalajigold@gmail.com' ||
-            u.username.toLowerCase() === 'sreebalajigold@gmail.com'
-        );
-        if (!hasOldDemo && hasAdmin) {
-          return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Surgically remove legacy mock demo accounts without wiping legitimate staff accounts (e.g. Ajay Thomas)
+          const filtered = parsed.filter(
+            (u) =>
+              u.id !== 'usr-1' &&
+              u.id !== 'usr-2' &&
+              u.id !== 'usr-3' &&
+              u.username?.toLowerCase() !== 'staff' &&
+              u.username?.toLowerCase() !== 'client'
+          );
+
+          // Guarantee that the primary admin account exists
+          const adminExists = filtered.some(
+            (u) =>
+              u.email?.toLowerCase() === 'sreebalajigold@gmail.com' ||
+              u.username?.toLowerCase() === 'sreebalajigold@gmail.com'
+          );
+
+          const finalUsers = adminExists ? filtered : [defaultUsers[0], ...filtered];
+          localStorage.setItem('sbg_users', JSON.stringify(finalUsers));
+          return finalUsers;
         }
       } catch (e) {
         console.warn('Failed to parse cached users', e);
@@ -189,11 +204,16 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saved) {
       try {
         const parsed: UserAccount = JSON.parse(saved);
+        // Persist session identity for ANY valid authenticated account (Admin, Staff, Client)
         if (
+          parsed &&
+          parsed.id &&
+          parsed.name &&
+          parsed.role &&
           parsed.id !== 'usr-2' &&
           parsed.id !== 'usr-3' &&
-          (parsed.email?.toLowerCase() === 'sreebalajigold@gmail.com' ||
-            parsed.username?.toLowerCase() === 'sreebalajigold@gmail.com')
+          parsed.username?.toLowerCase() !== 'staff' &&
+          parsed.username?.toLowerCase() !== 'client'
         ) {
           return parsed;
         }
@@ -201,7 +221,6 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Failed to parse cached current user', e);
       }
     }
-    localStorage.setItem('sbg_user', JSON.stringify(defaultUsers[0]));
     return defaultUsers[0];
   });
 
@@ -1167,13 +1186,16 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Sync to local storage for instant offline resilience
+  // Sync auth and user state to local storage with zero-trust safety
   useEffect(() => {
-    localStorage.setItem('sbg_auth', JSON.stringify(isAuthenticated));
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    localStorage.setItem('sbg_user', JSON.stringify(currentUser));
-  }, [currentUser]);
+    if (isAuthenticated) {
+      localStorage.setItem('sbg_auth', 'true');
+      localStorage.setItem('sbg_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.setItem('sbg_auth', 'false');
+      localStorage.removeItem('sbg_user');
+    }
+  }, [isAuthenticated, currentUser]);
 
   useEffect(() => {
     localStorage.setItem('sbg_live_customers', JSON.stringify(customers));
@@ -1258,6 +1280,9 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setIsAuthenticated(false);
     localStorage.setItem('sbg_auth', 'false');
+    localStorage.removeItem('sbg_user');
+    setCurrentUser(defaultUsers[0]);
+    logAudit('LOGOUT', 'USERS', currentUser.id, `User ${currentUser.name} (${currentUser.role}) signed out`);
   };
 
   const logAudit = async (

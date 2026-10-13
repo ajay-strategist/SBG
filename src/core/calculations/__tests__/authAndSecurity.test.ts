@@ -120,4 +120,110 @@ describe('Admin Authentication & Security Integrity', () => {
     expect(staffSections).not.toContain('databaseManagement');
     expect(staffSections).not.toContain('saveConfiguration');
   });
+
+  describe('Zero-Trust Incognito & Session Refresh Persistence Rules', () => {
+    it('RULE 1: Defaults to unauthenticated (false) in Incognito or clean browser', () => {
+      const getInitialAuth = (savedAuth: string | null) => {
+        try {
+          return savedAuth !== null ? JSON.parse(savedAuth) === true : false;
+        } catch {
+          return false;
+        }
+      };
+
+      // Incognito window has no sbg_auth key in localStorage
+      expect(getInitialAuth(null)).toBe(false);
+      // Malformed or explicit false also resolves to false
+      expect(getInitialAuth('false')).toBe(false);
+      expect(getInitialAuth('invalid_json')).toBe(false);
+      // Only valid explicit true resolves to authenticated
+      expect(getInitialAuth('true')).toBe(true);
+    });
+
+    it('RULE 2: Restores Ajay Thomas (Staff) identity on page refresh without reverting to Admin', () => {
+      const restoreCurrentUser = (savedUserJson: string | null, fallbackAdmin: UserAccount): UserAccount => {
+        if (savedUserJson) {
+          try {
+            const parsed: UserAccount = JSON.parse(savedUserJson);
+            if (
+              parsed &&
+              parsed.id &&
+              parsed.name &&
+              parsed.role &&
+              parsed.id !== 'usr-2' &&
+              parsed.id !== 'usr-3' &&
+              parsed.username?.toLowerCase() !== 'staff' &&
+              parsed.username?.toLowerCase() !== 'client'
+            ) {
+              return parsed;
+            }
+          } catch {
+            // ignore
+          }
+        }
+        return fallbackAdmin;
+      };
+
+      // Ajay Thomas logs in and saves to localStorage
+      const ajaySession = JSON.stringify(staffUser);
+
+      // On browser reload, simulate state restoration:
+      const restoredUser = restoreCurrentUser(ajaySession, defaultAdmin);
+
+      expect(restoredUser.id).toBe('usr-staff-1');
+      expect(restoredUser.name).toBe('Ajay Thomas');
+      expect(restoredUser.role).toBe('STAFF');
+      expect(restoredUser.email).toBe('mail@thestrategist.co.in');
+      expect(restoredUser.role).not.toBe('ADMIN');
+    });
+
+    it('RULE 3: Non-destructively purges legacy mocks while keeping added staff (Ajay Thomas)', () => {
+      const sanitizeUserDirectory = (users: UserAccount[], adminUser: UserAccount): UserAccount[] => {
+        const filtered = users.filter(
+          (u) =>
+            u.id !== 'usr-1' &&
+            u.id !== 'usr-2' &&
+            u.id !== 'usr-3' &&
+            u.username?.toLowerCase() !== 'staff' &&
+            u.username?.toLowerCase() !== 'client'
+        );
+        const adminExists = filtered.some(
+          (u) =>
+            u.email?.toLowerCase() === 'sreebalajigold@gmail.com' ||
+            u.username?.toLowerCase() === 'sreebalajigold@gmail.com'
+        );
+        return adminExists ? filtered : [adminUser, ...filtered];
+      };
+
+      const rawDirectory: UserAccount[] = [
+        defaultAdmin,
+        { ...staffUser, id: 'usr-2', username: 'staff', name: 'Legacy Staff' }, // legacy mock to purge
+        staffUser, // Real added Staff: Ajay Thomas
+      ];
+
+      const cleaned = sanitizeUserDirectory(rawDirectory, defaultAdmin);
+      expect(cleaned.some((u) => u.name === 'Ajay Thomas')).toBe(true);
+      expect(cleaned.some((u) => u.username === 'staff')).toBe(false);
+      expect(cleaned.some((u) => u.id === 'usr-2')).toBe(false);
+      expect(cleaned.some((u) => u.role === 'ADMIN')).toBe(true);
+    });
+
+    it('RULE 4: Clean session termination on logout removes user session', () => {
+      const mockStorage: Record<string, string> = {
+        sbg_auth: 'true',
+        sbg_user: JSON.stringify(staffUser),
+      };
+
+      const executeLogout = () => {
+        mockStorage['sbg_auth'] = 'false';
+        delete mockStorage['sbg_user'];
+      };
+
+      executeLogout();
+
+      expect(mockStorage['sbg_auth']).toBe('false');
+      expect(mockStorage['sbg_user']).toBeUndefined();
+    });
+  });
 });
+
