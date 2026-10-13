@@ -310,6 +310,11 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
         </div>
       ) : (
         <div className="space-y-4">
+          {parseError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2">
+              <span className="font-bold">⚠️ Notice:</span> {parseError}
+            </div>
+          )}
           {/* Top Instructions & Action Panel */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-[#F2FAF8] rounded-2xl border border-[#DCE5E3]">
             <div className="flex items-center gap-3">

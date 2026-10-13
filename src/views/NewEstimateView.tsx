@@ -102,10 +102,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
     existingEstimate?.customerId || initialCustId || customers[0]?.id || ''
   );
   const [orderId, setOrderId] = useState(existingEstimate?.orderId || '');
-  const [estimateNo, setEstimateNo] = useState(
+  const [estimateNo, setEstimateNo] = useState(() =>
     existingEstimate?.estimateNo || `EST-2026-${Math.floor(100 + Math.random() * 900)}`
   );
-  const [estimateDate, setEstimateDate] = useState(
+  const [estimateDate, setEstimateDate] = useState(() =>
     existingEstimate?.estimateDate || new Date().toISOString().split('T')[0]
   );
   const [customerRef, setCustomerRef] = useState(existingEstimate?.customerRef || '');
@@ -239,7 +239,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   // Live Calculated Estimate via Calculation Engine
   const calculatedEstimate = calculateEstimateSheet(
     {
-      id: existingEstimate ? existingEstimate.id : `est-${Date.now()}`,
+      id: existingEstimate ? existingEstimate.id : 'draft-est',
       estimateNo,
       estimateDate,
       customerId,

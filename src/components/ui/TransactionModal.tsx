@@ -66,7 +66,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     } else if (customers.length > 0 && !customerId) {
       setCustomerId(customers[0].id);
     }
-  }, [defaultCustomerId, customers]);
+  }, [defaultCustomerId, customers, customerId]);
 
   // Handle Carats to Grams conversion in Cost Sheet mode
   const handleCaratChange = (carats: number) => {
@@ -359,13 +359,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <SBGInput
                   label="Stone Wt (Carats)"
                   type="number"
                   step="0.01"
                   value={stoneWTCarats || ''}
                   onChange={(e) => handleCaratChange(parseFloat(e.target.value) || 0)}
+                />
+
+                <SBGInput
+                  label="Stone Amount (₹)"
+                  type="number"
+                  step="0.01"
+                  value={stoneAmount || ''}
+                  onChange={(e) => setStoneAmount(parseFloat(e.target.value) || 0)}
                 />
 
                 <SBGInput

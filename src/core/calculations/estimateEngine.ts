@@ -100,7 +100,7 @@ export function calculateEstimateLine(
   let stoneWTUnit: 'g' | 'ct' = line.stoneWTUnit === 'ct' ? 'ct' : 'g';
   const nos = Number(line.nos) || 1;
   const touch = Number(line.touch) || 0;
-  const rate = Number(line.rate) ?? defaultGoldRate;
+  const rate = line.rate !== undefined && line.rate !== null && !isNaN(Number(line.rate)) ? Number(line.rate) : defaultGoldRate;
   const rateUnit = line.rateUnit || 'PER_G';
   const category = line.category || 'GOLD';
 
