@@ -40,6 +40,7 @@ interface SBGContextType {
   isAuthenticated: boolean;
   login: (username?: string, password?: string) => boolean;
   logout: () => void;
+  resetPassword: (identifier: string, newPassword: string) => boolean;
   currentUser: UserAccount;
   setCurrentUser: (user: UserAccount) => void;
   availableUsers: UserAccount[];
@@ -128,10 +129,10 @@ interface SBGContextType {
 
 const defaultUsers: UserAccount[] = [
   {
-    id: 'usr-1',
-    username: 'admin',
-    name: 'Rajesh Mehra',
-    email: 'rajesh@sbgjewels.com',
+    id: 'usr-admin',
+    username: 'sreebalajigold@gmail.com',
+    name: 'Sree Balaji Gold',
+    email: 'sreebalajigold@gmail.com',
     role: 'ADMIN',
     status: 'ACTIVE',
     password: 'password',
@@ -144,48 +145,7 @@ const defaultUsers: UserAccount[] = [
       settlements: true,
       reports: true,
       users: true,
-      erp: false,
-    },
-  },
-  {
-    id: 'usr-2',
-    username: 'staff',
-    name: 'Sunita Sharma',
-    email: 'sunita@sbgjewels.com',
-    role: 'STAFF',
-    status: 'ACTIVE',
-    password: 'password',
-    avatarColor: '#23827F',
-    permissions: {
-      customers: true,
-      orders: true,
-      transactions: true,
-      estimates: true,
-      settlements: true,
-      reports: true,
-      users: false,
-      erp: false,
-    },
-  },
-  {
-    id: 'usr-3',
-    username: 'client',
-    name: 'Vikram Sethi',
-    email: 'vikram@sbgjewels.com',
-    role: 'CLIENT',
-    status: 'ACTIVE',
-    password: 'password',
-    avatarColor: '#D9B76C',
-    customerId: 'cust-101',
-    permissions: {
-      customers: true,
-      orders: true,
-      transactions: true,
-      estimates: true,
-      settlements: false,
-      reports: false,
-      users: false,
-      erp: false,
+      erp: true,
     },
   },
 ];
@@ -200,12 +160,48 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [availableUsers, setAvailableUsers] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem('sbg_users');
-    return saved ? JSON.parse(saved) : defaultUsers;
+    if (saved) {
+      try {
+        const parsed: UserAccount[] = JSON.parse(saved);
+        // Ensure stale demo accounts (usr-1, usr-2, usr-3) are purged
+        const hasOldDemo = parsed.some(
+          (u) => u.id === 'usr-1' || u.id === 'usr-2' || u.id === 'usr-3' || u.username === 'staff' || u.username === 'client'
+        );
+        const hasAdmin = parsed.some(
+          (u) =>
+            u.email.toLowerCase() === 'sreebalajigold@gmail.com' ||
+            u.username.toLowerCase() === 'sreebalajigold@gmail.com'
+        );
+        if (!hasOldDemo && hasAdmin) {
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('Failed to parse cached users', e);
+      }
+    }
+    localStorage.setItem('sbg_users', JSON.stringify(defaultUsers));
+    return defaultUsers;
   });
 
   const [currentUser, setCurrentUser] = useState<UserAccount>(() => {
     const saved = localStorage.getItem('sbg_user');
-    return saved ? JSON.parse(saved) : defaultUsers[0];
+    if (saved) {
+      try {
+        const parsed: UserAccount = JSON.parse(saved);
+        if (
+          parsed.id !== 'usr-2' &&
+          parsed.id !== 'usr-3' &&
+          (parsed.email?.toLowerCase() === 'sreebalajigold@gmail.com' ||
+            parsed.username?.toLowerCase() === 'sreebalajigold@gmail.com')
+        ) {
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('Failed to parse cached current user', e);
+      }
+    }
+    localStorage.setItem('sbg_user', JSON.stringify(defaultUsers[0]));
+    return defaultUsers[0];
   });
 
   useEffect(() => {
@@ -1136,13 +1132,33 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const login = (username?: string, _password?: string) => {
-    setIsAuthenticated(true);
-    localStorage.setItem('sbg_auth', 'true');
-    if (username) {
-      const match = defaultUsers.find((u) => u.username === username.toLowerCase() || u.email.includes(username));
-      if (match) setCurrentUser(match);
+  const login = (usernameInput?: string, passwordInput?: string): boolean => {
+    if (!usernameInput) return false;
+    const cleanUser = usernameInput.trim().toLowerCase();
+    const cleanPass = passwordInput ? passwordInput.trim() : '';
+
+    const match = availableUsers.find(
+      (u) =>
+        (u.username.toLowerCase() === cleanUser ||
+          u.email.toLowerCase() === cleanUser ||
+          (cleanUser === 'admin' && u.role === 'ADMIN')) &&
+        u.status === 'ACTIVE'
+    );
+
+    if (!match) {
+      return false;
     }
+
+    const expectedPassword = match.password || 'password';
+    if (cleanPass && cleanPass !== expectedPassword) {
+      return false;
+    }
+
+    setIsAuthenticated(true);
+    setCurrentUser(match);
+    localStorage.setItem('sbg_auth', 'true');
+    localStorage.setItem('sbg_user', JSON.stringify(match));
+    logAudit('LOGIN', 'USERS', match.id, `User ${match.name} signed in successfully`);
     return true;
   };
 
@@ -1193,8 +1209,43 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const resetPassword = (identifier: string, newPassword: string): boolean => {
+    if (!identifier || !newPassword) return false;
+    const cleanId = identifier.trim().toLowerCase();
+    const userIndex = availableUsers.findIndex(
+      (u) =>
+        u.email.toLowerCase() === cleanId ||
+        u.username.toLowerCase() === cleanId ||
+        (cleanId === 'admin' && u.role === 'ADMIN')
+    );
+
+    if (userIndex === -1) return false;
+
+    const updatedUser: UserAccount = {
+      ...availableUsers[userIndex],
+      password: newPassword.trim(),
+    };
+
+    const nextUsers = [...availableUsers];
+    nextUsers[userIndex] = updatedUser;
+    setAvailableUsers(nextUsers);
+    localStorage.setItem('sbg_users', JSON.stringify(nextUsers));
+
+    if (
+      currentUser.id === updatedUser.id ||
+      currentUser.email.toLowerCase() === cleanId ||
+      currentUser.username.toLowerCase() === cleanId
+    ) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem('sbg_user', JSON.stringify(updatedUser));
+    }
+
+    logAudit('RESET_PASSWORD', 'USERS', updatedUser.id, `Password updated for ${updatedUser.email}`);
+    return true;
+  };
+
   const switchUserRole = (role: UserAccount['role']) => {
-    const found = defaultUsers.find((u) => u.role === role);
+    const found = availableUsers.find((u) => u.role === role);
     if (found) {
       setCurrentUser(found);
       logAudit('SWITCH_USER_ROLE', 'USERS', found.id, `Switched active profile to ${found.name}`);
@@ -1896,6 +1947,7 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAuthenticated,
         login,
         logout,
+        resetPassword,
         currentUser,
         setCurrentUser,
         availableUsers,

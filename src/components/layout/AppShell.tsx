@@ -122,8 +122,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditingRate, setIsEditingRate] = useState(false);
   const [tempRate, setTempRate] = useState(goldMarketRate.toString());
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isTxDropdownOpen, setIsTxDropdownOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     try {
@@ -465,10 +465,11 @@ export const AppShell: React.FC<AppShellProps> = ({
         {/* Active User Profile Footer */}
         <div className="p-3 border-t border-white/10 bg-black/25 relative shrink-0">
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
-            <div
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2.5 flex-1 min-w-0'} cursor-pointer`}
-              title={sidebarCollapsed ? `${currentUser.name} (${currentUser.role})` : undefined}
+            <button
+              type="button"
+              onClick={() => onNavigate('settings')}
+              className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2.5 flex-1 min-w-0'} cursor-pointer text-left hover:opacity-90 transition-opacity`}
+              title={sidebarCollapsed ? `${currentUser.name} (${currentUser.role}) - Settings` : 'Open Settings'}
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0"
@@ -490,7 +491,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   </span>
                 </div>
               )}
-            </div>
+            </button>
 
             {!sidebarCollapsed && (
               <button
@@ -502,32 +503,6 @@ export const AppShell: React.FC<AppShellProps> = ({
               </button>
             )}
           </div>
-
-          {/* User switcher dropdown */}
-          {userDropdownOpen && (
-            <div className={`absolute bottom-full ${sidebarCollapsed ? 'left-2 w-56' : 'left-3.5 right-3.5'} mb-2 bg-[#062A29] border border-white/20 rounded-xl p-2 shadow-2xl z-50 animate-fadeIn`}>
-              <div className="text-[9px] uppercase tracking-wider text-[#E7CCA0] font-bold px-2 py-1">
-                Switch Role Profile
-              </div>
-              {availableUsers.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => {
-                    switchUserRole(u.role);
-                    setUserDropdownOpen(false);
-                  }}
-                  className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                    currentUser.role === u.role
-                      ? 'bg-white/20 text-white font-bold'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  <span>{u.name}</span>
-                  <span className="text-[9px] text-[#E7CCA0] uppercase">({u.role})</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </aside>
 
@@ -763,24 +738,72 @@ export const AppShell: React.FC<AppShellProps> = ({
             </div>
 
             {/* User Profile Pill */}
-            <div
-              onClick={() => onNavigate('users')}
-              className="flex items-center gap-2.5 pl-2 cursor-pointer hover:opacity-90 transition-opacity bg-white px-3 py-1.5 rounded-full border border-[#DCE5E3] shadow-xs"
-            >
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs bg-[#0F5C5B]"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity bg-white px-3 py-1.5 rounded-full border border-[#DCE5E3] shadow-xs"
               >
-                {currentUser.name[0]}
-              </div>
-              <div className="hidden md:block text-left">
-                <span className="text-xs font-bold text-[#173333] block leading-tight">
-                  {currentUser.name}
-                </span>
-                <span className="text-[9px] font-semibold text-[#647777] uppercase tracking-wider block">
-                  {currentUser.role}
-                </span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-[#647777] hidden md:block" />
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs bg-[#0F5C5B]"
+                >
+                  {currentUser.name[0]}
+                </div>
+                <div className="hidden md:block text-left">
+                  <span className="text-xs font-bold text-[#173333] block leading-tight">
+                    {currentUser.name}
+                  </span>
+                  <span className="text-[9px] font-semibold text-[#647777] uppercase tracking-wider block">
+                    {currentUser.role}
+                  </span>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-[#647777] hidden md:block" />
+              </button>
+
+              {userMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-[#DCE5E3] shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3.5 py-2 border-b border-[#EFECE6]">
+                      <div className="text-xs font-bold text-[#173333] truncate">{currentUser.name}</div>
+                      <div className="text-[10px] text-[#647777] truncate">{currentUser.email || currentUser.username}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onNavigate('settings');
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs text-[#173333] hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-[#0F5C5B]" />
+                      <span>Settings & Security</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onNavigate('users');
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs text-[#173333] hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Users className="w-3.5 h-3.5 text-[#0F5C5B]" />
+                      <span>User Management</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors cursor-pointer border-t border-[#EFECE6]"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>

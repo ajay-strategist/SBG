@@ -13,6 +13,8 @@ import {
   RotateCcw,
   CheckCircle2,
   Building,
+  ShieldCheck,
+  KeyRound,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -30,6 +32,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
     clearAllData,
     syncStatus,
     isLoading,
+    currentUser,
+    updateUser,
   } = useSBG();
 
   const [rateInput, setRateInput] = useState(goldMarketRate.toString());
@@ -38,6 +42,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
   const [companyGST, setCompanyGST] = useState('27AAACR9910K1Z4');
   const [saveAlert, setSaveAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('Settings updated successfully!');
+
+  // Password Update State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordFeedback, setPasswordFeedback] = useState<{ message: string; isError: boolean } | null>(null);
+
+  const handleUpdatePassword = () => {
+    setPasswordFeedback(null);
+    if (!newPassword || newPassword.length < 4) {
+      setPasswordFeedback({ message: 'Password must be at least 4 characters long.', isError: true });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordFeedback({ message: 'New password and confirmation do not match.', isError: true });
+      return;
+    }
+
+    updateUser(currentUser.id, { password: newPassword });
+    setPasswordFeedback({ message: 'Password updated successfully!', isError: false });
+    setNewPassword('');
+    setConfirmPassword('');
+    setTimeout(() => setPasswordFeedback(null), 4000);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +169,69 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
               value={companyGST}
               onChange={(e) => setCompanyGST(e.target.value)}
             />
+          </div>
+        </SBGCard>
+
+        {/* Account Security & Password Management */}
+        <SBGCard variant="glass" className="p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4" /> Account Security & Password
+              </h3>
+              <p className="text-xs text-[#647777] mt-0.5">
+                Active administrator credentials ({currentUser.email || currentUser.username})
+              </p>
+            </div>
+            <SBGBadge variant="teal" className="self-start sm:self-auto">
+              Role: {currentUser.role}
+            </SBGBadge>
+          </div>
+
+          <div className="bg-[#F6F8F7] p-4 rounded-2xl border border-[#DCE5E3]/80 space-y-3">
+            <div className="text-xs font-bold text-[#173333] flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-[#0F5C5B]" />
+              <span>Change Administrator Password</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <SBGInput
+                label="New Password"
+                type="password"
+                placeholder="Enter new password (min. 4 chars)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <SBGInput
+                label="Confirm New Password"
+                type="password"
+                placeholder="Re-enter new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+
+            {passwordFeedback && (
+              <div
+                className={`text-xs font-semibold p-2.5 rounded-xl flex items-center gap-2 ${
+                  passwordFeedback.isError
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                }`}
+              >
+                {!passwordFeedback.isError && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                <span>{passwordFeedback.message}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={handleUpdatePassword}
+                className="px-4 py-2 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+              >
+                Update Password
+              </button>
+            </div>
           </div>
         </SBGCard>
 

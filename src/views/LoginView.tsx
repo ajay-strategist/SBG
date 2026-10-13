@@ -13,6 +13,8 @@ import {
   BarChart3,
   ShieldCheck,
   CheckCircle2,
+  KeyRound,
+  X,
 } from 'lucide-react';
 
 interface LoginViewProps {
@@ -20,13 +22,20 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
-  const { login, availableUsers } = useSBG();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('••••••••••••');
+  const { login, resetPassword } = useSBG();
+  const [username, setUsername] = useState('sreebalajigold@gmail.com');
+  const [password, setPassword] = useState('password');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Password Reset Modal State
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState('sreebalajigold@gmail.com');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetStatus, setResetStatus] = useState<{ message: string; isError: boolean } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,14 +48,45 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       if (success) {
         if (onLoginSuccess) onLoginSuccess();
       } else {
-        setError('Invalid credentials. Please try again.');
+        setError('Invalid username or password. Please verify your credentials.');
       }
-    }, 400);
+    }, 350);
   };
 
-  const handleQuickSelectUser = (uname: string) => {
-    setUsername(uname);
-    setPassword('••••••••••••');
+  const handleResetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetStatus(null);
+
+    if (!newPassword || newPassword.length < 4) {
+      setResetStatus({ message: 'New password must be at least 4 characters long.', isError: true });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setResetStatus({ message: 'New password and confirmation do not match.', isError: true });
+      return;
+    }
+
+    const success = resetPassword(resetIdentifier, newPassword);
+    if (success) {
+      setPassword(newPassword);
+      setUsername(resetIdentifier);
+      setResetStatus({
+        message: 'Password successfully updated! You can now sign in with your new password.',
+        isError: false,
+      });
+      setTimeout(() => {
+        setIsResetOpen(false);
+        setResetStatus(null);
+        setNewPassword('');
+        setConfirmPassword('');
+      }, 1500);
+    } else {
+      setResetStatus({
+        message: 'Account not found with this email or username.',
+        isError: true,
+      });
+    }
   };
 
   return (
@@ -300,16 +340,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   />
                   <span>Remember me</span>
                 </label>
-                <a
-                  href="#forgot"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    alert('Password reset instructions have been dispatched to your registered email.');
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResetOpen(true);
+                    setResetStatus(null);
                   }}
-                  className="font-semibold text-[#0F5C5B] hover:underline"
+                  className="font-semibold text-[#0F5C5B] hover:underline cursor-pointer bg-transparent border-0 p-0"
                 >
                   Forgot password?
-                </a>
+                </button>
               </div>
 
               {/* Sign In Button */}
@@ -331,29 +371,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               </button>
             </form>
 
-            {/* Quick Demo Switcher */}
-            <div className="mt-5 pt-4 border-t border-[#DCE5E3]/70">
-              <div className="text-[10px] text-center uppercase tracking-wider text-[#647777] font-semibold mb-2">
-                Quick Role Demo
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                {availableUsers.map((u) => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => handleQuickSelectUser(u.username)}
-                    className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-                      username === u.username
-                        ? 'bg-[#0F5C5B] text-white border-[#0F5C5B] font-bold shadow-sm'
-                        : 'bg-white/80 text-[#647777] border-[#DCE5E3] hover:border-[#0F5C5B]'
-                    }`}
-                  >
-                    {u.role}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Security Guarantee */}
             <div className="mt-5 pt-4 border-t border-[#DCE5E3]/50 flex items-center justify-center gap-2 text-[11px] text-[#647777]">
               <ShieldCheck className="w-4 h-4 text-[#0F5C5B]" />
@@ -362,6 +379,120 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
       </main>
+
+      {/* Password Reset Modal */}
+      {isResetOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-password-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+        >
+          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#DCE5E3] text-[#173333]">
+            <button
+              type="button"
+              onClick={() => {
+                setIsResetOpen(false);
+                setResetStatus(null);
+              }}
+              aria-label="Close modal"
+              className="absolute right-5 top-5 p-2 rounded-full hover:bg-[#F6F8F7] text-[#647777] hover:text-[#173333] transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-[#0F5C5B]/10 flex items-center justify-center text-[#0F5C5B]">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 id="reset-password-title" className="text-lg font-bold text-[#173333]">
+                  Reset Account Password
+                </h3>
+                <p className="text-xs text-[#647777]">
+                  Set a new secure password for your administrator account
+                </p>
+              </div>
+            </div>
+
+            {resetStatus && (
+              <div
+                className={`mb-4 p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                  resetStatus.isError
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                }`}
+              >
+                {!resetStatus.isError && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                <span>{resetStatus.message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#173333] mb-1">
+                  Registered Email / Username
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={resetIdentifier}
+                  onChange={(e) => setResetIdentifier(e.target.value)}
+                  placeholder="sreebalajigold@gmail.com"
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-[#F6F8F7] border border-[#DCE5E3] focus:outline-none focus:ring-2 focus:ring-[#0F5C5B]/20 text-[#173333]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#173333] mb-1">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-[#F6F8F7] border border-[#DCE5E3] focus:outline-none focus:ring-2 focus:ring-[#0F5C5B]/20 text-[#173333]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#173333] mb-1">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-[#F6F8F7] border border-[#DCE5E3] focus:outline-none focus:ring-2 focus:ring-[#0F5C5B]/20 text-[#173333]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResetOpen(false);
+                    setResetStatus(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-[#647777] hover:text-[#173333] rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white text-xs font-bold shadow-md shadow-[#0F5C5B]/20 cursor-pointer transition-all"
+                >
+                  Save New Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Page Footer */}
       <footer className="relative z-20 px-8 lg:px-14 py-4 flex items-center justify-end text-[11px] text-white/40">

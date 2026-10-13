@@ -427,7 +427,7 @@ export const UsersView: React.FC<UsersViewProps> = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <SBGInput
             label="Full Name"
-            placeholder="e.g. Rajesh Mehra"
+            placeholder="e.g. Sree Balaji Gold"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
@@ -436,7 +436,7 @@ export const UsersView: React.FC<UsersViewProps> = () => {
           <SBGInput
             label="Email Address / Username"
             type="email"
-            placeholder="e.g. rajesh@sbgjewels.com"
+            placeholder="e.g. sreebalajigold@gmail.com"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required

@@ -26,7 +26,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const { customers, orders, transactions, estimates, settlements, goldMarketRate } = useSBG();
+  const { customers, orders, transactions, estimates, settlements, goldMarketRate, currentUser } = useSBG();
   const [selectedRange, setSelectedRange] = useState('Last 6 Months');
 
   // Dynamic live calculations from store
@@ -127,7 +127,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           {/* Title & Welcome */}
           <div>
             <span className="text-[11px] font-bold uppercase tracking-widest text-[#9A783A] block mb-1">
-              WELCOME BACK, RAJESH
+              WELCOME BACK, {currentUser?.name ? currentUser.name.toUpperCase() : 'ADMIN'}
             </span>
             <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#143B39] tracking-tight">
               Commercial Dashboard
