@@ -187,7 +187,6 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
                 <th className="py-3.5 px-4 text-right">TAXABLE VALUE</th>
                 <th className="py-3.5 px-4 text-right">GST (3%)</th>
                 <th className="py-3.5 px-4 text-right font-bold text-[#0F5C5B]">GRAND TOTAL</th>
-                <th className="py-3.5 px-4 text-center">RECONCILIATION</th>
                 <th className="py-3.5 px-4 text-center">STATUS</th>
                 <th className="py-3.5 px-4 text-center">ACTIONS</th>
               </tr>
@@ -195,7 +194,6 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
             <tbody className="divide-y divide-[#EFECE6]">
               {filteredEstimates.map((est) => {
                 const customer = customers.find((c) => c.id === est.customerId);
-                const isReconciled = est.balanceComparison.isReconciled;
 
                 return (
                   <tr
@@ -223,22 +221,6 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
                     </td>
                     <td className="py-4 px-4 text-right font-mono font-bold text-sm text-[#0F5C5B]">
                       ₹ {est.totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                          isReconciled
-                            ? 'bg-[#E6F8F2] text-[#1A825B]'
-                            : 'bg-[#FEF5E6] text-[#B87B1D]'
-                        }`}
-                      >
-                        {isReconciled ? (
-                          <CheckCircle className="w-3 h-3" />
-                        ) : (
-                          <AlertTriangle className="w-3 h-3" />
-                        )}
-                        {isReconciled ? 'Reconciled' : 'Attention'}
-                      </span>
                     </td>
                     <td className="py-4 px-4 text-center">
                       <span

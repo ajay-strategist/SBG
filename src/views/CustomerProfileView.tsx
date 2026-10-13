@@ -440,7 +440,6 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <th className="py-3 px-3 text-right">TAXABLE VALUE</th>
                     <th className="py-3 px-3 text-right">GST (3%)</th>
                     <th className="py-3 px-3 text-right font-bold text-[#0F5C5B]">GRAND TOTAL</th>
-                    <th className="py-3 px-3 text-center">RECONCILIATION</th>
                     <th className="py-3 px-3 text-center">STATUS</th>
                     <th className="py-3 px-3 text-center">ACTIONS</th>
                   </tr>
@@ -448,7 +447,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                 <tbody className="divide-y divide-[#DCE5E3]/60">
                   {customerEstimates.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-10 text-center text-[#647777]">
+                      <td colSpan={9} className="py-10 text-center text-[#647777]">
                         <FileSpreadsheet className="w-8 h-8 mx-auto text-[#647777]/40 mb-2" />
                         <p className="font-semibold text-xs">No estimates recorded for {customer.name}</p>
                         <button
@@ -461,60 +460,42 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    customerEstimates.map((est) => {
-                      const isReconciled = est.balanceComparison?.isReconciled ?? true;
-                      return (
-                        <tr
-                          key={est.id}
-                          onClick={() => onNavigate('estimate-details', est.id)}
-                          className="hover:bg-white/90 transition-colors cursor-pointer"
-                        >
-                          <td className="py-3 px-3 font-mono font-bold text-[#0F5C5B]">
-                            {est.estimateNo}
-                          </td>
-                          <td className="py-3 px-3 text-[#647777] font-mono">
-                            {est.estimateDate}
-                          </td>
-                          <td className="py-3 px-3">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                est.transactionType === 'PURCHASE'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-emerald-100 text-emerald-800'
-                              }`}
-                            >
-                              {est.transactionType || 'SALE'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right font-mono font-bold text-[#0F5C5B]">
-                            {est.totals.totalPureWT.toFixed(3)} g
-                          </td>
-                          <td className="py-3 px-3 text-right font-mono font-semibold text-[#173333]">
-                            ₹{est.totals.taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-3 px-3 text-right font-mono text-[#647777]">
-                            ₹{est.totals.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-3 px-3 text-right font-mono font-bold text-xs text-[#0F5C5B]">
-                            ₹{est.totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <span
-                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                isReconciled
-                                  ? 'bg-[#E6F8F2] text-[#1A825B]'
-                                  : 'bg-[#FEF5E6] text-[#B87B1D]'
-                              }`}
-                            >
-                              {isReconciled ? (
-                                <CheckCircle className="w-3 h-3" />
-                              ) : (
-                                <AlertTriangle className="w-3 h-3" />
-                              )}
-                              {isReconciled ? 'Reconciled' : 'Attention'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-center">
+                    customerEstimates.map((est) => (
+                      <tr
+                        key={est.id}
+                        onClick={() => onNavigate('estimate-details', est.id)}
+                        className="hover:bg-white/90 transition-colors cursor-pointer"
+                      >
+                        <td className="py-3 px-3 font-mono font-bold text-[#0F5C5B]">
+                          {est.estimateNo}
+                        </td>
+                        <td className="py-3 px-3 text-[#647777] font-mono">
+                          {est.estimateDate}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              est.transactionType === 'PURCHASE'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {est.transactionType || 'SALE'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-[#0F5C5B]">
+                          {est.totals.totalPureWT.toFixed(3)} g
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-semibold text-[#173333]">
+                          ₹{est.totals.taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-[#647777]">
+                          ₹{est.totals.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-xs text-[#0F5C5B]">
+                          ₹{est.totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3 px-3 text-center">
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${
                                 est.status === 'CONFIRMED'
@@ -538,8 +519,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                             </button>
                           </td>
                         </tr>
-                      );
-                    })
+                      ))
                   )}
                 </tbody>
               </table>
