@@ -36,12 +36,22 @@ const ViewSkeleton: React.FC = () => (
 
 const MainApp: React.FC = () => {
   const { isAuthenticated } = useSBG();
-  const [currentTab, setCurrentTab] = useState<ActiveTab>('dashboard');
-  const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>();
+  const [currentTab, setCurrentTab] = useState<ActiveTab>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get('tab') as ActiveTab) || 'dashboard';
+  });
+  const [selectedEntityId, setSelectedEntityId] = useState<string | undefined>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('id') || undefined;
+  });
 
   const handleNavigate = (tab: ActiveTab, entityId?: string) => {
     setCurrentTab(tab);
     setSelectedEntityId(entityId);
+    const params = new URLSearchParams();
+    params.set('tab', tab);
+    if (entityId) params.set('id', entityId);
+    window.history.replaceState(null, '', `?${params.toString()}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

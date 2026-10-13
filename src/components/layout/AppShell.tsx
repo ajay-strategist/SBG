@@ -197,7 +197,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#F6F4EE] text-[#173333] font-sans antialiased">
       {/* Mobile Top Bar */}
-      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#093E3C] text-white sticky top-0 z-40 shadow-md">
+      <div className="no-print lg:hidden flex items-center justify-between px-4 py-3 bg-[#093E3C] text-white sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 flex items-center justify-center shrink-0">
             <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
@@ -217,7 +217,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
       {/* Desktop Left Sidebar (Emerald Gradient & Gold Accents) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 bg-gradient-to-b from-[#093E3C] via-[#073331] to-[#052524] text-white flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:shrink-0 ${
+        className={`no-print fixed inset-y-0 left-0 z-30 bg-gradient-to-b from-[#093E3C] via-[#073331] to-[#052524] text-white flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:shrink-0 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-72'}`}
       >

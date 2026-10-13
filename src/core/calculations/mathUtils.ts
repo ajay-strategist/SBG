@@ -36,3 +36,26 @@ export function roundCarat(val: number): number {
 export function roundPurity(val: number): number {
   return round(val, 2);
 }
+
+/**
+ * Format ISO / YYYY-MM-DD date string to Indian commercial standard DD-MM-YYYY (e.g. 23-09-2026).
+ */
+export function formatDateDDMMYYYY(dateStr?: string): string {
+  if (!dateStr) return '';
+  const trimmed = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const [y, m, d] = trimmed.split('T')[0].split('-');
+    return `${d}-${m}-${y}`;
+  }
+  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const date = new Date(trimmed);
+  if (!isNaN(date.getTime())) {
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
+  }
+  return trimmed;
+}

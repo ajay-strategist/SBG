@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSBG } from '../store/sbgStore';
+import { formatDateDDMMYYYY } from '../core/calculations';
 import {
   FileSpreadsheet,
   Plus,
@@ -209,7 +210,7 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
                       {customer?.name || est.customerName || 'Customer'}
                     </td>
                     <td className="py-4 px-4 text-[#647777] font-mono">
-                      {est.estimateDate}
+                      {formatDateDDMMYYYY(est.estimateDate)}
                     </td>
                     <td className="py-4 px-4 text-right font-mono font-bold text-[#0F5C5B]">
                       {est.totals.totalPureWT.toFixed(3)} g

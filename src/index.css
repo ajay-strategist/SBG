@@ -154,13 +154,130 @@
   animation: floatSlow 5s ease-in-out infinite;
 }
 
-/* Print styling */
+/* Professional Print Styling */
 @media print {
-  .no-print {
+  /* Hide all non-printable app UI elements */
+  .no-print,
+  aside,
+  header,
+  nav,
+  .no-print * {
     display: none !important;
   }
+
+  /* Force exact color and background reproduction */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Standard A4 portrait margins */
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+
+  html,
   body {
     background: #FFFFFF !important;
-    color: #000000 !important;
+    background-image: none !important;
+    color: #173333 !important;
+    font-size: 11px !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Remove screen layout bounds */
+  .min-h-screen {
+    min-height: auto !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Prevent table column and row clipping */
+  .overflow-x-auto,
+  .overflow-hidden,
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  /* Avoid slicing cards, summary blocks and signatures across pages */
+  .break-inside-avoid,
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Strip heavy blur, borders and shadows for sharp, crisp print output */
+  .glass-panel,
+  .glass-panel-luxury,
+  .glass-panel-subtle,
+  .glass-panel-emerald-dark,
+  .glass-panel-gold-card,
+  .glass-panel-teal {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    background-color: #FFFFFF !important;
+  }
+
+  /* Clean form inputs and selects into crisp static text in print */
+  input,
+  select,
+  textarea {
+    border: none !important;
+    background: transparent !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    outline: none !important;
+    color: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+  }
+
+  /* Hide number spinner buttons in print */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+
+  /* Compact card styling for print */
+  .rounded-xl,
+  .rounded-2xl {
+    border-radius: 8px !important;
   }
 }

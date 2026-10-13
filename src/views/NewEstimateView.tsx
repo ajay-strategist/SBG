@@ -12,6 +12,7 @@ import {
 import {
   calculateEstimateSheet,
   roundWeight,
+  formatDateDDMMYYYY,
   EstimateCostSheet,
   EstimateLineItem,
   EstimateSubItem,
@@ -42,7 +43,6 @@ import {
   Truck,
   ShieldCheck,
   Sliders,
-  Info,
   RotateCcw,
   X,
   Wrench,
@@ -52,6 +52,7 @@ import {
   Building2,
   Settings,
   FileText,
+  Printer,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
@@ -583,6 +584,15 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
     onNavigate('estimate-details', newEst.id);
   };
 
+  const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = `${estimateNo} - ${selectedCustomer?.name || 'Customer'} - SBG Cost Sheet`;
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   // Helper handlers for Settlement Configuration
   const handlePresetChange = (newPreset: string) => {
     if (newPreset === 'FIX') {
@@ -711,7 +721,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
         <div>
           <button
             onClick={() => onNavigate('estimates')}
@@ -728,6 +738,14 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="px-3.5 py-1.5 rounded-lg border border-[#DCE5E3] bg-white text-xs font-semibold text-[#173333] hover:bg-gray-50 shadow-xs cursor-pointer flex items-center gap-1.5"
+            title="Print Estimate Cost Sheet"
+          >
+            <Printer className="w-3.5 h-3.5 text-[#0F5C5B]" /> Print
+          </button>
           <button
             type="button"
             onClick={() => onNavigate('estimates')}
@@ -759,8 +777,76 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         </div>
       </div>
 
+      {/* Commercial Print Header (Visible Only When Printing) */}
+      <div className="hidden print:block border-b border-[#DCE5E3] pb-4 mb-3">
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 flex items-center justify-center shrink-0">
+              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold tracking-wider text-[#0F5C5B]">SREE BALAJI GOLD</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#0F5C5B]/10 text-[#0F5C5B] uppercase">
+                  {isPurchase ? 'PURCHASE / RECEIPT' : 'SALE / ISSUE'}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#D9B76C]/20 text-[#8C6D23] uppercase">
+                  ESTIMATE COST SHEET
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-right space-y-0.5 text-xs">
+            <div className="text-base font-mono font-bold text-[#0F5C5B]">{estimateNo}</div>
+            <div className="text-[#647777]">Date: <strong className="text-[#173333]">{formatDateDDMMYYYY(estimateDate)}</strong></div>
+            {customerRef && (
+              <div className="text-[#647777]">Job Ref: <strong className="text-[#173333]">{customerRef}</strong></div>
+            )}
+          </div>
+        </div>
+
+        {/* Customer & Applied Metal Rates Box */}
+        <div className="grid grid-cols-2 gap-4 mt-3 bg-[#0F5C5B]/5 p-3 rounded-xl border border-[#0F5C5B]/15 text-xs break-inside-avoid">
+          <div className="space-y-0.5">
+            <span className="text-[9px] font-bold text-[#647777] uppercase tracking-wider block">
+              Billed To Customer
+            </span>
+            <h4 className="text-sm font-bold text-[#0F5C5B]">
+              {selectedCustomer?.name || 'Customer'} ({selectedCustomer?.code || 'ACC'})
+            </h4>
+            <p className="text-[#647777] text-[11px]">
+              {[selectedCustomer?.phone, selectedCustomer?.city || 'Mumbai, Maharashtra'].filter(Boolean).join(' | ')}
+            </p>
+            {selectedCustomer?.gstin && (
+              <p className="font-mono text-[10px] text-[#173333]">GSTIN: {selectedCustomer.gstin}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-right">
+            <div>
+              <span className="text-[9px] font-bold text-[#647777] uppercase tracking-wider block">
+                Applied Gold Rate
+              </span>
+              <span className="font-mono font-bold text-sm text-[#173333]">
+                ₹{Number(goldRate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}/g
+              </span>
+              <span className="text-[10px] text-[#647777] block">Purity: {goldRatePurity}%</span>
+            </div>
+            <div>
+              <span className="text-[9px] font-bold text-[#647777] uppercase tracking-wider block">
+                Settlement Mode
+              </span>
+              <span className="font-semibold text-[#0F5C5B]">
+                {settlementMode === 'FIX' ? 'FIX (100% Cash)' : `UNFIX (${unfixPreset.replace(/_/g, ' ')})`}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Header Parameters Card */}
-      <div className="bg-white rounded-xl border border-[#DCE5E3] p-4 shadow-xs">
+      <div className="bg-white rounded-xl border border-[#DCE5E3] p-4 shadow-xs no-print">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 items-end">
           <div>
             <label className="block text-xs font-bold text-[#173333] mb-1">Customer Account</label>
@@ -827,7 +913,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       </div>
 
       {/* Master Rates Control Bar */}
-      <div className="bg-white rounded-xl border border-[#DCE5E3] px-4 py-3 shadow-xs">
+      <div className="bg-white rounded-xl border border-[#DCE5E3] px-4 py-3 shadow-xs no-print">
         <div className="flex flex-wrap items-end gap-3.5 xl:gap-4">
           <div className="flex items-center gap-2 mr-2 self-center pt-3.5">
             <div className="w-7 h-7 rounded-lg bg-[#0F5C5B] text-white flex items-center justify-center shrink-0">
@@ -935,7 +1021,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             <span className="text-xs font-bold text-[#173333]">Estimate Line Items</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 no-print">
             <button
               type="button"
               onClick={() => handleAddLine('GOLD')}
@@ -967,7 +1053,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="text-[#647777] border-b border-[#DCE5E3] uppercase font-bold text-[10px] tracking-wider bg-gray-50/50">
               <tr>
@@ -979,11 +1065,11 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 <th className="py-2.5 px-2 text-right min-w-[120px]">Stone WT</th>
                 <th className="py-2.5 px-2 text-right w-20">Net WT (g)</th>
                 <th className="py-2.5 px-2 text-right w-16">Touch %</th>
-                <th className="py-2.5 px-2 text-right w-20 font-bold text-emerald-700">Pure WT (g)</th>
+                <th className="py-2.5 px-2 text-right w-20">Pure WT (g)</th>
                 <th className="py-2.5 px-2 text-right min-w-[95px]">Rate (₹)</th>
                 <th className="py-2.5 px-2 min-w-[80px]">Unit</th>
                 <th className="py-2.5 px-3 text-right font-bold text-[#173333] min-w-[110px]">Line Amount (₹)</th>
-                <th className="py-2.5 px-3 text-center w-16">Actions</th>
+                <th className="py-2.5 px-3 text-center w-16 no-print">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#DCE5E3]/60">
@@ -1018,7 +1104,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                           className="w-full text-xs font-semibold px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none focus:border-[#0F5C5B]"
                         />
                         {(line.category === 'GOLD' || subCount > 0) && (
-                          <div className="flex items-center gap-1.5 mt-1">
+                          <div className="flex items-center gap-1.5 mt-1 no-print">
                             <button
                               type="button"
                               onClick={() => toggleSubItems(line.id)}
@@ -1132,7 +1218,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                           className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
                         />
                       </td>
-                      <td className="py-2.5 px-2 text-right font-mono font-bold text-xs text-emerald-700">
+                      <td className="py-2.5 px-2 text-right font-mono font-medium text-xs text-[#173333]">
                         {line.pureWT.toFixed(3)}
                       </td>
                       <td className="py-2.5 px-2 text-right">
@@ -1160,7 +1246,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-xs text-[#173333] whitespace-nowrap">
                         ₹ {line.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
-                      <td className="py-2.5 px-3 text-center">
+                      <td className="py-2.5 px-3 text-center no-print">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
@@ -1212,7 +1298,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                               </div>
 
                               {/* Quick Add Sub-item Buttons */}
-                              <div className="flex flex-wrap items-center gap-1.5">
+                              <div className="flex flex-wrap items-center gap-1.5 no-print">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -1279,7 +1365,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                   onClick={() => handleAddSubItem(idx)}
                                   className="px-2 py-1 rounded-lg text-[10px] font-bold bg-[#0F5C5B] text-white hover:bg-[#0D4E4D] cursor-pointer inline-flex items-center gap-1"
                                 >
-                                  <Plus className="w-3 h-3" /> Add Component
+                                  <Plus className="w-3.5 h-3.5" /> Add Component
                                 </button>
                               </div>
                             </div>
@@ -1293,7 +1379,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                 </p>
                               </div>
                             ) : (
-                              <div className="overflow-x-auto">
+                              <div className="overflow-x-auto print:overflow-visible">
                                 <table className="w-full text-left text-xs">
                                   <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#DCE5E3] uppercase font-bold text-[9px] tracking-wider">
                                     <tr>
@@ -1303,11 +1389,11 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                       <th className="py-2 px-2 text-right w-16">Nos</th>
                                       <th className="py-2 px-2 text-right min-w-[120px]">Weight</th>
                                       <th className="py-2 px-2 text-right w-16">Touch %</th>
-                                      <th className="py-2 px-2 text-right w-20 font-bold text-[#0F5C5B]">Pure WT</th>
+                                      <th className="py-2 px-2 text-right w-20">Pure WT</th>
                                       <th className="py-2 px-2 text-right min-w-[90px]">Rate (₹)</th>
                                       <th className="py-2 px-2 min-w-[70px]">Unit</th>
                                       <th className="py-2 px-2 text-right font-bold text-[#0F5C5B] min-w-[100px]">Amount (₹)</th>
-                                      <th className="py-2 px-2 text-center w-10"></th>
+                                      <th className="py-2 px-2 text-center w-10 no-print"></th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-[#EFECE6]">
@@ -1383,7 +1469,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                             className="w-14 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
                                           />
                                         </td>
-                                        <td className="py-1.5 px-2 text-right font-mono font-bold text-[#0F5C5B]">
+                                        <td className="py-1.5 px-2 text-right font-mono text-[#173333]">
                                           {(sub.pureWT || 0).toFixed(3)}g
                                         </td>
                                         <td className="py-1.5 px-2 text-right">
@@ -1410,7 +1496,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                         <td className="py-1.5 px-2 text-right font-mono font-bold text-[#0F5C5B]">
                                           <SBGCurrency value={sub.amount} />
                                         </td>
-                                        <td className="py-1.5 px-2 text-center">
+                                        <td className="py-1.5 px-2 text-center no-print">
                                           <button
                                             type="button"
                                             onClick={() => handleDeleteSubItem(idx, sIdx)}
@@ -1452,7 +1538,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 <td className="py-2.5 px-2 text-center text-[#647777] font-sans">
                   —
                 </td>
-                <td className="py-2.5 px-2 text-right text-emerald-700 font-black">
+                <td className="py-2.5 px-2 text-right font-black">
                   {calculatedEstimate.totals.totalPureWT.toFixed(3)} g
                 </td>
                 <td colSpan={2} className="py-2.5 px-2 text-right font-sans text-xs font-bold text-[#173333]">
@@ -1461,7 +1547,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 <td className="py-2.5 px-3 text-right font-black text-sm text-[#173333] whitespace-nowrap">
                   ₹ {calculatedEstimate.totals.taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
-                <td></td>
+                <td className="no-print"></td>
               </tr>
             </tfoot>
           </table>
@@ -1469,7 +1555,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       </div>
 
       {/* Material & Amount Summary (Incl. GST) */}
-      <div className="bg-white rounded-xl border border-[#DCE5E3] p-4 shadow-xs space-y-3">
+      <div className="bg-white rounded-xl border border-[#DCE5E3] p-4 shadow-xs space-y-3 break-inside-avoid">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#0F5C5B] text-white flex items-center justify-center shrink-0">
             <Layers className="w-4 h-4 text-white" />
@@ -1477,7 +1563,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           <span className="text-xs font-bold text-[#173333]">Material & Amount Summary (Incl. GST)</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-4 print:grid-cols-4 gap-3 text-xs">
           {/* Card 1: Gold Metal Value */}
           <div className="bg-[#FAF9F5] rounded-xl border border-[#DCE5E3] p-3.5 flex flex-col justify-between">
             <div>
@@ -1493,7 +1579,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
               <div className="text-lg font-black text-[#173333] font-mono leading-tight">
                 ₹ {calculatedEstimate.totals.goldValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div className="text-xs font-bold text-emerald-700 font-mono mt-0.5">
+              <div className="text-xs font-bold text-[#173333] font-mono mt-0.5">
                 {(calculatedEstimate.totals.goldPureWT ?? calculatedEstimate.totals.totalPureWT).toFixed(3)} g Pure Gold
               </div>
             </div>
@@ -1579,9 +1665,9 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       </div>
 
       {/* Settlement Configuration and Customer Ledger Balance - Side by Side View */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 print:grid-cols-12 gap-4 print:gap-3 items-stretch break-inside-avoid">
         {/* Left Card: Settlement Configuration */}
-        <div className="lg:col-span-7 bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 flex flex-col justify-between space-y-3">
+        <div className="lg:col-span-7 print:col-span-7 bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-[#DCE5E3] whitespace-nowrap">
             <div className="flex items-center gap-2 shrink-0">
               <div className="w-7 h-7 rounded-lg bg-[#0F5C5B] text-white flex items-center justify-center shrink-0">
@@ -1596,7 +1682,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 <select
                   value={activePresetValue}
                   onChange={(e) => handlePresetChange(e.target.value)}
-                  className="text-xs font-medium py-1 px-2 rounded-lg bg-white border border-[#DCE5E3] text-[#173333] cursor-pointer"
+                  className="text-xs font-medium py-1 px-2 rounded-lg bg-white border border-[#DCE5E3] text-[#173333] cursor-pointer print:border-none print:p-0 print:font-bold"
                 >
                   <option value="B2B_WITHOUT_MC">B2B - Without MC</option>
                   <option value="B2B_WITH_MC">B2B - With MC</option>
@@ -1618,9 +1704,9 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                     onChange={(e) => setUnfixGoldRate(parseFloat(e.target.value) || 0)}
                     onFocus={(e) => e.target.select()}
                     placeholder={Number(goldRate) > 0 ? String(goldRate) : '0.00'}
-                    className="w-28 sm:w-32 text-xs font-mono font-bold bg-white px-2.5 py-1 rounded-l-lg border border-r-0 border-[#DCE5E3] text-[#173333] text-right focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-28 sm:w-32 text-xs font-mono font-bold bg-white px-2.5 py-1 rounded-l-lg border border-r-0 border-[#DCE5E3] text-[#173333] text-right focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none print:border-none print:w-auto"
                   />
-                  <span className="text-xs bg-gray-50 px-2 py-1 border border-[#DCE5E3] rounded-r-lg text-[#647777] font-medium border-l-0">
+                  <span className="text-xs bg-gray-50 px-2 py-1 border border-[#DCE5E3] rounded-r-lg text-[#647777] font-medium border-l-0 print:border-none print:bg-transparent">
                     /g
                   </span>
                   {unfixGoldRate > 0 && unfixGoldRate !== Number(goldRate) ? (
@@ -1628,12 +1714,12 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                       type="button"
                       title="Reset to invoice gold rate"
                       onClick={() => setUnfixGoldRate(0)}
-                      className="ml-1 p-1 rounded hover:bg-amber-100 text-amber-800 transition-colors cursor-pointer"
+                      className="ml-1 p-1 rounded hover:bg-amber-100 text-amber-800 transition-colors cursor-pointer no-print"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                     </button>
                   ) : (
-                    <div className="ml-1 p-1 text-[#647777]">
+                    <div className="ml-1 p-1 text-[#647777] no-print">
                       <Pencil className="w-3.5 h-3.5" />
                     </div>
                   )}
@@ -1910,7 +1996,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         </div>
 
         {/* Right Card: Customer Ledger Balance Adjustment */}
-        <div className="lg:col-span-5 bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 flex flex-col justify-between space-y-3">
+        <div className="lg:col-span-5 print:col-span-5 bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
           <div className="space-y-3">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#DCE5E3]">
@@ -1997,15 +2083,20 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             </div>
           </div>
 
-          {/* Bottom Info Note */}
-          <div className="bg-gray-50 rounded-xl px-3.5 py-3 border border-[#DCE5E3] flex items-center gap-2.5 text-xs text-[#526665] mt-auto">
-            <Info className="w-4 h-4 text-[#0F5C5B] shrink-0" />
-            <p className="leading-normal">
-              Posting this estimate will {isPurchase ? 'credit' : 'debit'}{' '}
-              <strong className="text-[#173333] font-bold">{Math.abs(displayDeltaPureWT).toFixed(3)}g</strong> Pure Gold and{' '}
-              <strong className="text-[#173333] font-bold">₹ {Math.abs(displayDeltaAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> Cash to{' '}
-              <span className="font-semibold text-[#173333]">{selectedCustomer?.name || 'Customer'}</span>'s ledger.
-            </p>
+        </div>
+      </div>
+
+      {/* Commercial Print Footer (Visible Only When Printing) */}
+      <div className="hidden print:block border-t border-[#DCE5E3] pt-3 mt-4 break-inside-avoid">
+        <div className="flex justify-end text-xs text-[#647777]">
+          <div className="text-right flex flex-col justify-between items-end space-y-8">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-[#647777] block">For SREE BALAJI GOLD</span>
+              <span className="text-xs font-semibold text-[#173333]">Authorized Signatory</span>
+            </div>
+            <div className="text-[9px] text-[#647777]">
+              Computer Generated Commercial Estimate • {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </div>
           </div>
         </div>
       </div>
