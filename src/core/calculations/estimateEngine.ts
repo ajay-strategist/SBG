@@ -172,9 +172,11 @@ export function calculateEstimateLine(
         effectiveCarats = line.stoneWTCarats;
       } else if (stoneWTCarats > 0) {
         effectiveCarats = stoneWTCarats;
-      } else if (category === 'DIAMOND' || category === 'PRECIOUS_STONE' || rateUnit === 'PER_CT') {
+      } else {
         const baseWT = netWT > 0 ? netWT : grossWT;
-        effectiveCarats = stoneWTUnit === 'ct' ? baseWT : roundWeight(baseWT / 0.2);
+        effectiveCarats = (line.stoneWT && line.stoneWT > 0 && stoneWTUnit === 'g')
+          ? roundWeight(baseWT / 0.2)
+          : baseWT;
       }
       calculatedAmount = effectiveCarats * rate;
       break;

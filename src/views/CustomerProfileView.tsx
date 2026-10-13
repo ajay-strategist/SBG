@@ -284,7 +284,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                 <thead className="bg-[#0F5C5B]/10 text-[#0F5C5B] border-b border-[#DCE5E3] uppercase font-bold text-[10px] tracking-wider">
                   <tr>
                     <th className="py-3 px-3">Date</th>
-                    <th className="py-3 px-3">Column1</th>
+                    <th className="py-3 px-3">Type</th>
                     <th className="py-3 px-3">Particulars</th>
                     <th className="py-3 px-3">Description</th>
                     <th className="py-3 px-3 text-right">Nos</th>
@@ -293,7 +293,9 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <th className="py-3 px-3 text-right">Net WT</th>
                     <th className="py-3 px-3 text-right">Touch</th>
                     <th className="py-3 px-3 text-right">Pure WT</th>
-                    <th className="py-3 px-3 text-right">Stone / Total Amt</th>
+                    <th className="py-3 px-3 text-right">Stone Amt (₹)</th>
+                    <th className="py-3 px-3 text-right">MC Amt (₹)</th>
+                    <th className="py-3 px-3 text-right">Total Amt (₹)</th>
                     <th className="py-3 px-3 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/10">Balance MC (₹)</th>
                     <th className="py-3 px-3 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/10">Balance WT (g)</th>
                     <th className="py-3 px-3 text-center">Action</th>
@@ -312,6 +314,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <td className="py-2.5 px-3 text-right">0.000</td>
                     <td className="py-2.5 px-3 text-right">-</td>
                     <td className="py-2.5 px-3 text-right font-bold">0.000</td>
+                    <td className="py-2.5 px-3 text-right">-</td>
+                    <td className="py-2.5 px-3 text-right">-</td>
                     <td className="py-2.5 px-3 text-right">-</td>
                     <td className="py-2.5 px-3 text-right font-bold bg-[#0F5C5B]/5 text-[#173333]">
                       ₹{customer.openingMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -360,8 +364,12 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-right font-semibold">{tx.nos || '-'}</td>
-                        <td className="py-2.5 px-3 text-right">{tx.grossWT > 0 ? tx.grossWT.toFixed(3) : '-'}</td>
-                        <td className="py-2.5 px-3 text-right opacity-80">{tx.stoneWT > 0 ? tx.stoneWT.toFixed(3) : '-'}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          {tx.grossWT !== 0 ? Math.abs(tx.grossWT).toFixed(3) : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right opacity-80">
+                          {tx.stoneWT !== 0 ? Math.abs(tx.stoneWT).toFixed(3) : '-'}
+                        </td>
                         <td className="py-2.5 px-3 text-right font-semibold">
                           {tx.netWT !== 0 ? tx.netWT.toFixed(3) : '0.000'}
                         </td>
@@ -374,7 +382,19 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                         <td className="py-2.5 px-3 text-right font-semibold">
                           {tx.stoneAmount > 0
                             ? `₹${tx.stoneAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                            : tx.totalAmount !== 0
+                            : tx.stoneAmountCal !== 0
+                            ? `₹${Math.abs(tx.stoneAmountCal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                            : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-semibold">
+                          {tx.mcAmount > 0
+                            ? `₹${tx.mcAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                            : tx.mcAmountCal !== 0
+                            ? `₹${Math.abs(tx.mcAmountCal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                            : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold">
+                          {tx.totalAmount !== 0
                             ? `₹${Math.abs(tx.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
                             : '-'}
                         </td>
