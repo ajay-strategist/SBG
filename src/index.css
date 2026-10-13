@@ -154,6 +154,20 @@
   animation: floatSlow 5s ease-in-out infinite;
 }
 
+/* Mobile Touch & Momentum Utilities */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.safe-area-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.safe-area-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
 /* Professional Print Styling */
 @media print {
   /* Hide all non-printable app UI elements */

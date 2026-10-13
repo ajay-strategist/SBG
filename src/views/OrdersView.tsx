@@ -226,8 +226,8 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onNavigate }) => {
 
       {/* Orders Table */}
       <div className="rounded-3xl bg-white/85 border border-[#E2E8E6] shadow-xs backdrop-blur-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[780px] text-left text-xs">
             <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#E2E8E6] uppercase font-bold text-[10px] tracking-wider">
               <tr>
                 <th className="py-3.5 px-4">ORDER NO.</th>

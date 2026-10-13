@@ -388,8 +388,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
         {/* View Mode Switching: Table vs Grid */}
         {viewMode === 'list' ? (
           /* Table View */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto touch-scroll">
+            <table className="w-full min-w-[760px] text-left text-xs">
               <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#E2E8E6] uppercase font-bold text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3.5 px-4 w-10">

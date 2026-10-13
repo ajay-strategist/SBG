@@ -511,8 +511,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto touch-scroll">
+            <table className="w-full min-w-[720px] text-left text-xs">
               <thead className="text-[#647777] border-b border-[#E2E8E6] uppercase font-bold text-[10px] tracking-wider">
                 <tr>
                   <th className="py-2.5 px-3">DATE / REF</th>

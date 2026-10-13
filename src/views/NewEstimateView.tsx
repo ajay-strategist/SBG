@@ -1021,7 +1021,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             <span className="text-xs font-bold text-[#173333]">Estimate Line Items</span>
           </div>
 
-          <div className="flex items-center gap-2 no-print">
+          <div className="flex flex-wrap items-center gap-2 no-print">
             <button
               type="button"
               onClick={() => handleAddLine('GOLD')}
@@ -1053,8 +1053,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-x-auto touch-scroll print:overflow-visible">
+          <table className="w-full min-w-[1020px] print:min-w-0 text-left text-xs border-collapse">
             <thead className="text-[#647777] border-b border-[#DCE5E3] uppercase font-bold text-[10px] tracking-wider bg-gray-50/50">
               <tr>
                 <th className="py-2.5 px-3 w-8">#</th>
@@ -1135,6 +1135,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                       <td className="py-2.5 px-2 text-right">
                         <input
                           type="number"
+                          inputMode="numeric"
                           value={line.nos}
                           onChange={(e) => handleUpdateLine(idx, { nos: parseInt(e.target.value) || 1 })}
                           className="w-14 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
@@ -1143,6 +1144,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                       <td className="py-2.5 px-2 text-right">
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="0.001"
                           value={line.grossWT}
                           onChange={(e) => handleUpdateLine(idx, { grossWT: parseFloat(e.target.value) || 0 })}
@@ -1153,6 +1155,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                         <div className="flex items-center justify-end gap-1">
                           <input
                             type="number"
+                            inputMode="decimal"
                             step="0.001"
                             value={
                               line.stoneWTUnit === 'ct'
@@ -1212,6 +1215,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                       <td className="py-2.5 px-2 text-right">
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="0.01"
                           value={line.touch}
                           onChange={(e) => handleUpdateLine(idx, { touch: parseFloat(e.target.value) || 0 })}
@@ -1224,6 +1228,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                       <td className="py-2.5 px-2 text-right">
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="0.01"
                           value={line.rate}
                           onChange={(e) => handleUpdateLine(idx, { rate: parseFloat(e.target.value) || 0 })}
@@ -1379,8 +1384,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                 </p>
                               </div>
                             ) : (
-                              <div className="overflow-x-auto print:overflow-visible">
-                                <table className="w-full text-left text-xs">
+                              <div className="overflow-x-auto touch-scroll print:overflow-visible">
+                                <table className="w-full min-w-[920px] print:min-w-0 text-left text-xs">
                                   <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#DCE5E3] uppercase font-bold text-[9px] tracking-wider">
                                     <tr>
                                       <th className="py-2 px-2 w-8">#</th>
@@ -1428,6 +1433,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                         <td className="py-1.5 px-2 text-right">
                                           <input
                                             type="number"
+                                            inputMode="numeric"
                                             value={sub.nos}
                                             onChange={(e) => handleUpdateSubItem(idx, sIdx, { nos: parseInt(e.target.value) || 1 })}
                                             className="w-12 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
@@ -1437,6 +1443,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                           <div className="flex items-center justify-end gap-1">
                                             <input
                                               type="number"
+                                              inputMode="decimal"
                                               step="0.001"
                                               value={sub.weight === 0 ? '' : sub.weight}
                                               onChange={(e) => handleUpdateSubItem(idx, sIdx, { weight: parseFloat(e.target.value) || 0 })}
@@ -1463,6 +1470,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                         <td className="py-1.5 px-2 text-right">
                                           <input
                                             type="number"
+                                            inputMode="decimal"
                                             step="0.01"
                                             value={sub.touch || 0}
                                             onChange={(e) => handleUpdateSubItem(idx, sIdx, { touch: parseFloat(e.target.value) || 0 })}
@@ -1475,6 +1483,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                         <td className="py-1.5 px-2 text-right">
                                           <input
                                             type="number"
+                                            inputMode="decimal"
                                             step="0.01"
                                             value={sub.rate}
                                             onChange={(e) => handleUpdateSubItem(idx, sIdx, { rate: parseFloat(e.target.value) || 0 })}
@@ -2084,6 +2093,38 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           </div>
 
         </div>
+      </div>
+
+      {/* Bottom Save Actions Bar (Screen Only - Convenient for Mobile) */}
+      <div className="flex flex-wrap items-center justify-end gap-2.5 p-4 bg-white border border-[#DCE5E3] rounded-2xl shadow-xs no-print">
+        <button
+          type="button"
+          onClick={handlePrint}
+          className="px-3.5 py-2 rounded-xl border border-[#DCE5E3] bg-white text-xs font-semibold text-[#173333] hover:bg-gray-50 shadow-xs cursor-pointer flex items-center gap-1.5"
+        >
+          <Printer className="w-3.5 h-3.5 text-[#0F5C5B]" /> Print
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate('estimates')}
+          className="px-3.5 py-2 rounded-xl border border-[#DCE5E3] bg-white text-xs font-semibold text-[#173333] hover:bg-gray-50 shadow-xs cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSaveEstimate}
+          className="px-3.5 py-2 rounded-xl border border-[#DCE5E3] bg-white text-xs font-semibold text-[#173333] hover:bg-gray-50 shadow-xs cursor-pointer flex items-center gap-1.5"
+        >
+          <Save className="w-3.5 h-3.5 text-[#647777]" /> Save Draft
+        </button>
+        <button
+          type="button"
+          onClick={handleSaveAndConfirmEstimate}
+          className="px-4 py-2 rounded-xl bg-[#0F5C5B] text-xs font-bold text-white hover:bg-[#0c4a49] shadow-xs cursor-pointer flex items-center gap-1.5"
+        >
+          <FileCheck className="w-3.5 h-3.5" /> Save & Confirm to Ledger
+        </button>
       </div>
 
       {/* Commercial Print Footer (Visible Only When Printing) */}

@@ -325,25 +325,25 @@ export const SBGModal: React.FC<SBGModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
       <div
         className={cn(
-          'w-full bg-white/95 backdrop-blur-xl border border-white/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+          'w-full bg-white/95 backdrop-blur-xl border border-white/80 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]',
           sizeStyles[size]
         )}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#DCE5E3]/80 bg-[#0F5C5B]/5">
-          <h3 className="text-lg font-semibold text-[#0F5C5B]">{title}</h3>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#DCE5E3]/80 bg-[#0F5C5B]/5 shrink-0">
+          <h3 className="text-base sm:text-lg font-semibold text-[#0F5C5B]">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-[#647777] hover:text-[#173333] hover:bg-black/5 transition-colors"
+            className="p-1.5 rounded-lg text-[#647777] hover:text-[#173333] hover:bg-black/5 transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className="p-6 overflow-y-auto max-h-[80vh]">{children}</div>
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 touch-scroll">{children}</div>
       </div>
     </div>
   );

@@ -406,8 +406,8 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
         </div>
 
         {/* Dynamic Ledger Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[11px] whitespace-nowrap">
+        <div className="overflow-x-auto touch-scroll">
+          <table className="w-full min-w-[1250px] text-left text-[11px] whitespace-nowrap">
             <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#E2E8E6] uppercase font-bold text-[9.5px] tracking-wider">
               <tr>
                 <th className="py-3 px-3 w-8">

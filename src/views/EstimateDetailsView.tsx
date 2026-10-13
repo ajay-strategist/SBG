@@ -580,8 +580,8 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
         </div>
 
         {/* Items Table */}
-        <div className="overflow-x-auto print:overflow-visible rounded-xl border border-[#DCE5E3]">
-          <table className="w-full text-left text-xs print:text-[10px]">
+        <div className="overflow-x-auto touch-scroll print:overflow-visible rounded-xl border border-[#DCE5E3]">
+          <table className="w-full min-w-[780px] print:min-w-0 text-left text-xs print:text-[10px]">
             <thead className="bg-[#0F5C5B] text-white print:bg-[#0F5C5B] print:text-white uppercase font-bold text-[10px] print:text-[8.5px] tracking-wider">
               <tr>
                 <th className="py-2.5 px-2.5 print:py-1.5 print:px-1.5 text-center w-8">#</th>
@@ -666,8 +666,8 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                             </span>
                           </div>
 
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-[11px]">
+                          <div className="overflow-x-auto touch-scroll print:overflow-visible">
+                            <table className="w-full min-w-[650px] print:min-w-0 text-left text-[11px]">
                               <thead className="text-[#647777] border-b border-[#EFECE6] uppercase font-bold text-[9px] tracking-wider">
                                 <tr>
                                   <th className="py-1 px-2">#</th>
@@ -959,8 +959,8 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="overflow-x-auto touch-scroll">
+              <table className="w-full min-w-[550px] print:min-w-0 text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[#DCE5E3] text-[10px] font-bold uppercase tracking-wider text-[#647777] bg-gray-50/70">
                     <th className="py-2 px-3">COMPONENT</th>

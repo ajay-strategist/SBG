@@ -197,27 +197,51 @@ export const AppShell: React.FC<AppShellProps> = ({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#F6F4EE] text-[#173333] font-sans antialiased">
       {/* Mobile Top Bar */}
-      <div className="no-print lg:hidden flex items-center justify-between px-4 py-3 bg-[#093E3C] text-white sticky top-0 z-40 shadow-md">
-        <div className="flex items-center gap-2.5">
+      <div className="no-print lg:hidden flex items-center justify-between px-3.5 py-2.5 bg-[#093E3C] text-white sticky top-0 z-40 shadow-md">
+        <div className="flex items-center gap-2">
           <div className="w-8 h-8 flex items-center justify-center shrink-0">
             <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
           </div>
           <div>
-            <span className="font-cinzel font-bold tracking-wider text-sm block">SBG ERP</span>
-            <span className="text-[9px] text-[#E7CCA0] tracking-widest uppercase">Sree Balaji Gold</span>
+            <span className="font-cinzel font-bold tracking-wider text-sm block leading-none">SBG ERP</span>
+            <span className="text-[8.5px] text-[#E7CCA0] tracking-widest uppercase">Sree Balaji Gold</span>
           </div>
         </div>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-lg hover:bg-white/10 text-white cursor-pointer"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+
+        {/* Live Gold Rate Badge in Mobile Header */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refreshLiveGoldRate}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-[#D9B76C]/30 text-white text-[11px] font-mono font-bold active:scale-95 transition-transform cursor-pointer"
+            title="Tap to refresh live gold rate"
+          >
+            <Sparkles className="w-3 h-3 text-[#D9B76C]" />
+            <span className="text-[#E7CCA0]">₹{(goldMarketRate / 1000).toFixed(1)}k</span>
+            <span className="text-[8.5px] text-white/70">/g</span>
+            {isGoldRateLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />}
+          </button>
+
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-white cursor-pointer"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
-      {/* Desktop Left Sidebar (Emerald Gradient & Gold Accents) */}
+      {/* Mobile Backdrop Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="no-print fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs transition-opacity duration-200"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Desktop & Mobile Slide-over Sidebar (Emerald Gradient & Gold Accents) */}
       <aside
-        className={`no-print fixed inset-y-0 left-0 z-30 bg-gradient-to-b from-[#093E3C] via-[#073331] to-[#052524] text-white flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:shrink-0 ${
+        className={`no-print fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-gradient-to-b from-[#093E3C] via-[#073331] to-[#052524] text-white flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:z-30 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-72'}`}
       >
@@ -241,6 +265,14 @@ export const AppShell: React.FC<AppShellProps> = ({
               </div>
             )}
           </div>
+
+          {/* Mobile Close Button inside Drawer Header */}
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg bg-white/10 text-white/80 hover:text-white cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
 
           {/* Desktop Collapse Toggle Button */}
           {!sidebarCollapsed && (
@@ -534,10 +566,10 @@ export const AppShell: React.FC<AppShellProps> = ({
               {isTxDropdownOpen && (
                 <>
                   <div
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 z-40 bg-black/40 sm:bg-transparent"
                     onClick={() => setIsTxDropdownOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-[#DCE5E3] shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="fixed sm:absolute bottom-20 sm:bottom-auto inset-x-4 sm:inset-x-auto sm:right-0 sm:mt-2 w-auto sm:w-64 max-w-sm mx-auto rounded-2xl bg-white border border-[#DCE5E3] shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                     <div className="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#647777] border-b border-[#EFECE6]">
                       Choose Transaction Type
                     </div>
@@ -754,10 +786,67 @@ export const AppShell: React.FC<AppShellProps> = ({
         </header>
 
         {/* View Main Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1520px] w-full mx-auto animate-fadeIn">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-24 lg:pb-8 max-w-[1520px] w-full mx-auto animate-fadeIn touch-scroll">
           {children}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="no-print lg:hidden fixed bottom-0 inset-x-0 z-30 bg-gradient-to-r from-[#093E3C] via-[#073331] to-[#052524] border-t border-white/10 text-white/70 backdrop-blur-xl flex items-center justify-around px-2 py-1.5 safe-area-bottom shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
+        {/* 1. Dashboard */}
+        <button
+          onClick={() => { onNavigate('dashboard'); setMobileMenuOpen(false); }}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            currentTab === 'dashboard' ? 'text-[#E7CCA0] font-bold' : 'hover:text-white'
+          }`}
+        >
+          <LayoutDashboard className={`w-5 h-5 ${currentTab === 'dashboard' ? 'text-[#E7CCA0]' : ''}`} />
+          <span className="text-[10px] mt-0.5">Home</span>
+        </button>
+
+        {/* 2. Customers */}
+        <button
+          onClick={() => { onNavigate('customers'); setMobileMenuOpen(false); }}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            currentTab === 'customers' || currentTab === 'customer-profile' ? 'text-[#E7CCA0] font-bold' : 'hover:text-white'
+          }`}
+        >
+          <Users className={`w-5 h-5 ${currentTab === 'customers' || currentTab === 'customer-profile' ? 'text-[#E7CCA0]' : ''}`} />
+          <span className="text-[10px] mt-0.5">Customers</span>
+        </button>
+
+        {/* 3. Central Quick Action Button (+ New Tx / New Estimate) */}
+        <button
+          onClick={() => setIsTxDropdownOpen((prev) => !prev)}
+          className="flex flex-col items-center justify-center -mt-5 p-3 rounded-full bg-gradient-to-tr from-[#D9B76C] to-[#E7CCA0] text-[#093E3C] shadow-lg shadow-[#D9B76C]/40 active:scale-95 transition-transform cursor-pointer border-2 border-[#093E3C]"
+          title="New Transaction"
+          aria-label="New Transaction"
+        >
+          <PlusCircle className="w-6 h-6 stroke-[2.5]" />
+        </button>
+
+        {/* 4. Estimates */}
+        <button
+          onClick={() => { onNavigate('estimates'); setMobileMenuOpen(false); }}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            currentTab === 'estimates' || currentTab === 'new-estimate' || currentTab === 'estimate-details' ? 'text-[#E7CCA0] font-bold' : 'hover:text-white'
+          }`}
+        >
+          <FileSpreadsheet className={`w-5 h-5 ${currentTab === 'estimates' || currentTab === 'new-estimate' || currentTab === 'estimate-details' ? 'text-[#E7CCA0]' : ''}`} />
+          <span className="text-[10px] mt-0.5">Estimates</span>
+        </button>
+
+        {/* 5. More Menu Toggle */}
+        <button
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            mobileMenuOpen ? 'text-[#E7CCA0] font-bold' : 'hover:text-white'
+          }`}
+        >
+          <Menu className={`w-5 h-5 ${mobileMenuOpen ? 'text-[#E7CCA0]' : ''}`} />
+          <span className="text-[10px] mt-0.5">Menu</span>
+        </button>
+      </nav>
 
       {/* Payment / Receipt Modal (Record Customer Transaction) */}
       <TransactionModal
