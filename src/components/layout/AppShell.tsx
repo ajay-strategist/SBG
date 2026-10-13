@@ -202,7 +202,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       <div className="no-print lg:hidden flex items-center justify-between px-3.5 py-2.5 bg-[#093E3C] text-white sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 flex items-center justify-center shrink-0">
-            <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
+            <img src="/sbg-brand-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
           </div>
           <div>
             <span className="font-cinzel font-bold tracking-wider text-sm block leading-none">SBG ERP</span>
@@ -251,7 +251,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <div className={`p-4 border-b border-white/10 shrink-0 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 flex items-center justify-center shrink-0">
-              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
+              <img src="/sbg-brand-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
             </div>
             {!sidebarCollapsed && (
               <div className="animate-fadeIn">

@@ -511,7 +511,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
         <div className="flex flex-col md:flex-row print:flex-row justify-between items-start border-b-2 border-[#0F5C5B]/40 pb-4 print:pb-3 gap-4 print:gap-3">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 print:w-12 print:h-12 flex items-center justify-center shrink-0 mt-0.5 bg-white p-1 rounded-xl border border-[#DCE5E3]">
-              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
+              <img src="/sbg-brand-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2.5 flex-wrap">

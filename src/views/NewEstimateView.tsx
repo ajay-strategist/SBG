@@ -782,7 +782,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         <div className="flex justify-between items-start gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 flex items-center justify-center shrink-0">
-              <img src="/sbg-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
+              <img src="/sbg-brand-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
             </div>
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
