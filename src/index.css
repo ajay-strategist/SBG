@@ -230,6 +230,10 @@
     page-break-inside: auto;
   }
 
+  th, td {
+    min-width: 0 !important;
+  }
+
   tr {
     page-break-inside: avoid !important;
     break-inside: avoid !important;

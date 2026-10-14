@@ -29,12 +29,29 @@ import {
   CheckCircle,
   AlertTriangle,
   Eye,
+  Banknote,
+  Receipt,
+  Scale,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
 
 interface CustomerProfileViewProps {
   customerId: string;
   onNavigate: (tab: ActiveTab, entityId?: string) => void;
+}
+
+interface CashLedgerRow {
+  id: string;
+  date: string;
+  type: 'ISSUE' | 'RECEIPT';
+  particulars: 'SALE' | 'PURCHASE' | 'PAYMENT_RECEIVED' | 'PAYMENT_PAID';
+  customerJobRef: string;
+  estimateNo: string;
+  estimateId?: string;
+  amount: number;
+  delta: number;
+  balance: number;
+  rawTime: number;
 }
 
 export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
@@ -48,7 +65,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     deleteTransaction,
   } = useSBG();
 
-  const [activeProfileTab, setActiveProfileTab] = useState<'ledger' | 'estimates'>('ledger');
+  const [activeProfileTab, setActiveProfileTab] = useState<'gc_account' | 'ledger' | 'estimates'>('gc_account');
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
   const [useSheetTheme, setUseSheetTheme] = useState(true);
@@ -66,12 +83,164 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     );
   }
 
+  // 1. GC Account Transactions (Gold & Cash dual balance)
   const customerLedger = getCustomerTransactions(customer.id);
+
+  // 2. Estimates for this customer
   const customerEstimates = (estimates || [])
     .filter((e) => e.customerId === customer.id)
     .sort((a, b) => new Date(b.estimateDate).getTime() - new Date(a.estimateDate).getTime() || b.estimateNo.localeCompare(a.estimateNo));
 
+  // 3. Cash-Only Ledger Calculations (Single point of commercial entry)
+  const openingBalance = customer.openingLedgerMC ?? customer.openingMC ?? 0;
+
+  // A. Confirmed Estimates posting full bill amount
+  const estimateCashEvents = (estimates || [])
+    .filter((est) => est.customerId === customer.id && est.status === 'CONFIRMED')
+    .map((est) => {
+      const isPurchase = est.transactionType === 'PURCHASE' || est.direction === 'RECEIPT';
+      const amount = Number(est.totals.grandTotal) || 0;
+      const type: 'ISSUE' | 'RECEIPT' = isPurchase ? 'RECEIPT' : 'ISSUE';
+      const particulars: 'SALE' | 'PURCHASE' = isPurchase ? 'PURCHASE' : 'SALE';
+      const delta = isPurchase ? -amount : amount;
+
+      return {
+        id: `est-${est.id}`,
+        date: est.estimateDate,
+        type,
+        particulars,
+        customerJobRef: est.customerRef || est.orderRef || '-',
+        estimateNo: est.estimateNo,
+        estimateId: est.id,
+        amount,
+        delta,
+        rawTime: new Date(est.estimateDate).getTime() || 0,
+      };
+    });
+
+  // B. Payment / Voucher events from transactions
+  const paymentCashEvents = customerLedger
+    .filter((tx) => !tx.estimateId && tx.particulars !== 'OPENING_BALANCE')
+    .map((tx) => {
+      const isReceipt = tx.direction === 'RECEIPT';
+      const goldAmt = tx.goldAmount || 0;
+      const cashAmt = tx.cashAmount || tx.mcAmount || 0;
+      const totalCashVal = tx.totalAmount !== 0 ? Math.abs(tx.totalAmount) : (goldAmt + cashAmt);
+
+      const type: 'ISSUE' | 'RECEIPT' = isReceipt ? 'RECEIPT' : 'ISSUE';
+      const particulars: 'PAYMENT_RECEIVED' | 'PAYMENT_PAID' = isReceipt ? 'PAYMENT_RECEIVED' : 'PAYMENT_PAID';
+      const delta = isReceipt ? -totalCashVal : totalCashVal;
+
+      return {
+        id: tx.id,
+        date: tx.date,
+        type,
+        particulars,
+        customerJobRef: tx.erpRef || tx.description || '-',
+        estimateNo: '-',
+        estimateId: undefined,
+        amount: totalCashVal,
+        delta,
+        rawTime: new Date(tx.date).getTime() || 0,
+      };
+    });
+
+  // Merge & Sort Chronologically
+  const allCashEvents = [...estimateCashEvents, ...paymentCashEvents].sort((a, b) => {
+    if (a.date !== b.date) {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    }
+    return a.rawTime - b.rawTime;
+  });
+
+  // Compute running balance
+  let runningCash = openingBalance;
+  let totalCashIssues = 0;
+  let totalCashReceipts = 0;
+
+  const cashLedgerRows: CashLedgerRow[] = allCashEvents.map((item) => {
+    if (item.type === 'ISSUE') {
+      totalCashIssues += item.amount;
+    } else {
+      totalCashReceipts += item.amount;
+    }
+    runningCash = Number((runningCash + item.delta).toFixed(2));
+    return {
+      ...item,
+      balance: runningCash,
+    };
+  });
+
   const handleExportCSV = () => {
+    if (activeProfileTab === 'ledger') {
+      // Export Cash Ledger
+      const headers = [
+        'Date',
+        'Type',
+        'Particulars',
+        'Customer Job Reference',
+        'Estimate Number',
+        'Amount (INR)',
+        'Running Balance (INR)',
+      ];
+
+      const rows: string[][] = [
+        [
+          '-',
+          'OPEN',
+          'OPENING',
+          'Opening Account Balance',
+          '-',
+          `"${Math.abs(openingBalance).toFixed(2)}"`,
+          `"${openingBalance.toFixed(2)}"`,
+        ],
+        ...cashLedgerRows.map((row) => [
+          row.date,
+          row.type,
+          row.particulars,
+          `"${(row.customerJobRef || '').replace(/"/g, '""')}"`,
+          row.estimateNo,
+          `"${row.amount.toFixed(2)}"`,
+          `"${row.balance.toFixed(2)}"`,
+        ]),
+      ];
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_Cash_Ledger.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    if (activeProfileTab === 'estimates') {
+      // Export Estimates
+      const headers = ['Estimate No', 'Date', 'Nature', 'Pure WT (g)', 'Taxable Value', 'GST Amount', 'Grand Total', 'Status'];
+      const rows = customerEstimates.map((est) => [
+        est.estimateNo,
+        est.estimateDate,
+        est.transactionType || 'SALE',
+        est.totals.totalPureWT.toFixed(3),
+        est.totals.taxableValue.toFixed(2),
+        est.totals.gstAmount.toFixed(2),
+        est.totals.grandTotal.toFixed(2),
+        est.status,
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_Estimates.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    // Default: Export GC Account
     const headers = [
       'Date',
       'Issue/Receipt',
@@ -122,7 +291,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_Customer_Ledger.csv`);
+    link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_GC_Account.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -154,7 +323,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             icon={<Download className="w-4 h-4 text-[#0F5C5B]" />}
             onClick={handleExportCSV}
           >
-            Export Sheet
+            Export {activeProfileTab === 'ledger' ? 'Cash Ledger' : activeProfileTab === 'estimates' ? 'Estimates' : 'GC Account'}
           </SBGButton>
           <SBGButton
             variant="primary"
@@ -162,14 +331,14 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             icon={<PlusCircle className="w-4 h-4" />}
             onClick={() => setIsTxModalOpen(true)}
           >
-            + New Transaction
+            Record Payment (Gold & Cash)
           </SBGButton>
         </div>
       </div>
 
       {/* Luxury Glass Profile Header */}
       <div className="glass-panel p-6 sm:p-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-black/5 pb-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-black/5 pb-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
               <span className="text-[11px] font-mono font-bold text-[#D9B76C] bg-[#D9B76C]/15 px-2.5 py-0.5 rounded">
@@ -199,17 +368,43 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Dual Balance Visualizer: GC Account + Cash Ledger */}
+          <div className="flex flex-wrap items-center gap-3">
             <SBGBalanceCard
               pureWT={customer.currentWT}
               mcBalance={customer.currentMC}
-              subtitle="Real-time Account Balances"
+              subtitle="GC Account Dual Balances"
             />
+            {/* Cash Ledger Balance Companion Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F0F8F6] to-white border border-[#BDE3DB] shadow-xs min-w-[200px] flex flex-col justify-center">
+              <span className="text-[10px] font-bold text-[#4B6B68] block uppercase tracking-wider">
+                Cash Ledger Balance
+              </span>
+              <div className="text-lg font-mono font-bold text-[#0F5C5B] mt-1">
+                ₹ {runningCash.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
           </div>
         </div>
-        {/* Navigation Tabs: Ledger vs Estimates */}
+
+        {/* 3 Profile Tabs: GC Account, Ledger (Cash Only), Estimates */}
         <div className="flex items-center justify-between border-b border-black/10 pb-3 gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Tab 1: GC Account */}
+            <button
+              type="button"
+              onClick={() => setActiveProfileTab('gc_account')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                activeProfileTab === 'gc_account'
+                  ? 'bg-[#0F5C5B] text-white shadow-xs'
+                  : 'bg-white/80 text-[#647777] border border-[#DCE5E3] hover:text-[#173333]'
+              }`}
+            >
+              <Coins className="w-3.5 h-3.5 text-[#D9B76C]" />
+              <span>GC Account ({customerLedger.length})</span>
+            </button>
+
+            {/* Tab 2: Commercial Cash Ledger */}
             <button
               type="button"
               onClick={() => setActiveProfileTab('ledger')}
@@ -219,10 +414,11 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                   : 'bg-white/80 text-[#647777] border border-[#DCE5E3] hover:text-[#173333]'
               }`}
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Ledger ({customerLedger.length})</span>
+              <Banknote className="w-3.5 h-3.5" />
+              <span>Ledger ({cashLedgerRows.length + (openingBalance !== 0 ? 1 : 0)})</span>
             </button>
 
+            {/* Tab 3: Estimates */}
             <button
               type="button"
               onClick={() => setActiveProfileTab('estimates')}
@@ -237,25 +433,30 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             </button>
           </div>
 
-          {activeProfileTab === 'estimates' && (
-            <button
-              type="button"
-              onClick={() => onNavigate('new-estimate', customer.id)}
-              className="px-3.5 py-1.5 rounded-xl bg-[#E5C378] hover:bg-[#D9B76C] text-[#3D2D0C] font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>+ Create Estimate for {customer.name}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {activeProfileTab === 'estimates' && (
+              <button
+                type="button"
+                onClick={() => onNavigate('new-estimate', customer.id)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#E5C378] hover:bg-[#D9B76C] text-[#3D2D0C] font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>+ Create Estimate for {customer.name}</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Tab 1: Commercial Ledger */}
-        {activeProfileTab === 'ledger' && (
-        <div className="space-y-4">
+        {/* ========================================================================= */}
+        {/* TAB 1: GC ACCOUNT (GOLD & CASH DUAL BALANCE RUNNING SHEET)                 */}
+        {/* ========================================================================= */}
+        {activeProfileTab === 'gc_account' && (
+          <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
-                  Transaction History & Running Balances
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
+                  <Coins className="w-4 h-4 text-[#D9B76C]" />
+                  GC Account: Dual Metal (Pure WT) & Currency (MC) Running Balances
                 </h3>
                 <p className="text-[11px] text-[#647777]">
                   ISSUE = Customer Debit (+) | RECEIPT = Customer Credit (-)
@@ -307,7 +508,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <td className="py-2.5 px-3">-</td>
                     <td className="py-2.5 px-3">OPEN</td>
                     <td className="py-2.5 px-3 font-bold text-[#0F5C5B]">OPENING</td>
-                    <td className="py-2.5 px-3 font-sans text-[#647777]">Opening Account Ledger Balance</td>
+                    <td className="py-2.5 px-3 font-sans text-[#647777]">Opening GC Account Balance</td>
                     <td className="py-2.5 px-3 text-right">-</td>
                     <td className="py-2.5 px-3 text-right">-</td>
                     <td className="py-2.5 px-3 text-right">-</td>
@@ -330,8 +531,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     const isReceipt = tx.direction === 'RECEIPT';
                     const rowBgClass = useSheetTheme
                       ? isReceipt
-                        ? 'bg-[#FCE8E6] text-[#900C3F]' // Soft Pink matching Google Sheet RECEIPT
-                        : 'bg-[#D9EAD3] text-[#1E4620]' // Soft Light Green matching Google Sheet ISSUE
+                        ? 'bg-[#FCE8E6] text-[#900C3F]'
+                        : 'bg-[#D9EAD3] text-[#1E4620]'
                       : 'hover:bg-white/90 transition-colors';
 
                     return (
@@ -431,12 +632,161 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
           </div>
         )}
 
-        {/* Tab 2: Customer Estimates & Cost Sheets */}
+        {/* ========================================================================= */}
+        {/* TAB 2: CASH-ONLY COMMERCIAL LEDGER (SINGLE POINT OF ENTRY)                */}
+        {/* ========================================================================= */}
+        {activeProfileTab === 'ledger' && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-[#0F5C5B]" />
+                  Commercial Cash Ledger (Single Point of Entry)
+                </h3>
+                <p className="text-[11px] text-[#647777]">
+                  Auto-posts confirmed estimates (Full Bill Amount) and gold/cash payments. ISSUE (+) = Customer Debit | RECEIPT (-) = Customer Credit
+                </p>
+              </div>
+
+              {/* Quick Summary Badges */}
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono font-semibold">
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Issues: ₹{totalCashIssues.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200">
+                  Receipts: ₹{totalCashReceipts.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-[#0F5C5B] text-white font-bold">
+                  Net Balance: ₹{runningCash.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto bg-white/90 rounded-2xl border border-[#DCE5E3] shadow-xs">
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-[#0F5C5B]/10 text-[#0F5C5B] border-b border-[#DCE5E3] uppercase font-bold text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3 px-3.5">DATE</th>
+                    <th className="py-3 px-3">TYPE</th>
+                    <th className="py-3 px-3">PARTICULARS</th>
+                    <th className="py-3 px-3">CUSTOMER JOB REFERENCE</th>
+                    <th className="py-3 px-3">ESTIMATE NUMBER</th>
+                    <th className="py-3 px-3.5 text-right font-bold">AMOUNT (₹)</th>
+                    <th className="py-3 px-3.5 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/10">
+                      RUNNING BALANCE (₹)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#DCE5E3]/60 font-mono">
+                  {/* Opening Balance Row */}
+                  <tr className="bg-amber-50/70 font-semibold text-[#173333]">
+                    <td className="py-2.5 px-3.5">-</td>
+                    <td className="py-2.5 px-3">
+                      <span className="font-bold text-[10px] px-2 py-0.5 rounded bg-amber-200/80 text-amber-900">
+                        OPEN
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 font-bold text-[#0F5C5B]">OPENING</td>
+                    <td className="py-2.5 px-3 font-sans text-[#647777]">
+                      Opening Account Balance
+                    </td>
+                    <td className="py-2.5 px-3 text-[#647777]">-</td>
+                    <td className="py-2.5 px-3.5 text-right font-bold text-[#173333]">
+                      ₹{Math.abs(openingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-2.5 px-3.5 text-right font-bold bg-[#0F5C5B]/5 text-[#173333]">
+                      ₹{openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+
+                  {/* Cash Ledger Event Rows */}
+                  {cashLedgerRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-[#647777] font-sans">
+                        <Banknote className="w-8 h-8 mx-auto text-[#647777]/30 mb-2" />
+                        <p className="font-semibold text-xs">No commercial transactions recorded yet.</p>
+                        <p className="text-[11px] text-[#647777] mt-0.5">
+                          Confirmed estimates and recorded payments will automatically populate and maintain running balances here.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    cashLedgerRows.map((row) => {
+                      const isReceipt = row.type === 'RECEIPT';
+                      return (
+                        <tr
+                          key={row.id}
+                          className="hover:bg-[#F2FAF8]/60 transition-colors border-b border-black/5"
+                        >
+                          <td className="py-3 px-3.5 font-semibold text-[#173333]">
+                            {row.date}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`font-bold text-[10px] px-2 py-0.5 rounded ${
+                                isReceipt
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-emerald-100 text-emerald-900'
+                              }`}
+                            >
+                              {isReceipt ? 'RECEIPT (−)' : 'ISSUE (+)'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-bold uppercase text-[#0F5C5B]">
+                            {row.particulars}
+                          </td>
+                          <td className="py-3 px-3 font-sans max-w-xs truncate text-[#173333] font-medium">
+                            {row.customerJobRef}
+                          </td>
+                          <td className="py-3 px-3">
+                            {row.estimateId ? (
+                              <button
+                                type="button"
+                                onClick={() => onNavigate('estimate-details', row.estimateId)}
+                                className="text-[#0F5C5B] font-bold hover:underline cursor-pointer flex items-center gap-1"
+                              >
+                                <span>{row.estimateNo}</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </button>
+                            ) : (
+                              <span className="text-[#647777]">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3.5 text-right font-bold text-[#173333]">
+                            ₹{row.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-3.5 text-right font-bold bg-[#0F5C5B]/5">
+                            <span
+                              className={
+                                row.balance > 0
+                                  ? 'text-rose-700'
+                                  : row.balance < 0
+                                  ? 'text-emerald-700'
+                                  : 'text-gray-700'
+                              }
+                            >
+                              ₹{row.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 3: CUSTOMER ESTIMATES & COST SHEETS                                    */}
+        {/* ========================================================================= */}
         {activeProfileTab === 'estimates' && (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-[#0F5C5B]" />
                   Customer Estimates & Cost Sheets
                 </h3>
                 <p className="text-[11px] text-[#647777]">
@@ -516,30 +866,30 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                           ₹{est.totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-3 text-center">
-                            <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${
-                                est.status === 'CONFIRMED'
-                                  ? 'bg-[#E6F8F2] text-[#1A825B]'
-                                  : est.status === 'PENDING'
-                                  ? 'bg-[#FEF5E6] text-[#B87B1D]'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}
-                            >
-                              {est.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => onNavigate('estimate-details', est.id)}
-                              className="p-1 rounded text-[#0F5C5B] hover:bg-[#0F5C5B]/10 transition-colors cursor-pointer"
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${
+                              est.status === 'CONFIRMED'
+                                ? 'bg-[#E6F8F2] text-[#1A825B]'
+                                : est.status === 'PENDING'
+                                ? 'bg-[#FEF5E6] text-[#B87B1D]'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {est.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('estimate-details', est.id)}
+                            className="p-1 rounded text-[#0F5C5B] hover:bg-[#0F5C5B]/10 transition-colors cursor-pointer"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -548,7 +898,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
         )}
       </div>
 
-      {/* Transaction Modal (Purchase/Sale Cost Sheet or Gold/Cash Receipt/Payment) */}
+      {/* Transaction Modal (Payment: Gold & Cash) */}
       <TransactionModal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}

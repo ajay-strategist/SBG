@@ -46,6 +46,9 @@ export interface LedgerTransaction {
   mcRate?: number;
   mcAmount: number;
   mcAmountCal: number;
+  goldRate?: number;
+  goldAmount?: number;
+  cashAmount?: number;
   totalAmount: number;
   balanceWT: number; // Running balance Pure WT
   balanceMC: number; // Running balance MC Amount
@@ -239,10 +242,12 @@ export interface Customer {
   address?: string;
   city?: string;
   gstin?: string;
-  openingWT: number; // g
-  openingMC: number; // ₹
+  openingWT: number; // g (for GC Account)
+  openingMC: number; // ₹ (for GC Account)
+  openingLedgerMC?: number; // ₹ (for Cash Ledger)
   currentWT: number; // g
   currentMC: number; // ₹
+  currentLedgerMC?: number; // ₹
   status: 'ACTIVE' | 'INACTIVE';
   creditLimitMC?: number;
   creditLimitWT?: number;

@@ -13,6 +13,7 @@ import {
   calculateEstimateSheet,
   roundWeight,
   formatDateDDMMYYYY,
+  numberToIndianWords,
   EstimateCostSheet,
   EstimateLineItem,
   EstimateSubItem,
@@ -115,7 +116,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
     existingEstimate?.goldRate || goldMarketRate
   );
   const [goldRatePurity, setGoldRatePurity] = useState<number | string>(
-    existingEstimate?.goldRatePurity || 99.5
+    existingEstimate?.goldRatePurity !== undefined ? existingEstimate.goldRatePurity : 100
   );
   const [diamondRate, setDiamondRate] = useState<number | string>(
     existingEstimate?.diamondRate ?? 0
@@ -195,7 +196,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       setTouchFixed(existingEstimate.touchFixed ?? true);
       setIsGold(existingEstimate.isGold ?? true);
       setGoldRate(existingEstimate.goldRate || goldMarketRate);
-      setGoldRatePurity(existingEstimate.goldRatePurity || 99.5);
+      setGoldRatePurity(existingEstimate.goldRatePurity !== undefined ? existingEstimate.goldRatePurity : 100);
       setDiamondRate(existingEstimate.diamondRate ?? 0);
       setStoneRate(existingEstimate.stoneRate ?? 0);
       setMcRate(existingEstimate.mcRate ?? 0);
@@ -249,7 +250,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       touchFixed,
       isGold,
       goldRate: Number(goldRate) || 0,
-      goldRatePurity: Number(goldRatePurity) || 99.5,
+      goldRatePurity: Number(goldRatePurity) || 100,
       diamondRate: Number(diamondRate) || 0,
       stoneRate: Number(stoneRate) || 0,
       mcRate: Number(mcRate) || 0,
@@ -286,13 +287,14 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   );
 
   const handleApplyMasterRatesToAllLines = () => {
+    const purity = Number(goldRatePurity) || 100;
     setItems((prev) =>
       prev.map((item) => {
         let rate = item.rate || 0;
         let rateUnit: RateUnit = item.rateUnit || 'PER_G';
 
         if (item.category === 'GOLD') {
-          rate = Number(goldRate) || 0;
+          rate = Number(((Number(goldRate) || 0) * (purity / 100)).toFixed(4));
           rateUnit = 'PER_G';
         } else if (item.category === 'DIAMOND') {
           rate = Number(diamondRate) || 0;
@@ -323,10 +325,15 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
   };
 
   const handleAddLine = (category: EstimateItemCategory = 'GOLD') => {
-    let defaultRate = Number(goldRate) || 0;
+    const defaultTouch = category === 'GOLD' ? 91.6 : 0;
+    const baseRate = Number(goldRate) || 0;
+    const purity = Number(goldRatePurity) || 100;
+    let defaultRate = baseRate;
     let defaultUnit: RateUnit = 'PER_G';
 
-    if (category === 'DIAMOND') {
+    if (category === 'GOLD') {
+      defaultRate = Number(((baseRate * purity) / 100).toFixed(4));
+    } else if (category === 'DIAMOND') {
       defaultRate = Number(diamondRate) || 0;
       defaultUnit = 'PER_CT';
     } else if (category === 'PRECIOUS_STONE') {
@@ -349,7 +356,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         stoneWT: 0,
         stoneWTCarats: 0,
         stoneWTUnit: category === 'DIAMOND' || category === 'PRECIOUS_STONE' ? 'ct' : 'g',
-        touch: category === 'GOLD' ? 91.6 : 0,
+        touch: defaultTouch,
         rate: defaultRate,
         rateUnit: defaultUnit,
       },
@@ -402,10 +409,11 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
     const defaultUnit: 'g' | 'ct' =
       preset?.unit ||
       (defaultCategory === 'PRECIOUS_STONE' || defaultCategory === 'DIAMOND' ? 'ct' : 'g');
+    const purity = Number(goldRatePurity) || 100;
     const defaultRate =
       preset?.rate ??
       (defaultCategory === 'GOLD'
-        ? Number(goldRate) || 0
+        ? Number(((Number(goldRate) || 0) * (purity / 100)).toFixed(4))
         : defaultCategory === 'DIAMOND'
         ? Number(diamondRate) || 0
         : defaultCategory === 'PRECIOUS_STONE'
@@ -560,10 +568,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
 
     if (existingEstimate) {
       await updateEstimate(existingEstimate.id, estimateToSave);
-      await confirmEstimate(existingEstimate.id);
+      await confirmEstimate(existingEstimate.id, estimateToSave);
     } else {
       await addEstimate(estimateToSave);
-      await confirmEstimate(estId);
+      await confirmEstimate(estId, estimateToSave);
     }
 
     onNavigate('estimate-details', estId);
@@ -922,8 +930,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             <span className="text-xs font-bold text-[#173333] whitespace-nowrap">Master Rates</span>
           </div>
 
-          <div className="flex-1 min-w-[125px]">
-            <label className="block text-[11px] font-semibold text-[#647777] mb-1">Gold Rate (₹/g)</label>
+          <div className="flex-1 min-w-[175px]">
+            <label className="block text-[11px] font-semibold text-[#647777] mb-1">Pure Gold Rate without GST</label>
             <input
               type="number"
               step="0.01"
@@ -992,7 +1000,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setGoldRatePurity(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
                 onBlur={() => {
-                  if (goldRatePurity === '' || isNaN(Number(goldRatePurity))) setGoldRatePurity(99.5);
+                  if (goldRatePurity === '' || isNaN(Number(goldRatePurity))) setGoldRatePurity(100);
                 }}
                 className="w-full text-xs font-mono font-semibold px-3 py-1.5 pr-6 bg-white border border-[#DCE5E3] rounded-lg text-[#173333] focus:border-[#0F5C5B] focus:outline-none"
               />
@@ -1099,7 +1107,9 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                       <td className="py-2.5 px-2">
                         <input
                           type="text"
-                          value={line.item}
+                          value={line.item !== undefined ? line.item : ''}
+                          placeholder="Enter description..."
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleUpdateLine(idx, { item: e.target.value })}
                           className="w-full text-xs font-semibold px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none focus:border-[#0F5C5B]"
                         />
@@ -1136,8 +1146,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                         <input
                           type="number"
                           inputMode="numeric"
-                          value={line.nos}
-                          onChange={(e) => handleUpdateLine(idx, { nos: parseInt(e.target.value) || 1 })}
+                          value={line.nos === 0 ? '' : line.nos}
+                          placeholder="1"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handleUpdateLine(idx, { nos: e.target.value === '' ? ('' as any) : parseInt(e.target.value) || 0 })}
                           className="w-14 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
                         />
                       </td>
@@ -1146,8 +1158,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                           type="number"
                           inputMode="decimal"
                           step="0.001"
-                          value={line.grossWT}
-                          onChange={(e) => handleUpdateLine(idx, { grossWT: parseFloat(e.target.value) || 0 })}
+                          value={line.grossWT === 0 ? '' : line.grossWT}
+                          placeholder="0.000"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handleUpdateLine(idx, { grossWT: e.target.value === '' ? ('' as any) : parseFloat(e.target.value) || 0 })}
                           className="w-20 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono font-medium"
                         />
                       </td>
@@ -1162,6 +1176,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                 ? (line.stoneWTCarats === 0 ? '' : (line.stoneWTCarats ?? ''))
                                 : (line.stoneWT === 0 ? '' : (line.stoneWT ?? ''))
                             }
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value) || 0;
                               if (line.stoneWTUnit === 'ct') {
@@ -1217,8 +1232,16 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                           type="number"
                           inputMode="decimal"
                           step="0.01"
-                          value={line.touch}
-                          onChange={(e) => handleUpdateLine(idx, { touch: parseFloat(e.target.value) || 0 })}
+                          value={line.touch === 0 ? '' : line.touch}
+                          placeholder="0.00"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => {
+                            const rawVal = e.target.value;
+                            const newTouch = rawVal === '' ? 0 : parseFloat(rawVal) || 0;
+                            handleUpdateLine(idx, {
+                              touch: rawVal === '' ? ('' as any) : newTouch,
+                            });
+                          }}
                           className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
                         />
                       </td>
@@ -1230,8 +1253,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                           type="number"
                           inputMode="decimal"
                           step="0.01"
-                          value={line.rate}
-                          onChange={(e) => handleUpdateLine(idx, { rate: parseFloat(e.target.value) || 0 })}
+                          value={line.rate === 0 ? '' : line.rate}
+                          placeholder="0.00"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handleUpdateLine(idx, { rate: e.target.value === '' ? ('' as any) : parseFloat(e.target.value) || 0 })}
                           className="w-24 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono font-semibold"
                         />
                       </td>
@@ -1327,7 +1352,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                       category: 'GOLD',
                                       unit: 'g',
                                       touch: line.touch || 76,
-                                      rate: Number(goldRate) || 0,
+                                      rate: Number(((Number(goldRate) || 0) * ((Number(goldRatePurity) || 100) / 100)).toFixed(4)),
                                       rateUnit: 'PER_G',
                                     })
                                   }
@@ -1410,7 +1435,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                         <td className="py-1.5 px-2">
                                           <input
                                             type="text"
-                                            value={sub.name}
+                                            value={sub.name !== undefined ? sub.name : ''}
+                                            onFocus={(e) => e.target.select()}
                                             onChange={(e) => handleUpdateSubItem(idx, sIdx, { name: e.target.value })}
                                             placeholder="e.g. Rubie"
                                             className="w-full text-xs font-medium px-2 py-1 bg-white border border-[#DCE5E3] rounded-lg focus:outline-none focus:border-[#0F5C5B]"
@@ -1434,8 +1460,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                           <input
                                             type="number"
                                             inputMode="numeric"
-                                            value={sub.nos}
-                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { nos: parseInt(e.target.value) || 1 })}
+                                            value={sub.nos === 0 ? '' : sub.nos}
+                                            placeholder="1"
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { nos: e.target.value === '' ? ('' as any) : parseInt(e.target.value) || 0 })}
                                             className="w-12 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
                                           />
                                         </td>
@@ -1446,7 +1474,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                               inputMode="decimal"
                                               step="0.001"
                                               value={sub.weight === 0 ? '' : sub.weight}
-                                              onChange={(e) => handleUpdateSubItem(idx, sIdx, { weight: parseFloat(e.target.value) || 0 })}
+                                              onFocus={(e) => e.target.select()}
+                                              onChange={(e) => handleUpdateSubItem(idx, sIdx, { weight: e.target.value === '' ? ('' as any) : parseFloat(e.target.value) || 0 })}
                                               placeholder="0.00"
                                               className="w-16 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono font-medium"
                                             />
@@ -1472,8 +1501,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                             type="number"
                                             inputMode="decimal"
                                             step="0.01"
-                                            value={sub.touch || 0}
-                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { touch: parseFloat(e.target.value) || 0 })}
+                                            value={sub.touch === 0 ? '' : sub.touch}
+                                            placeholder="0.00"
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { touch: e.target.value === '' ? ('' as any) : parseFloat(e.target.value) || 0 })}
                                             className="w-14 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
                                           />
                                         </td>
@@ -1485,8 +1516,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                             type="number"
                                             inputMode="decimal"
                                             step="0.01"
-                                            value={sub.rate}
-                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { rate: parseFloat(e.target.value) || 0 })}
+                                            value={sub.rate === 0 ? '' : sub.rate}
+                                            placeholder="0.00"
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => handleUpdateSubItem(idx, sIdx, { rate: e.target.value === '' ? ('' as any) : parseFloat(e.target.value) || 0 })}
                                             className="w-20 text-right text-xs px-1.5 py-1 bg-white border border-[#DCE5E3] rounded-lg font-mono"
                                           />
                                         </td>
@@ -1673,10 +1706,25 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         </div>
       </div>
 
-      {/* Settlement Configuration and Customer Ledger Balance - Side by Side View */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 print:grid-cols-12 gap-4 print:gap-3 items-stretch break-inside-avoid">
+      {/* Amount in Words Commercial Banner */}
+      <div className="p-3.5 bg-[#FAF8F2] rounded-xl border border-[#ECD9A5] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs break-inside-avoid shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C6D23] bg-[#ECD9A5]/50 px-2.5 py-0.5 rounded">
+            Amount in Words (INR)
+          </span>
+          <span className="font-bold text-[#0F5C5B] italic text-xs sm:text-[13px]">
+            {numberToIndianWords(calculatedEstimate.totals.grandTotal)}
+          </span>
+        </div>
+        <div className="text-[11px] font-mono text-[#647777] shrink-0">
+          GSTIN: <strong className="text-[#173333]">27AAAAA0000A1Z5</strong> (State: 27 - Maharashtra)
+        </div>
+      </div>
+
+      {/* Settlement Configuration and Customer Ledger Balance - Side by Side on Screen, Stacked Full-Width in Print */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 print:grid-cols-1 gap-4 print:gap-4 items-stretch break-inside-avoid">
         {/* Left Card: Settlement Configuration */}
-        <div className="lg:col-span-7 print:col-span-7 bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
+        <div className="lg:col-span-7 print:w-full bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-[#DCE5E3]">
             <div className="flex items-center gap-2 shrink-0">
               <div className="w-7 h-7 rounded-lg bg-[#0F5C5B] text-white flex items-center justify-center shrink-0">
@@ -1738,14 +1786,14 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto touch-scroll">
-            <table className="w-full min-w-[560px] print:min-w-0 text-left text-xs border-collapse">
+          <div className="overflow-x-auto touch-scroll print:overflow-visible">
+            <table className="w-full min-w-[560px] print:min-w-0 print:w-full text-left text-xs border-collapse print:table-fixed">
               <thead>
                 <tr className="border-b border-[#DCE5E3] text-[10px] font-bold uppercase tracking-wider text-[#647777] bg-gray-50/50">
-                  <th className="py-2.5 px-3 min-w-[140px]">COMPONENT</th>
-                  <th className="py-2.5 px-3 min-w-[130px]">SETTLEMENT MODE</th>
-                  <th className="py-2.5 px-3 text-right min-w-[95px] whitespace-nowrap">GOLD WT (g)</th>
-                  <th className="py-2.5 px-3 text-right min-w-[125px] whitespace-nowrap">AMOUNT (₹)</th>
+                  <th className="py-2.5 px-3 min-w-[140px] print:min-w-0 print:w-[32%]">COMPONENT</th>
+                  <th className="py-2.5 px-3 min-w-[130px] print:min-w-0 print:w-[24%]">SETTLEMENT MODE</th>
+                  <th className="py-2.5 px-3 text-right min-w-[95px] print:min-w-0 print:w-[20%] whitespace-nowrap">GOLD WT (g)</th>
+                  <th className="py-2.5 px-3 text-right min-w-[125px] print:min-w-0 print:w-[24%] whitespace-nowrap">AMOUNT (₹)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#DCE5E3]/60 font-medium">
@@ -2005,7 +2053,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         </div>
 
         {/* Right Card: Customer Ledger Balance Adjustment */}
-        <div className="lg:col-span-5 print:col-span-5 bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
+        <div className="lg:col-span-5 print:w-full bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
           <div className="space-y-3 flex-1 flex flex-col justify-between">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#DCE5E3]">
@@ -2140,15 +2188,51 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
       </div>
 
       {/* Commercial Print Footer (Visible Only When Printing) */}
-      <div className="hidden print:block border-t border-[#DCE5E3] pt-3 mt-4 break-inside-avoid">
-        <div className="flex justify-end text-xs text-[#647777]">
-          <div className="text-right flex flex-col justify-between items-end space-y-8">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#647777] block">For SREE BALAJI GOLD</span>
-              <span className="text-xs font-semibold text-[#173333]">Authorized Signatory</span>
+      <div className="hidden print:block pt-4 border-t-2 border-[#0F5C5B]/20 break-inside-avoid space-y-4">
+        {/* Bank Details & Terms Grid for Print */}
+        <div className="grid grid-cols-2 gap-4 text-xs">
+          {/* Left Box: Bank Details for Settlement */}
+          <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#ECD9A5]/70 space-y-1 text-[11px] print:text-[9px]">
+            <span className="font-bold text-[#0F5C5B] uppercase tracking-wide flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-[#D9B76C]" />
+              Bank Details for Electronic Settlement (RTGS / NEFT)
+            </span>
+            <div className="grid grid-cols-2 gap-x-2 pt-0.5 text-[#173333] font-mono">
+              <div><span className="text-[#647777] font-sans">A/C Name:</span> <strong>SREE BALAJI GOLD</strong></div>
+              <div><span className="text-[#647777] font-sans">Bank:</span> <strong>HDFC Bank</strong></div>
+              <div><span className="text-[#647777] font-sans">A/C No:</span> <strong>50200088992211</strong></div>
+              <div><span className="text-[#647777] font-sans">IFSC:</span> <strong>HDFC0000123</strong></div>
             </div>
-            <div className="text-[9px] text-[#647777]">
-              Computer Generated Commercial Estimate • {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+          </div>
+
+          {/* Right Box: Commercial Terms */}
+          <div className="p-3 bg-gray-50 rounded-xl border border-[#DCE5E3] space-y-1 text-[10px] print:text-[8.5px] text-[#647777]">
+            <span className="font-bold text-[#173333] uppercase tracking-wide block">
+              Terms & Conditions
+            </span>
+            <p>1. Metal purity & fine gold weight certified benchmarked against 99.9% 24K bullion.</p>
+            <p>2. Confirmed estimates post directly to the customer GC Account and Cash Ledger.</p>
+            <p>3. Disputes subject to Mumbai / local commercial jurisdiction.</p>
+          </div>
+        </div>
+
+        {/* Signature Blocks */}
+        <div className="grid grid-cols-2 gap-8 items-end pt-2 text-xs">
+          <div className="space-y-10 text-center">
+            <div className="text-[10px] print:text-[9px] text-[#647777] font-medium">
+              Customer Confirmation & Acceptance
+            </div>
+            <div className="border-t border-[#173333]/50 pt-1.5 mx-auto w-48 text-center text-[10px] print:text-[9px] font-semibold text-[#173333]">
+              Receiver / Customer's Signature
+            </div>
+          </div>
+
+          <div className="space-y-10 text-center">
+            <div className="text-[10px] print:text-[9px] text-[#647777] font-medium">
+              For <strong className="text-[#0F5C5B] font-bold">SREE BALAJI GOLD</strong>
+            </div>
+            <div className="border-t border-[#173333]/50 pt-1.5 mx-auto w-52 text-center text-[10px] print:text-[9px] font-bold text-[#0F5C5B]">
+              Authorized Signatory & Stamp
             </div>
           </div>
         </div>

@@ -56,7 +56,7 @@ interface SBGContextType {
 
   // Customers
   customers: Customer[];
-  addCustomer: (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'currentWT' | 'currentMC'>) => Promise<Customer>;
+  addCustomer: (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'currentWT' | 'currentMC' | 'currentLedgerMC'>) => Promise<Customer>;
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
   deleteCustomer: (id: string) => Promise<void>;
   getCustomer: (id: string) => Customer | undefined;
@@ -84,7 +84,7 @@ interface SBGContextType {
   estimates: EstimateCostSheet[];
   addEstimate: (estimate: EstimateCostSheet) => Promise<void>;
   updateEstimate: (id: string, updates: Partial<EstimateCostSheet>) => Promise<void>;
-  confirmEstimate: (id: string) => Promise<void>;
+  confirmEstimate: (id: string, estimateData?: EstimateCostSheet) => Promise<void>;
   unconfirmEstimate: (id: string) => Promise<void>;
   deleteEstimate: (id: string) => Promise<void>;
   getEstimate: (id: string) => EstimateCostSheet | undefined;
@@ -1370,12 +1370,14 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Customer Management
-  const addCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'currentWT' | 'currentMC'>) => {
+  const addCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'currentWT' | 'currentMC' | 'currentLedgerMC'>) => {
     const newCustomer: Customer = {
       ...customerData,
       id: `cust-${Date.now()}`,
       currentWT: customerData.openingWT,
       currentMC: customerData.openingMC,
+      openingLedgerMC: customerData.openingLedgerMC || 0,
+      currentLedgerMC: customerData.openingLedgerMC || 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1537,8 +1539,10 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     txData: Omit<LedgerTransaction, 'id' | 'createdAt' | 'updatedAt' | 'balanceWT' | 'balanceMC'>
   ) => {
     const netWT = calculateNetWT(txData.grossWT, txData.stoneWT, txData.direction);
-    const pureWT = calculatePureWT(netWT, txData.touch);
-    const totalAmount = calculateTotalAmount(txData.stoneAmountCal, txData.mcAmountCal);
+    const pureWT = txData.pureWT !== undefined ? txData.pureWT : calculatePureWT(netWT, txData.touch);
+    const totalAmount = txData.totalAmount !== undefined
+      ? txData.totalAmount
+      : calculateTotalAmount(txData.stoneAmountCal, txData.mcAmountCal);
 
     const newTx: LedgerTransaction = {
       ...txData,
@@ -1703,8 +1707,8 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const confirmEstimate = async (id: string) => {
-    const est = estimates.find((e) => e.id === id);
+  const confirmEstimate = async (id: string, estimateData?: EstimateCostSheet) => {
+    const est = estimateData || estimates.find((e) => e.id === id);
     if (!est) return;
 
     const customer = customers.find((c) => c.id === est.customerId);
@@ -1718,7 +1722,7 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         previousBalanceWT: prevWT,
         previousBalanceMC: prevMC,
       },
-      est.totals.gstRate ?? 3.0
+      est.totals?.gstRate ?? 3.0
     );
 
     const isPurchase = calculated.transactionType === 'PURCHASE' || calculated.direction === 'RECEIPT';
@@ -1754,7 +1758,13 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString(),
     };
 
-    setEstimates((prev) => prev.map((e) => (e.id === id ? updatedEstimate : e)));
+    setEstimates((prev) => {
+      const exists = prev.some((e) => e.id === id);
+      if (exists) {
+        return prev.map((e) => (e.id === id ? updatedEstimate : e));
+      }
+      return [updatedEstimate, ...prev];
+    });
 
     // Create or update Ledger Transaction
     const existingTxIndex = transactions.findIndex(

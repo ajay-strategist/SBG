@@ -59,3 +59,77 @@ export function formatDateDDMMYYYY(dateStr?: string): string {
   }
   return trimmed;
 }
+
+/**
+ * Converts numeric amount (INR) into formal English Indian currency words.
+ * e.g. 522046.03 -> "Five Lakh Twenty Two Thousand Forty Six Rupees and Three Paise Only"
+ */
+export function numberToIndianWords(num: number): string {
+  if (isNaN(num) || !isFinite(num)) return 'Zero Rupees Only';
+  const integerPart = Math.floor(Math.abs(num));
+  const decimalPart = Math.round((Math.abs(num) - integerPart) * 100);
+
+  if (integerPart === 0 && decimalPart === 0) return 'Zero Rupees Only';
+
+  const ones = [
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+    'Seventeen', 'Eighteen', 'Nineteen',
+  ];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  function convertTwoDigits(n: number): string {
+    if (n < 20) return ones[n];
+    const t = Math.floor(n / 10);
+    const o = n % 10;
+    return tens[t] + (o ? ' ' + ones[o] : '');
+  }
+
+  function convertThreeDigits(n: number): string {
+    const h = Math.floor(n / 100);
+    const rem = n % 100;
+    let res = '';
+    if (h) res += ones[h] + ' Hundred';
+    if (rem) {
+      if (res) res += ' ';
+      res += convertTwoDigits(rem);
+    }
+    return res;
+  }
+
+  let words = '';
+  let n = integerPart;
+
+  const crore = Math.floor(n / 10000000);
+  n %= 10000000;
+  const lakh = Math.floor(n / 100000);
+  n %= 100000;
+  const thousand = Math.floor(n / 1000);
+  n %= 1000;
+  const hundredAndBelow = n;
+
+  if (crore > 0) {
+    words += convertThreeDigits(crore) + ' Crore ';
+  }
+  if (lakh > 0) {
+    words += convertTwoDigits(lakh) + ' Lakh ';
+  }
+  if (thousand > 0) {
+    words += convertTwoDigits(thousand) + ' Thousand ';
+  }
+  if (hundredAndBelow > 0) {
+    words += convertThreeDigits(hundredAndBelow) + ' ';
+  }
+
+  words = words.trim();
+  if (!words) words = 'Zero';
+  words += ' Rupees';
+
+  if (decimalPart > 0) {
+    words += ' and ' + convertTwoDigits(decimalPart) + ' Paise';
+  }
+  words += ' Only';
+
+  return words;
+}
+

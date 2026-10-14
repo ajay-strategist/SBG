@@ -13,14 +13,18 @@ import {
  */
 export function calculateEstimateSubItem(
   sub: Partial<EstimateSubItem>,
-  defaultGoldRate: number = 0
+  defaultGoldRate: number = 0,
+  goldRatePurity: number = 100
 ): EstimateSubItem {
   const category = sub.category || 'PRECIOUS_STONE';
   const unit: 'g' | 'ct' = sub.unit === 'ct' ? 'ct' : 'g';
   const weightInput = Number(sub.weight) || 0;
   const nos = Number(sub.nos) || 1;
   const touch = Number(sub.touch) || 0;
-  const rate = Number(sub.rate) || 0;
+  const defaultRate = (category === 'GOLD')
+    ? Number(((defaultGoldRate * (goldRatePurity || 100)) / 100).toFixed(4))
+    : 0;
+  const rate = sub.rate !== undefined && sub.rate !== null && !isNaN(Number(sub.rate)) ? Number(sub.rate) : defaultRate;
   const rateUnit = sub.rateUnit || (unit === 'ct' ? 'PER_CT' : 'PER_G');
 
   let weightInGrams = 0;
@@ -43,11 +47,7 @@ export function calculateEstimateSubItem(
   let calculatedAmount = 0;
   switch (rateUnit) {
     case 'PER_G':
-      if (category === 'GOLD' && touch > 0 && pureWT > 0) {
-        calculatedAmount = pureWT * rate;
-      } else {
-        calculatedAmount = weightInGrams * rate;
-      }
+      calculatedAmount = (category === 'GOLD' && pureWT > 0 ? pureWT : weightInGrams) * rate;
       break;
 
     case 'PER_CT':
@@ -63,16 +63,16 @@ export function calculateEstimateSubItem(
       break;
 
     case 'PERCENT':
-      calculatedAmount = (weightInGrams * defaultGoldRate) * (rate / 100);
+      calculatedAmount = ((category === 'GOLD' && pureWT > 0 ? pureWT : weightInGrams) * defaultGoldRate) * (rate / 100);
       break;
 
     default:
-      calculatedAmount = (unit === 'ct' ? weightInCarats : weightInGrams) * rate;
+      calculatedAmount = (category === 'GOLD' && pureWT > 0 ? pureWT : (unit === 'ct' ? weightInCarats : weightInGrams)) * rate;
   }
 
   return {
     id: sub.id || `sub-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-    name: sub.name || 'Component',
+    name: sub.name !== undefined ? sub.name : '',
     category,
     nos,
     weight: weightInput,
@@ -93,16 +93,20 @@ export function calculateEstimateSubItem(
  */
 export function calculateEstimateLine(
   line: Partial<EstimateLineItem>,
-  defaultGoldRate: number = 0
+  defaultGoldRate: number = 0,
+  goldRatePurity: number = 100
 ): EstimateLineItem {
   const grossWT = Number(line.grossWT) || 0;
   let stoneWTInput = Number(line.stoneWT) || 0;
   let stoneWTUnit: 'g' | 'ct' = line.stoneWTUnit === 'ct' ? 'ct' : 'g';
   const nos = Number(line.nos) || 1;
-  const touch = Number(line.touch) || 0;
-  const rate = line.rate !== undefined && line.rate !== null && !isNaN(Number(line.rate)) ? Number(line.rate) : defaultGoldRate;
-  const rateUnit = line.rateUnit || 'PER_G';
   const category = line.category || 'GOLD';
+  const touch = Number(line.touch) || 0;
+  const defaultRate = (category === 'GOLD')
+    ? Number(((defaultGoldRate * (goldRatePurity || 100)) / 100).toFixed(4))
+    : defaultGoldRate;
+  const rate = line.rate !== undefined && line.rate !== null && !isNaN(Number(line.rate)) ? Number(line.rate) : defaultRate;
+  const rateUnit = line.rateUnit || 'PER_G';
 
   // Process sub-items if present
   let calculatedSubItems: EstimateSubItem[] | undefined = undefined;
@@ -110,7 +114,7 @@ export function calculateEstimateLine(
   let hasGoldSubItem = false;
 
   if (line.subItems && line.subItems.length > 0) {
-    calculatedSubItems = line.subItems.map((s) => calculateEstimateSubItem(s, defaultGoldRate));
+    calculatedSubItems = line.subItems.map((s) => calculateEstimateSubItem(s, defaultGoldRate, goldRatePurity));
     subItemsTotalAmount = calculatedSubItems.reduce((sum, s) => sum + s.amount, 0);
     hasGoldSubItem = calculatedSubItems.some((s) => s.category === 'GOLD');
 
@@ -157,12 +161,7 @@ export function calculateEstimateLine(
   let calculatedAmount = 0;
   switch (rateUnit) {
     case 'PER_G':
-      // If gold with touch, multiply by Pure WT if touch is applied, else Net WT
-      if (category === 'GOLD' && touch > 0 && pureWT > 0) {
-        calculatedAmount = pureWT * rate;
-      } else {
-        calculatedAmount = (netWT > 0 ? netWT : grossWT) * rate;
-      }
+      calculatedAmount = (category === 'GOLD' && pureWT > 0 ? pureWT : (netWT > 0 ? netWT : grossWT)) * rate;
       break;
 
     case 'PER_CT': {
@@ -192,11 +191,11 @@ export function calculateEstimateLine(
 
     case 'PERCENT':
       // Percentage of base metal value
-      calculatedAmount = (netWT * defaultGoldRate * (rate / 100));
+      calculatedAmount = ((category === 'GOLD' && pureWT > 0 ? pureWT : netWT) * defaultGoldRate * (rate / 100));
       break;
 
     default:
-      calculatedAmount = (netWT > 0 ? netWT : grossWT) * rate;
+      calculatedAmount = (category === 'GOLD' && pureWT > 0 ? pureWT : (netWT > 0 ? netWT : grossWT)) * rate;
   }
 
   // If sub-items exist:
@@ -215,7 +214,7 @@ export function calculateEstimateLine(
   return {
     id: line.id || `line-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
     sl: line.sl || 1,
-    item: line.item || 'Item',
+    item: line.item !== undefined ? line.item : '',
     category,
     nos,
     grossWT: roundWeight(grossWT),
@@ -241,8 +240,9 @@ export function calculateEstimateSheet(
   gstPercentage: number = 3.0
 ): EstimateCostSheet {
   const goldRate = Number(sheet.goldRate) || 0;
+  const goldRatePurity = sheet.goldRatePurity !== undefined ? Number(sheet.goldRatePurity) : 100;
   const items = (sheet.items || []).map((item, idx) =>
-    calculateEstimateLine({ ...item, sl: idx + 1 }, goldRate)
+    calculateEstimateLine({ ...item, sl: idx + 1 }, goldRate, goldRatePurity)
   );
 
   let goldValue = 0;
@@ -544,7 +544,7 @@ export function calculateEstimateSheet(
     unfixComponentSettlement: sheet.unfixComponentSettlement,
     additionalExpenses: sheet.additionalExpenses,
     goldRate,
-    goldRatePurity: sheet.goldRatePurity || 99.5,
+    goldRatePurity: sheet.goldRatePurity !== undefined ? Number(sheet.goldRatePurity) : 100,
     unfixGoldRate: sheet.unfixGoldRate,
     unfixGoldRatePurity: sheet.unfixGoldRatePurity,
     remarks: sheet.remarks || '',

@@ -14,6 +14,7 @@ import {
   calculateSettlement,
   roundWeight,
   roundCurrency,
+  numberToIndianWords,
   LedgerTransaction,
 } from '../index';
 
@@ -275,7 +276,7 @@ describe('SBG Core Calculation Engine', () => {
         stoneWT: 0.90, // 0.90 carats
         stoneWTUnit: 'ct',
         touch: 76.0,
-        rate: 11845.13,
+        rate: 11845.13, // Pure Rate
         rateUnit: 'PER_G',
       });
 
@@ -290,6 +291,31 @@ describe('SBG Core Calculation Engine', () => {
       expect(recalculatedLine.stoneWT).toBe(0.180);
       expect(recalculatedLine.stoneWTCarats).toBe(0.90);
       expect(recalculatedLine.netWT).toBe(7.622);
+    });
+
+    it('calculates Pure WT = Net WT * Touch and Rate = Pure Gold Rate * Gold Purity %', () => {
+      // Exact test case from user prompt:
+      // Pure Gold Rate without GST: 12490.88, Gold Purity: 100%, Touch: 91.61%
+      const line = calculateEstimateLine(
+        {
+          item: 'New GOLD item',
+          category: 'GOLD',
+          grossWT: 10.000,
+          stoneWT: 0,
+          touch: 91.61,
+          rateUnit: 'PER_G',
+        },
+        12490.88,
+        100
+      );
+
+      expect(line.netWT).toBe(10.000);
+      // Pure WT = Net WT * Touch (10.000 * 91.61% = 9.161g)
+      expect(line.pureWT).toBe(9.161);
+      // Rate = Pure Gold Rate * Gold Purity % (12490.88 * 100% = 12490.88)
+      expect(line.rate).toBe(12490.88);
+      // Line Amount = Pure WT * Rate (9.161 * 12490.88 = 114428.95)
+      expect(line.amount).toBe(114428.95);
     });
 
     it('treats Net WT as Pure WT for diamonds/stones and calculates carat amounts', () => {
@@ -563,6 +589,16 @@ describe('SBG Core Calculation Engine', () => {
       expect(result.newBalanceWT).toBe(30.0); // 50 - 20
       expect(result.newBalanceMC).toBe(40000); // 100,000 - 60,000
       expect(result.goldEquivalentValue).toBe(170000); // 20 * 8500
+    });
+  });
+
+  describe('Indian Currency Words Engine', () => {
+    it('converts amounts to standard Indian numbering words', () => {
+      expect(numberToIndianWords(0)).toBe('Zero Rupees Only');
+      expect(numberToIndianWords(500000)).toBe('Five Lakh Rupees Only');
+      expect(numberToIndianWords(522046.03)).toBe('Five Lakh Twenty Two Thousand Forty Six Rupees and Three Paise Only');
+      expect(numberToIndianWords(10050.50)).toBe('Ten Thousand Fifty Rupees and Fifty Paise Only');
+      expect(numberToIndianWords(12345678)).toBe('One Crore Twenty Three Lakh Forty Five Thousand Six Hundred Seventy Eight Rupees Only');
     });
   });
 });

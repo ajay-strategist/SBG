@@ -47,6 +47,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
     gstin: '',
     openingWT: 0,
     openingMC: 0,
+    openingLedgerMC: 0,
     status: 'ACTIVE' as const,
   });
 
@@ -93,6 +94,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
       gstin: formData.gstin,
       openingWT: Number(formData.openingWT) || 0,
       openingMC: Number(formData.openingMC) || 0,
+      openingLedgerMC: Number(formData.openingLedgerMC) || 0,
       status: formData.status,
     });
 
@@ -106,6 +108,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
       gstin: '',
       openingWT: 0,
       openingMC: 0,
+      openingLedgerMC: 0,
       status: 'ACTIVE',
     });
   };
@@ -758,6 +761,15 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
               suffixText="INR"
               value={formData.openingMC}
               onChange={(e) => setFormData({ ...formData, openingMC: parseFloat(e.target.value) || 0 })}
+            />
+            <SBGInput
+              label="Opening Ledger Balance (₹)"
+              type="number"
+              step="0.01"
+              suffixText="INR"
+              value={formData.openingLedgerMC}
+              onChange={(e) => setFormData({ ...formData, openingLedgerMC: parseFloat(e.target.value) || 0 })}
+              helperText="Cash Ledger initial running balance"
             />
           </div>
 
