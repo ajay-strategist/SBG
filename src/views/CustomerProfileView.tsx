@@ -63,6 +63,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     estimates,
     getCustomerTransactions,
     deleteTransaction,
+    currentUser,
   } = useSBG();
 
   const [activeProfileTab, setActiveProfileTab] = useState<'gc_account' | 'ledger' | 'estimates'>('gc_account');
@@ -70,7 +71,9 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
   const [useSheetTheme, setUseSheetTheme] = useState(true);
 
-  const customer = customers.find((c) => c.id === customerId) || customers[0];
+  const isClient = currentUser?.role === 'CLIENT';
+  const effectiveCustomerId = isClient ? (currentUser?.customerId || 'cust-101') : customerId;
+  const customer = customers.find((c) => c.id === effectiveCustomerId) || customers[0];
 
   if (!customer) {
     return (
@@ -171,76 +174,57 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
     };
   });
 
-  const handleExportCSV = () => {
-    if (activeProfileTab === 'ledger') {
-      // Export Cash Ledger
-      const headers = [
-        'Date',
-        'Type',
-        'Particulars',
-        'Customer Job Reference',
-        'Estimate Number',
-        'Amount (INR)',
-        'Running Balance (INR)',
-      ];
+  const downloadCSV = (filename: string, content: string) => {
+    const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
-      const rows: string[][] = [
-        [
-          '-',
-          'OPEN',
-          'OPENING',
-          'Opening Account Balance',
-          '-',
-          `"${Math.abs(openingBalance).toFixed(2)}"`,
-          `"${openingBalance.toFixed(2)}"`,
-        ],
-        ...cashLedgerRows.map((row) => [
-          row.date,
-          row.type,
-          row.particulars,
-          `"${(row.customerJobRef || '').replace(/"/g, '""')}"`,
-          row.estimateNo,
-          `"${row.amount.toFixed(2)}"`,
-          `"${row.balance.toFixed(2)}"`,
-        ]),
-      ];
+  const exportCashLedger = () => {
+    const headers = [
+      'Date',
+      'Type',
+      'Particulars',
+      'Customer Job Reference',
+      'Estimate Number',
+      'Amount (INR)',
+      'Running Balance (INR)',
+    ];
 
-      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement('a');
-      link.setAttribute('href', encodedUri);
-      link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_Cash_Ledger.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
+    const rows = [
+      [
+        '-',
+        'OPEN',
+        'OPENING',
+        'Opening Account Balance',
+        '-',
+        openingBalance,
+        openingBalance,
+      ],
+      ...cashLedgerRows.map((row) => [
+        row.date,
+        row.type,
+        row.particulars,
+        `"${(row.customerJobRef || '').replace(/"/g, '""')}"`,
+        row.estimateNo,
+        row.amount,
+        row.balance,
+      ]),
+    ];
 
-    if (activeProfileTab === 'estimates') {
-      // Export Estimates
-      const headers = ['Estimate No', 'Date', 'Nature', 'Pure WT (g)', 'Taxable Value', 'GST Amount', 'Grand Total', 'Status'];
-      const rows = customerEstimates.map((est) => [
-        est.estimateNo,
-        est.estimateDate,
-        est.transactionType || 'SALE',
-        est.totals.totalPureWT.toFixed(3),
-        est.totals.taxableValue.toFixed(2),
-        est.totals.gstAmount.toFixed(2),
-        est.totals.grandTotal.toFixed(2),
-        est.status,
-      ]);
-      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement('a');
-      link.setAttribute('href', encodedUri);
-      link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_Estimates.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
+    downloadCSV(
+      `${customer.name.replace(/\s+/g, '_')}_Cash_Ledger.csv`,
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    );
+  };
 
-    // Default: Export GC Account
+  const exportGCAccount = () => {
     const headers = [
       'Date',
       'Issue/Receipt',
@@ -270,69 +254,111 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
       tx.netWT,
       `${tx.touch}%`,
       tx.pureWT,
-      tx.stoneAmountCal < 0
-        ? `"(₹${Math.abs(tx.stoneAmountCal).toLocaleString('en-IN', { minimumFractionDigits: 2 })})"`
-        : tx.stoneAmount > 0
-        ? `"₹${tx.stoneAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}"`
-        : 0,
+      tx.stoneAmountCal || 0,
       tx.mcAmount || 0,
-      tx.totalAmount < 0
-        ? `"(₹${Math.abs(tx.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })})"`
-        : tx.totalAmount > 0
-        ? `"₹${tx.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}"`
-        : '"₹-"',
-      tx.balanceMC < 0
-        ? `"(₹${Math.abs(tx.balanceMC).toLocaleString('en-IN', { minimumFractionDigits: 2 })})"`
-        : `"₹${tx.balanceMC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}"`,
+      tx.totalAmount || 0,
+      tx.balanceMC || 0,
       tx.balanceWT,
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${customer.name.replace(/\s+/g, '_')}_GC_Account.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadCSV(
+      `${customer.name.replace(/\s+/g, '_')}_GC_Account.csv`,
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    );
+  };
+
+  const exportEstimates = () => {
+    const headers = ['Estimate No', 'Date', 'Nature', 'Pure WT (g)', 'Taxable Value', 'GST Amount', 'Grand Total', 'Status'];
+    const rows = customerEstimates.map((est) => [
+      est.estimateNo,
+      est.estimateDate,
+      est.transactionType || 'SALE',
+      est.totals.totalPureWT.toFixed(3),
+      est.totals.taxableValue.toFixed(2),
+      est.totals.gstAmount.toFixed(2),
+      est.totals.grandTotal.toFixed(2),
+      est.status,
+    ]);
+
+    downloadCSV(
+      `${customer.name.replace(/\s+/g, '_')}_Estimates.csv`,
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    );
+  };
+
+  const handleExportCSV = () => {
+    if (activeProfileTab === 'ledger') {
+      exportCashLedger();
+    } else if (activeProfileTab === 'estimates') {
+      exportEstimates();
+    } else {
+      exportGCAccount();
+    }
   };
 
   return (
     <div className="space-y-6">
       {/* Top Back Navigation & Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <button
-          onClick={() => onNavigate('customers')}
-          className="flex items-center gap-1.5 text-xs font-bold text-[#0F5C5B] hover:underline cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Customer Master
-        </button>
+        {!isClient ? (
+          <button
+            onClick={() => onNavigate('customers')}
+            className="flex items-center gap-1.5 text-xs font-bold text-[#0F5C5B] hover:underline cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Customer Master
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#0F5C5B] bg-[#0F5C5B]/10 px-3 py-1.5 rounded-full">
+              Client Portal Account View
+            </span>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <SBGButton
-            variant="outline"
-            size="sm"
-            icon={<FileSpreadsheet className="w-4 h-4 text-[#0F5C5B]" />}
-            onClick={() => setIsGoogleSheetModalOpen(true)}
-          >
-            Import / Sync Sheet
-          </SBGButton>
-          <SBGButton
-            variant="glass"
-            size="sm"
-            icon={<Download className="w-4 h-4 text-[#0F5C5B]" />}
-            onClick={handleExportCSV}
-          >
-            Export {activeProfileTab === 'ledger' ? 'Cash Ledger' : activeProfileTab === 'estimates' ? 'Estimates' : 'GC Account'}
-          </SBGButton>
-          <SBGButton
-            variant="primary"
-            size="sm"
-            icon={<PlusCircle className="w-4 h-4" />}
-            onClick={() => setIsTxModalOpen(true)}
-          >
-            Record Payment (Gold & Cash)
-          </SBGButton>
+          {!isClient && (
+            <SBGButton
+              variant="outline"
+              size="sm"
+              icon={<FileSpreadsheet className="w-4 h-4 text-[#0F5C5B]" />}
+              onClick={() => setIsGoogleSheetModalOpen(true)}
+            >
+              Import / Sync Sheet
+            </SBGButton>
+          )}
+
+          {/* Dual Export Buttons */}
+          <div className="flex items-center gap-1.5">
+            <SBGButton
+              variant="glass"
+              size="sm"
+              icon={<Download className="w-4 h-4 text-[#0F5C5B]" />}
+              onClick={exportGCAccount}
+              title="Export Pure Gold & MC GC Account (CSV)"
+            >
+              Export GC Account
+            </SBGButton>
+            <SBGButton
+              variant="glass"
+              size="sm"
+              icon={<Download className="w-4 h-4 text-[#0F5C5B]" />}
+              onClick={exportCashLedger}
+              title="Export Commercial Cash Ledger (CSV)"
+            >
+              Export Cash Ledger
+            </SBGButton>
+          </div>
+
+          {!isClient && (
+            <SBGButton
+              variant="primary"
+              size="sm"
+              icon={<PlusCircle className="w-4 h-4" />}
+              onClick={() => setIsTxModalOpen(true)}
+            >
+              Record Payment (Gold & Cash)
+            </SBGButton>
+          )}
         </div>
       </div>
 
@@ -368,20 +394,65 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
             </div>
           </div>
 
-          {/* Dual Balance Visualizer: GC Account + Cash Ledger */}
-          <div className="flex flex-wrap items-center gap-3">
-            <SBGBalanceCard
-              pureWT={customer.currentWT}
-              mcBalance={customer.currentMC}
-              subtitle="GC Account Dual Balances"
-            />
-            {/* Cash Ledger Balance Companion Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F0F8F6] to-white border border-[#BDE3DB] shadow-xs min-w-[200px] flex flex-col justify-center">
-              <span className="text-[10px] font-bold text-[#4B6B68] block uppercase tracking-wider">
-                Cash Ledger Balance
-              </span>
-              <div className="text-lg font-mono font-bold text-[#0F5C5B] mt-1">
-                ₹ {runningCash.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          {/* Luxury 3-Card Balanced Trio: Pure Gold Balance, MC Balance, Cash Ledger Balance */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
+            {/* Card 1: Pure Gold Balance */}
+            <div className="p-4 rounded-2xl bg-[#F4F9F8] border border-[#BDE3DB] shadow-xs flex flex-col justify-between min-w-[170px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold text-[#4B6B68] uppercase tracking-wider">
+                  Pure Gold Balance
+                </span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  customer.currentWT >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {customer.currentWT >= 0 ? 'Due to SBG' : 'Advance by Client'}
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1">
+                <span className="text-xl font-mono font-bold text-[#0F5C5B]">
+                  {Math.abs(customer.currentWT).toFixed(3)}
+                </span>
+                <span className="text-xs font-semibold text-[#4B6B68]">g</span>
+              </div>
+            </div>
+
+            {/* Card 2: Making Charge Balance */}
+            <div className="p-4 rounded-2xl bg-[#FDF9F0] border border-[#EADBBD] shadow-xs flex flex-col justify-between min-w-[170px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold text-[#7A6D56] uppercase tracking-wider">
+                  MC Balance
+                </span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  customer.currentMC >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {customer.currentMC >= 0 ? 'Due to SBG' : 'Advance by Client'}
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1">
+                <span className="text-xs font-semibold text-[#7A6D56]">₹</span>
+                <span className="text-xl font-mono font-bold text-[#8C6418]">
+                  {Math.abs(customer.currentMC).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {/* Card 3: Cash Ledger Balance */}
+            <div className="p-4 rounded-2xl bg-[#F7F5FC] border border-[#DCD5F0] shadow-xs flex flex-col justify-between min-w-[170px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold text-[#55477B] uppercase tracking-wider">
+                  Cash Ledger Balance
+                </span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  runningCash >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                }`}>
+                  {runningCash >= 0 ? 'Receivable (Due)' : 'Payable (Advance)'}
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-1">
+                <span className="text-xs font-semibold text-[#55477B]">₹</span>
+                <span className="text-xl font-mono font-bold text-[#3B2D6B]">
+                  {Math.abs(runningCash).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
               </div>
             </div>
           </div>
@@ -499,7 +570,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <th className="py-3 px-3 text-right">Total Amt (₹)</th>
                     <th className="py-3 px-3 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/10">Balance MC (₹)</th>
                     <th className="py-3 px-3 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/10">Balance WT (g)</th>
-                    <th className="py-3 px-3 text-center">Action</th>
+                    {!isClient && <th className="py-3 px-3 text-center">Action</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#DCE5E3]/60 font-mono">
@@ -524,7 +595,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <td className="py-2.5 px-3 text-right font-bold bg-[#0F5C5B]/5 text-[#173333]">
                       {customer.openingWT.toFixed(3)}
                     </td>
-                    <td className="py-2.5 px-3 text-center">-</td>
+                    {!isClient && <td className="py-2.5 px-3 text-center">-</td>}
                   </tr>
 
                   {customerLedger.map((tx) => {
@@ -609,20 +680,28 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                             {tx.balanceWT.toFixed(3)}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <button
-                            type="button"
-                            title="Delete transaction"
-                            onClick={() => {
-                              if (window.confirm(`Delete transaction from ${tx.date} (${tx.particulars})?`)) {
-                                deleteTransaction(tx.id);
-                              }
-                            }}
-                            className="p-1 rounded text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+                        {!isClient && (
+                          <td className="py-2.5 px-3 text-center">
+                            <button
+                              type="button"
+                              title="Delete transaction"
+                              onClick={async () => {
+                                const isLinked = Boolean(
+                                  tx.estimateId || (tx.erpRef && estimates.some((e) => e.estimateNo === tx.erpRef))
+                                );
+                                const confirmMsg = isLinked
+                                  ? `Warning: This transaction is linked to an Estimate (${tx.erpRef || tx.estimateId}).\n\nDeleting this row will automatically revert the linked Estimate to DRAFT status and remove its entry from the Cash Ledger.\n\nAre you sure you want to proceed?`
+                                  : `Delete transaction from ${tx.date} (${tx.particulars})?`;
+                                if (window.confirm(confirmMsg)) {
+                                  await deleteTransaction(tx.id);
+                                }
+                              }}
+                              className="p-1 rounded text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -820,13 +899,15 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                       <td colSpan={9} className="py-10 text-center text-[#647777]">
                         <FileSpreadsheet className="w-8 h-8 mx-auto text-[#647777]/40 mb-2" />
                         <p className="font-semibold text-xs">No estimates recorded for {customer.name}</p>
-                        <button
-                          type="button"
-                          onClick={() => onNavigate('new-estimate', customer.id)}
-                          className="mt-2 text-xs font-bold text-[#0F5C5B] hover:underline cursor-pointer"
-                        >
-                          + Create first estimate
-                        </button>
+                        {!isClient && (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('new-estimate', customer.id)}
+                            className="mt-2 text-xs font-bold text-[#0F5C5B] hover:underline cursor-pointer"
+                          >
+                            + Create first estimate
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ) : (

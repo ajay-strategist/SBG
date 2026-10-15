@@ -1807,13 +1807,18 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                     </select>
 
                     {currentMetalMode === 'SPLIT' && (
-                      <div className="mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200 space-y-1.5 max-w-sm">
-                        <span className="text-[10px] font-bold text-amber-900 block uppercase">
-                          Split Settlement (Enter Wt or ₹):
-                        </span>
+                      <div className="mt-2.5 p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2 max-w-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider">
+                            Split Settlement (Enter Wt or ₹)
+                          </span>
+                          <span className="text-[10px] font-mono text-[#0F5C5B] font-bold bg-[#0F5C5B]/10 px-2 py-0.5 rounded">
+                            Rate: ₹{effectiveGoldRate.toLocaleString('en-IN')}/g
+                          </span>
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[9px] text-[#647777] block font-bold">Gold Wt to Pay (g):</label>
+                            <label className="text-[10px] text-[#647777] block font-bold mb-0.5">Gold Wt to Pay (g):</label>
                             <input
                               type="number"
                               step="0.001"
@@ -1831,11 +1836,11 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                   goldPaidInCashAmount: amt,
                                 }));
                               }}
-                              className="w-full text-xs font-mono font-bold py-1 px-1.5 bg-white rounded border border-amber-300 text-amber-900 focus:outline-none"
+                              className="w-full text-xs font-mono font-bold py-1.5 px-2 bg-white rounded-lg border border-amber-300 text-amber-900 focus:outline-none focus:ring-1 focus:ring-amber-400"
                             />
                           </div>
                           <div>
-                            <label className="text-[9px] text-[#647777] block font-bold">Gold ₹ to Pay:</label>
+                            <label className="text-[10px] text-[#647777] block font-bold mb-0.5">Gold ₹ to Pay:</label>
                             <input
                               type="number"
                               step="1"
@@ -1853,10 +1858,38 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                                   goldPaidInMetalGrams: g,
                                 }));
                               }}
-                              className="w-full text-xs font-mono font-bold py-1 px-1.5 bg-white rounded border border-amber-300 text-amber-900 focus:outline-none"
+                              className="w-full text-xs font-mono font-bold py-1.5 px-2 bg-white rounded-lg border border-amber-300 text-amber-900 focus:outline-none focus:ring-1 focus:ring-amber-400"
                             />
                           </div>
                         </div>
+
+                        {/* Commercial Calculation Summary: Remaining Cash to Pay */}
+                        {(() => {
+                          const paidGrams = customSettlement.goldPaidInMetalGrams || 0;
+                          const paidCash = paidGrams * effectiveGoldRate;
+                          const remainingGrams = Math.max(0, Number((goldPureToAdjust - paidGrams).toFixed(3)));
+                          const remainingCash = Math.max(0, Number((goldMetalValue - paidCash).toFixed(2)));
+                          return (
+                            <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px] font-sans">
+                              <div>
+                                <span className="text-[#647777] font-semibold block text-[10px]">
+                                  Remaining Gold Metal:
+                                </span>
+                                <span className="font-mono font-bold text-amber-900">
+                                  {remainingGrams.toFixed(3)}g
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[#647777] font-semibold block text-[10px]">
+                                  Remaining Amount After Gold (in Cash):
+                                </span>
+                                <span className="font-mono font-bold text-emerald-800 text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                                  ₹ {remainingCash.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </td>

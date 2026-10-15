@@ -26,14 +26,11 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const { customers, orders, transactions, estimates, settlements, goldMarketRate, currentUser } = useSBG();
+  const { customers, transactions, estimates, goldMarketRate, currentUser } = useSBG();
   const [selectedRange, setSelectedRange] = useState('Last 6 Months');
 
   // Dynamic live calculations from store
   const activeCustomersCount = customers.filter((c) => c.status === 'ACTIVE').length;
-  const openOrdersCount = orders.filter(
-    (o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED' && o.status !== 'SETTLED'
-  ).length;
   const totalPureWT = customers.reduce((sum, c) => sum + (c.currentWT || 0), 0);
   const totalMCBalance = customers.reduce((sum, c) => sum + (c.currentMC || 0), 0);
   const goldValueINR = totalPureWT * goldMarketRate;
@@ -61,7 +58,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   });
 
   // Recent Estimates from store
-  const activeEstimatesList = estimates.slice(0, 3).map((est) => {
+  const activeEstimatesList = estimates.slice(0, 5).map((est) => {
     const cust = customers.find((c) => c.id === est.customerId);
     return {
       id: est.id,
@@ -70,19 +67,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       date: est.estimateDate,
       status: est.status || 'DRAFT',
       amount: est.totals?.grandTotal || 0,
-    };
-  });
-
-  // Recent Settlements from store
-  const recentSettlementsList = settlements.slice(0, 3).map((stl) => {
-    const cust = customers.find((c) => c.id === stl.customerId);
-    return {
-      id: stl.id,
-      settlementNo: stl.settlementNo,
-      customer: cust?.name || stl.customerName || 'Customer',
-      date: stl.date,
-      type: stl.settlementType.replace(/_/g, ' '),
-      amount: (stl.cashReceived || 0) + ((stl.goldReceived || 0) * (stl.agreedGoldRate || goldMarketRate)),
     };
   });
 
@@ -164,8 +148,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Row 1: 4 Key Metric KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Row 1: 3 Key Metric KPI Cards (Balanced Trio) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Card 1: ACTIVE CUSTOMERS */}
         <div
           onClick={() => onNavigate('customers')}
@@ -190,30 +174,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Card 2: OPEN COMMERCIAL ORDERS */}
-        <div
-          onClick={() => onNavigate('orders')}
-          className="p-5 rounded-2xl bg-[#FAF7F0] border border-[#EFE5D0] shadow-xs hover:shadow-md transition-all cursor-pointer relative overflow-hidden group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#7A6D56] uppercase tracking-wider">
-              OPEN COMMERCIAL ORDERS
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-[#FDF3DE] flex items-center justify-center">
-              <FileText className="w-4 h-4 text-[#C48C2B]" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-[#133837] tracking-tight block">
-              {openOrdersCount}
-            </span>
-            <div className="text-xs text-[#7A6D56] font-medium mt-1">
-              <span className="font-bold">{orders.length}</span> total lifetime orders
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: NET PURE GOLD OUTSTANDING (Signature Emerald Card) */}
+        {/* Card 2: NET PURE GOLD OUTSTANDING (Signature Emerald Card) */}
         <div
           onClick={() => onNavigate('ledger')}
           className="p-5 rounded-2xl bg-gradient-to-br from-[#0D5251] to-[#073635] text-white border border-[#D9B76C]/40 shadow-lg ring-1 ring-[#D9B76C]/20 hover:shadow-xl transition-all cursor-pointer relative overflow-hidden group"
@@ -241,7 +202,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Card 4: NET MC BALANCE OUTSTANDING */}
+        {/* Card 3: NET MC BALANCE OUTSTANDING */}
         <div
           onClick={() => onNavigate('ledger')}
           className="p-5 rounded-2xl bg-[#FAF7F0] border border-[#EFE5D0] shadow-xs hover:shadow-md transition-all cursor-pointer relative overflow-hidden group"
@@ -661,62 +622,77 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Recent Settlements Card */}
+          {/* Quick Commercial Actions Card */}
           <div className="p-5 rounded-3xl bg-white/85 border border-[#E2E8E6] shadow-xs backdrop-blur-md">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Repeat className="w-4 h-4 text-[#C48C2B]" />
+                <Sparkles className="w-4 h-4 text-[#C48C2B]" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#143B39]">
-                  RECENT SETTLEMENTS
+                  QUICK COMMERCIAL ACTIONS
                 </h3>
               </div>
-              <button
-                onClick={() => onNavigate('settlements')}
-                className="text-xs font-bold text-[#0F5C5B] hover:underline flex items-center gap-0.5 cursor-pointer"
-              >
-                <span>View All</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
             </div>
 
-            <div className="space-y-2.5">
-              {recentSettlementsList.length === 0 ? (
-                <div className="py-6 text-center text-[#647777]">
-                  <Repeat className="w-6 h-6 mx-auto text-[#647777]/40 mb-1" />
-                  <p className="text-xs font-medium">No recent settlements</p>
-                </div>
-              ) : (
-                recentSettlementsList.map((stl) => (
-                  <div
-                    key={stl.id}
-                    onClick={() => onNavigate('settlements')}
-                    className="p-3 rounded-2xl bg-[#FAF9F6] hover:bg-[#F5F2EB] border border-[#EFECE6] transition-all cursor-pointer flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-white border border-[#DCE5E3] flex items-center justify-center">
-                        <Repeat className="w-4 h-4 text-[#0F5C5B]" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[#173333]">
-                            {stl.settlementNo}
-                          </span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#FBF4E4] text-[#966E1D]">
-                            {stl.type}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-[#647777] font-medium">
-                          {stl.customer}
-                        </div>
-                        <div className="text-[10px] text-[#8C9E9D]">{stl.date}</div>
-                      </div>
-                    </div>
-                    <div className="text-right font-mono font-bold text-xs text-[#173333]">
-                      ₹ {stl.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => onNavigate('new-estimate', 'SALE')}
+                className="w-full p-2.5 rounded-2xl bg-[#F2FAF8] hover:bg-[#E3F4F0] border border-[#D5EAE5] transition-all cursor-pointer flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-xl bg-[#0F5C5B]/10 text-[#0F5C5B] flex items-center justify-center font-bold text-xs">
+                    💎
                   </div>
-                ))
-              )}
+                  <div className="text-left">
+                    <span className="text-xs font-bold text-[#143B39] block group-hover:text-[#0F5C5B]">
+                      New Sale Estimate
+                    </span>
+                    <span className="text-[10px] text-[#647777]">
+                      Client ornaments delivery & invoice
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-[#647777] group-hover:text-[#0F5C5B] group-hover:translate-x-0.5 transition-all" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('new-estimate', 'PURCHASE')}
+                className="w-full p-2.5 rounded-2xl bg-[#FAF7F0] hover:bg-[#F5EDDC] border border-[#EFE5D0] transition-all cursor-pointer flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-xl bg-[#C48C2B]/10 text-[#C48C2B] flex items-center justify-center font-bold text-xs">
+                    📦
+                  </div>
+                  <div className="text-left">
+                    <span className="text-xs font-bold text-[#143B39] block group-hover:text-[#C48C2B]">
+                      New Purchase Estimate
+                    </span>
+                    <span className="text-[10px] text-[#647777]">
+                      Old gold receipt & raw casting purchase
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-[#647777] group-hover:text-[#C48C2B] group-hover:translate-x-0.5 transition-all" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('ledger')}
+                className="w-full p-2.5 rounded-2xl bg-white hover:bg-[#FAF9F6] border border-[#E2E8E6] transition-all cursor-pointer flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-xl bg-[#0F5C5B]/10 text-[#0F5C5B] flex items-center justify-center">
+                    <Coins className="w-3.5 h-3.5 text-[#0F5C5B]" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-xs font-bold text-[#143B39] block group-hover:text-[#0F5C5B]">
+                      View Store Ledger
+                    </span>
+                    <span className="text-[10px] text-[#647777]">
+                      Master journal & customer balances
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-[#647777] group-hover:text-[#0F5C5B] group-hover:translate-x-0.5 transition-all" />
+              </button>
             </div>
           </div>
         </div>

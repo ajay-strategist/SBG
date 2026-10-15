@@ -47,22 +47,24 @@ export const GoogleSheetImportModal: React.FC<GoogleSheetImportModalProps> = ({
 
   const downloadTemplateCSV = () => {
     const csvContent = `Date,Issue/Receipt,Particulars,Description,Nos,Gross WT,Stone WT,Net WT,Touch,Pure WT,Stone Amount,MC Amount,Total Amount,Balance MC,Balance WT
-29/05/26,RECEIPT,PURCHASE,RD/BB/031/26-27,50,-23.085,1.478,-21.607,76.00%,-16.421,"(₹2,22,583.00)",0,"(₹2,22,583.00)","(₹2,22,583.00)",-16.421
-03/06/26,ISSUE,PURCHASE,DN/003/26-27,1,0.344,0.012,0.332,76.00%,0.252,"₹4,063.00",0,"₹4,063.00","(₹2,18,520.00)",-16.169
-03/06/26,ISSUE,SALES,SBG/BB/047,,16.510,,16.510,99.90%,16.493,0,0,"₹-","(₹2,18,520.00)",0.324
-10/06/26,ISSUE,PAYMENT,,,0,0,0,0.00%,0,"₹1,00,000.00",0,"₹1,00,000.00","(₹1,18,520.00)",0.324
-19/06/26,ISSUE,PAYMENT,,,0,0,0,0.00%,0,"₹1,12,155.00",0,"₹1,12,155.00","(₹6,365.00)",0.324
-07/07/26,ISSUE,ISSUE,JWI/148/26-27,1,2.036,0.018,2.018,92.00%,1.857,0,0,"₹-","(₹6,365.00)",2.181
-07/07/26,ISSUE,ISSUE,JWI/148/26-27,1,3.734,0.050,3.684,75.00%,2.763,0,0,"₹-","(₹6,365.00)",4.944
-19/08/26,RECEIPT,PURCHASE,RD/BB/087/26-27,2,-2.225,0.132,-2.093,76.00%,-1.591,"(₹15,494.00)",0,"(₹15,494.00)","(₹21,859.00)",3.353`;
+29/05/26,RECEIPT,PURCHASE,RD/BB/031/26-27,50,-23.085,1.478,-21.607,76.00%,-16.421,-222583.00,0,-222583.00,-222583.00,-16.421
+03/06/26,ISSUE,PURCHASE,DN/003/26-27,1,0.344,0.012,0.332,76.00%,0.252,4063.00,0,4063.00,-218520.00,-16.169
+03/06/26,ISSUE,SALES,SBG/BB/047,,16.510,,16.510,99.90%,16.493,0,0,0,-218520.00,0.324
+10/06/26,ISSUE,PAYMENT,,,0,0,0,0.00%,0,100000.00,0,100000.00,-118520.00,0.324
+19/06/26,ISSUE,PAYMENT,,,0,0,0,0.00%,0,112155.00,0,112155.00,-6365.00,0.324
+07/07/26,ISSUE,ISSUE,JWI/148/26-27,1,2.036,0.018,2.018,92.00%,1.857,0,0,0,-6365.00,2.181
+07/07/26,ISSUE,ISSUE,JWI/148/26-27,1,3.734,0.050,3.684,75.00%,2.763,0,0,0,-6365.00,4.944
+19/08/26,RECEIPT,PURCHASE,RD/BB/087/26-27,2,-2.225,0.132,-2.093,76.00%,-1.591,-15494.00,0,-15494.00,-21859.00,3.353`;
 
-    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csvContent);
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `SBG_Customer_Ledger_Bulk_Import_Template.csv`);
+    link.href = url;
+    link.download = 'SBG_Customer_Ledger_Bulk_Import_Template.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Helper to convert DD-MM-YY or DD/MM/YYYY to YYYY-MM-DD

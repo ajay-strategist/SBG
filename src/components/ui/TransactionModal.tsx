@@ -44,8 +44,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [jobRef, setJobRef] = useState('');
   const [notes, setNotes] = useState('');
   const [remarks, setRemarks] = useState('');
-  const [paymentMode, setPaymentMode] = useState<string>('Cash');
-  const [postToTally, setPostToTally] = useState(true);
 
   // Gold Settlement fields
   const [goldWeightStr, setGoldWeightStr] = useState('');
@@ -154,7 +152,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       descriptionParts.push(`${goldWeight.toFixed(3)}g Gold (${touch}% = ${pureWT.toFixed(3)}g Pure @ ₹${goldRate.toLocaleString('en-IN')}/g = ₹${effectiveGoldAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })})`);
     }
     if (cashAmount > 0) {
-      descriptionParts.push(`Cash/Bank (${paymentMode}): ₹${cashAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
+      descriptionParts.push(`Cash/Bank: ₹${cashAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
     }
     if (jobRef.trim()) {
       descriptionParts.push(`Ref: ${jobRef.trim()}`);
@@ -164,9 +162,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     }
     if (remarks.trim()) {
       descriptionParts.push(`Remarks: ${remarks.trim()}`);
-    }
-    if (postToTally) {
-      descriptionParts.push('Posted to Financial Accounts');
     }
 
     const description = `${isReceipt ? 'Payment Received' : 'Payment Made'}: ${descriptionParts.join(' | ')}`;
@@ -606,7 +601,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="text-[11px] font-bold text-[#173333] mb-1 block">
                         Cash / Bank Amount (₹)
@@ -629,40 +624,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
                     <div>
                       <label className="text-[11px] font-bold text-[#173333] mb-1 block">
-                        Payment Mode
+                        Payment Ref / Notes
                       </label>
-                      <div className="relative flex items-center bg-white border border-[#DCE5E3] rounded-xl overflow-hidden focus-within:border-[#0F5C5B] focus-within:ring-1 focus-within:ring-[#0F5C5B]">
-                        <Landmark className="w-4 h-4 text-[#7C8B87] ml-3 shrink-0" />
-                        <select
-                          value={paymentMode}
-                          onChange={(e) => setPaymentMode(e.target.value)}
-                          className="w-full pl-2 pr-7 py-2 text-xs font-semibold text-[#173333] bg-transparent outline-none appearance-none cursor-pointer"
-                        >
-                          <option value="Cash">Cash</option>
-                          <option value="NEFT / RTGS">NEFT / RTGS</option>
-                          <option value="Cheque">Cheque</option>
-                          <option value="UPI">UPI</option>
-                          <option value="Card">Card</option>
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-[#7C8B87] absolute right-2.5 pointer-events-none" />
+                      <div className="flex items-center bg-white border border-[#DCE5E3] rounded-xl overflow-hidden px-3 py-2 focus-within:border-[#0F5C5B] focus-within:ring-1 focus-within:ring-[#0F5C5B]">
+                        <FileText className="w-4 h-4 text-[#7C8B87] shrink-0 mr-2" />
+                        <input
+                          type="text"
+                          placeholder="e.g. UTR / IMPS / Bank Ref / Cheque No."
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          className="w-full text-xs text-[#173333] placeholder:text-[#9FB1AC] outline-none bg-transparent"
+                        />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Notes / Transaction ID */}
-                  <div>
-                    <label className="text-[11px] font-bold text-[#173333] mb-1 block">
-                      Payment Notes / Transaction ID
-                    </label>
-                    <div className="flex items-center bg-white border border-[#DCE5E3] rounded-xl overflow-hidden px-3 py-2 focus-within:border-[#0F5C5B] focus-within:ring-1 focus-within:ring-[#0F5C5B]">
-                      <FileText className="w-4 h-4 text-[#7C8B87] shrink-0 mr-2.5" />
-                      <input
-                        type="text"
-                        placeholder="e.g. UTR / IMPS Ref / Bank Name / Cheque No."
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        className="w-full text-xs text-[#173333] placeholder:text-[#9FB1AC] outline-none bg-transparent"
-                      />
                     </div>
                   </div>
 
@@ -778,24 +751,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
 
             {/* Row 7: Modal Footer */}
-            <div className="px-6 py-3.5 bg-[#FAFDFD] border-t border-[#E1ECE9] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-              <div className="flex items-start gap-2.5">
-                <input
-                  type="checkbox"
-                  id="post-to-tally"
-                  checked={postToTally}
-                  onChange={(e) => setPostToTally(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 rounded text-[#0F5C5B] accent-[#0F5C5B] cursor-pointer"
-                />
-                <div>
-                  <label htmlFor="post-to-tally" className="text-xs font-bold text-[#173333] cursor-pointer block">
-                    Post to Tally / Financial Accounts
-                  </label>
-                  <p className="text-[11px] text-[#7C8B87]">
-                    This will create corresponding accounting entry.
-                  </p>
-                </div>
-              </div>
+            <div className="px-6 py-3.5 bg-[#FAFDFD] border-t border-[#E1ECE9] flex items-center justify-between gap-3 shrink-0">
+              <span className="text-[11px] text-[#7C8B87]">
+                Dual-entry updates both GC metal ledger &amp; cash accounts
+              </span>
 
               <div className="flex items-center justify-end gap-2.5">
                 <button

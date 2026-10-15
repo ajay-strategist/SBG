@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSBG } from '../../store/sbgStore';
 import {
   LayoutDashboard,
@@ -71,18 +71,11 @@ export type ActiveTab =
   | 'dashboard'
   | 'customers'
   | 'customer-profile'
-  | 'orders'
-  | 'order-details'
   | 'ledger'
-  | 'new-transaction'
   | 'estimates'
   | 'new-estimate'
   | 'edit-estimate'
   | 'estimate-details'
-  | 'settlements'
-  | 'new-settlement'
-  | 'reports'
-  | 'erp'
   | 'audit'
   | 'users'
   | 'settings';
@@ -111,6 +104,9 @@ export const AppShell: React.FC<AppShellProps> = ({
     goldRate24hChange,
     isGoldRateLive,
     refreshLiveGoldRate,
+    customers,
+    estimates,
+    transactions,
   } = useSBG();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -119,6 +115,8 @@ export const AppShell: React.FC<AppShellProps> = ({
     return saved ? JSON.parse(saved) : false;
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [isEditingRate, setIsEditingRate] = useState(false);
   const [tempRate, setTempRate] = useState(goldMarketRate.toString());
   const [isTxDropdownOpen, setIsTxDropdownOpen] = useState(false);
@@ -169,6 +167,81 @@ export const AppShell: React.FC<AppShellProps> = ({
     localStorage.setItem('sbg_sidebar_collapsed', JSON.stringify(sidebarCollapsed));
   }, [sidebarCollapsed]);
 
+  const isClient = currentUser?.role === 'CLIENT';
+
+  useEffect(() => {
+    if (isClient && (currentTab === 'dashboard' || currentTab === 'customers' || currentTab === 'audit' || currentTab === 'users')) {
+      onNavigate('customer-profile', currentUser?.customerId || 'cust-101');
+    }
+  }, [isClient, currentTab, currentUser, onNavigate]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const clientCustomerId = currentUser?.customerId;
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q || q.length < 2) return null;
+
+    const matchedCustomers = isClient
+      ? []
+      : customers
+          .filter(
+            (c) =>
+              c.name.toLowerCase().includes(q) ||
+              c.code.toLowerCase().includes(q) ||
+              (c.phone && c.phone.toLowerCase().includes(q)) ||
+              (c.city && c.city.toLowerCase().includes(q)) ||
+              (c.gstin && c.gstin.toLowerCase().includes(q))
+          )
+          .slice(0, 4);
+
+    const matchedEstimates = estimates
+      .filter((e) => {
+        if (isClient && clientCustomerId && e.customerId !== clientCustomerId) return false;
+        return (
+          e.estimateNo.toLowerCase().includes(q) ||
+          (e.customerName && e.customerName.toLowerCase().includes(q)) ||
+          (e.customerRef && e.customerRef.toLowerCase().includes(q)) ||
+          (e.remarks && e.remarks.toLowerCase().includes(q))
+        );
+      })
+      .slice(0, 4);
+
+    const matchedTransactions = transactions
+      .filter((t) => {
+        if (isClient && clientCustomerId && t.customerId !== clientCustomerId) return false;
+        const cust = customers.find((c) => c.id === t.customerId);
+        const custName = cust?.name || '';
+        return (
+          t.id.toLowerCase().includes(q) ||
+          (t.erpRef && t.erpRef.toLowerCase().includes(q)) ||
+          custName.toLowerCase().includes(q) ||
+          (t.description && t.description.toLowerCase().includes(q)) ||
+          t.particulars.toLowerCase().includes(q)
+        );
+      })
+      .slice(0, 4);
+
+    const totalCount =
+      matchedCustomers.length + matchedEstimates.length + matchedTransactions.length;
+
+    return {
+      customers: matchedCustomers,
+      estimates: matchedEstimates,
+      transactions: matchedTransactions,
+      totalCount,
+    };
+  }, [searchQuery, customers, estimates, transactions, isClient, clientCustomerId]);
+
   const allNavItems = [
     { id: 'dashboard' as ActiveTab, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'customers' as ActiveTab, label: 'Customers', icon: Users },
@@ -178,15 +251,18 @@ export const AppShell: React.FC<AppShellProps> = ({
     { id: 'settings' as ActiveTab, label: 'Settings', icon: Settings },
   ];
 
-  const navItems = allNavItems.filter((item) => {
-    if (currentUser?.role === 'CLIENT') {
-      return ['dashboard', 'customers', 'estimates'].includes(item.id);
-    }
-    if (currentUser?.role === 'STAFF') {
-      return ['dashboard', 'customers', 'estimates', 'settings'].includes(item.id);
-    }
-    return true;
-  });
+  const navItems = isClient
+    ? [
+        { id: 'customer-profile' as ActiveTab, label: 'My Ledger & Account', icon: BookOpen },
+        { id: 'estimates' as ActiveTab, label: 'My Estimates', icon: FileSpreadsheet },
+        { id: 'settings' as ActiveTab, label: 'Account Security', icon: Settings },
+      ]
+    : allNavItems.filter((item) => {
+        if (currentUser?.role === 'STAFF') {
+          return ['dashboard', 'customers', 'estimates', 'settings'].includes(item.id);
+        }
+        return true;
+      });
 
   const handleRateSave = () => {
     const val = parseFloat(tempRate);
@@ -419,10 +495,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             const isActive =
               currentTab === item.id ||
               (item.id === 'customers' && currentTab === 'customer-profile') ||
-              (item.id === 'orders' && currentTab === 'order-details') ||
-              (item.id === 'ledger' && currentTab === 'new-transaction') ||
-              (item.id === 'estimates' && (currentTab === 'new-estimate' || currentTab === 'estimate-details')) ||
-              (item.id === 'settlements' && currentTab === 'new-settlement');
+              (item.id === 'estimates' && (currentTab === 'new-estimate' || currentTab === 'estimate-details' || currentTab === 'edit-estimate'));
 
             return (
               <button
@@ -512,24 +585,171 @@ export const AppShell: React.FC<AppShellProps> = ({
       <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
         {/* Top Navbar */}
         <header className="no-print sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-[#DCE5E3] px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 sm:gap-4 shadow-xs">
-          {/* Left: Search Pill Input */}
-          <div className="flex items-center gap-3 flex-1 max-w-xl">
+          {/* Left: Search Pill Input with Autocomplete */}
+          <div className="flex items-center gap-3 flex-1 max-w-xl relative" ref={searchContainerRef}>
             <div className="flex-1 relative">
-              <Search className="w-4 h-4 text-[#647777] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[#647777] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search customers, orders, transactions, estimates, ledger..."
+                placeholder={isClient ? "Search my estimates and ledger transactions..." : "Search customers, estimates, transactions..."}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs sm:text-sm pl-10 pr-4 py-2.5 rounded-full bg-white border border-[#DCE5E3] focus:outline-none focus:ring-2 focus:ring-[#0F5C5B]/20 focus:border-[#0F5C5B] placeholder-[#647777]/60 shadow-xs"
+                onFocus={() => setIsSearchFocused(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchFocused(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setIsSearchFocused(false);
+                  }
+                }}
+                className="w-full text-xs sm:text-sm pl-10 pr-9 py-2.5 rounded-full bg-white border border-[#DCE5E3] focus:outline-none focus:ring-2 focus:ring-[#0F5C5B]/20 focus:border-[#0F5C5B] placeholder-[#647777]/60 shadow-xs"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setIsSearchFocused(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#647777] hover:text-[#173333] rounded-full hover:bg-neutral-100 transition-colors cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* Autocomplete Dropdown */}
+              {isSearchFocused && searchQuery.trim().length >= 2 && searchResults && (
+                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-[#DCE5E3] overflow-hidden z-50 max-h-96 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                  {searchResults.totalCount === 0 ? (
+                    <div className="p-5 text-center text-xs text-[#647777]">
+                      <p className="font-semibold text-[#173333]">No results found for "{searchQuery}"</p>
+                      <p className="mt-1 text-[11px]">Search by customer name, account code, estimate #, or voucher ref.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-[#EFECE6] text-xs">
+                      {/* Customers section */}
+                      {searchResults.customers.length > 0 && (
+                        <div className="p-2">
+                          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0F5C5B]">
+                            Customers ({searchResults.customers.length})
+                          </div>
+                          {searchResults.customers.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                onNavigate('customer-profile', c.id);
+                                setSearchQuery('');
+                                setIsSearchFocused(false);
+                              }}
+                              className="w-full px-3 py-2 text-left rounded-xl hover:bg-[#0F5C5B]/5 flex items-center justify-between group transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-6 h-6 rounded-lg bg-[#0F5C5B]/10 text-[#0F5C5B] flex items-center justify-center font-bold text-[10px]">
+                                  {c.code.slice(-3)}
+                                </span>
+                                <div>
+                                  <div className="font-bold text-[#173333] group-hover:text-[#0F5C5B]">{c.name}</div>
+                                  <div className="text-[11px] text-[#647777]">{c.city || 'Kerala'} • {c.code}</div>
+                                </div>
+                              </div>
+                              <div className="text-right text-[11px]">
+                                <div className="font-semibold text-[#173333]">{c.currentWT.toFixed(3)}g</div>
+                                <div className="text-[#647777]">₹{Math.abs(c.currentMC).toLocaleString('en-IN')}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Estimates section */}
+                      {searchResults.estimates.length > 0 && (
+                        <div className="p-2">
+                          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#935610]">
+                            Estimates ({searchResults.estimates.length})
+                          </div>
+                          {searchResults.estimates.map((e) => (
+                            <button
+                              key={e.id}
+                              type="button"
+                              onClick={() => {
+                                onNavigate('estimate-details', e.id);
+                                setSearchQuery('');
+                                setIsSearchFocused(false);
+                              }}
+                              className="w-full px-3 py-2 text-left rounded-xl hover:bg-[#935610]/5 flex items-center justify-between group transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-6 h-6 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-[10px]">
+                                  EST
+                                </span>
+                                <div>
+                                  <div className="font-bold text-[#173333] group-hover:text-[#935610]">{e.estimateNo}</div>
+                                  <div className="text-[11px] text-[#647777]">{e.customerName || 'Customer'} • {e.estimateDate}</div>
+                                </div>
+                              </div>
+                              <div className="text-right text-[11px]">
+                                <div className="font-semibold text-emerald-700">₹{(e.totals?.grandTotal || 0).toLocaleString('en-IN')}</div>
+                                <div className="text-[10px] uppercase font-bold text-[#647777]">{e.status}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Transactions section */}
+                      {searchResults.transactions.length > 0 && (
+                        <div className="p-2">
+                          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                            Transactions ({searchResults.transactions.length})
+                          </div>
+                          {searchResults.transactions.map((t) => {
+                            const cust = customers.find((c) => c.id === t.customerId);
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => {
+                                  onNavigate('customer-profile', t.customerId);
+                                  setSearchQuery('');
+                                  setIsSearchFocused(false);
+                                }}
+                                className="w-full px-3 py-2 text-left rounded-xl hover:bg-blue-50/50 flex items-center justify-between group transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-[10px]">
+                                    TX
+                                  </span>
+                                  <div>
+                                    <div className="font-bold text-[#173333] group-hover:text-blue-700">{t.erpRef || t.id}</div>
+                                    <div className="text-[11px] text-[#647777]">{cust?.name || 'Customer'} • {t.particulars}</div>
+                                  </div>
+                                </div>
+                                <div className="text-right text-[11px]">
+                                  <div className="font-semibold text-[#173333]">
+                                    {Math.abs(t.pureWT) > 0 ? `${t.pureWT.toFixed(3)}g` : `₹${Math.abs(t.totalAmount || t.mcAmount || 0).toLocaleString('en-IN')}`}
+                                  </div>
+                                  <div className="text-[10px] text-[#647777]">{t.date}</div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Quick Action Pills & Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* New Transaction Action Pill with Purchase / Sale / Settlement Dropdown */}
-            <div className="relative">
+            {/* New Transaction Action Pill with Purchase / Sale / Settlement Dropdown (Hidden for Clients) */}
+            {!isClient && (
+              <div className="relative">
               <button
                 onClick={() => setIsTxDropdownOpen((prev) => !prev)}
                 className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs shadow-sm transition-all cursor-pointer"
@@ -617,6 +837,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 </>
               )}
             </div>
+            )}
 
             {/* Notification Bell with Dynamic Clearable Badge */}
             <div className="relative">

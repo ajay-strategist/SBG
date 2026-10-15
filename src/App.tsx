@@ -7,16 +7,10 @@ import { LoginView } from './views/LoginView';
 const DashboardView = lazy(() => import('./views/DashboardView').then((m) => ({ default: m.DashboardView })));
 const CustomersView = lazy(() => import('./views/CustomersView').then((m) => ({ default: m.CustomersView })));
 const CustomerProfileView = lazy(() => import('./views/CustomerProfileView').then((m) => ({ default: m.CustomerProfileView })));
-const OrdersView = lazy(() => import('./views/OrdersView').then((m) => ({ default: m.OrdersView })));
-const OrderDetailsView = lazy(() => import('./views/OrderDetailsView').then((m) => ({ default: m.OrderDetailsView })));
 const LedgerView = lazy(() => import('./views/LedgerView').then((m) => ({ default: m.LedgerView })));
-const NewTransactionView = lazy(() => import('./views/NewTransactionView').then((m) => ({ default: m.NewTransactionView })));
 const EstimatesView = lazy(() => import('./views/EstimatesView').then((m) => ({ default: m.EstimatesView })));
 const NewEstimateView = lazy(() => import('./views/NewEstimateView').then((m) => ({ default: m.NewEstimateView })));
 const EstimateDetailsView = lazy(() => import('./views/EstimateDetailsView').then((m) => ({ default: m.EstimateDetailsView })));
-const SettlementsView = lazy(() => import('./views/SettlementsView').then((m) => ({ default: m.SettlementsView })));
-const NewSettlementView = lazy(() => import('./views/NewSettlementView').then((m) => ({ default: m.NewSettlementView })));
-const ReportsView = lazy(() => import('./views/ReportsView').then((m) => ({ default: m.ReportsView })));
 const AuditView = lazy(() => import('./views/AuditView').then((m) => ({ default: m.AuditView })));
 const UsersView = lazy(() => import('./views/UsersView').then((m) => ({ default: m.UsersView })));
 const SettingsView = lazy(() => import('./views/SettingsView').then((m) => ({ default: m.SettingsView })));
@@ -75,20 +69,7 @@ const MainApp: React.FC = () => {
             onNavigate={handleNavigate}
           />
         )}
-        {currentTab === 'orders' && <OrdersView onNavigate={handleNavigate} />}
-        {currentTab === 'order-details' && (
-          <OrderDetailsView
-            orderId={selectedEntityId || 'ord-201'}
-            onNavigate={handleNavigate}
-          />
-        )}
         {currentTab === 'ledger' && <LedgerView onNavigate={handleNavigate} />}
-        {currentTab === 'new-transaction' && (
-          <NewTransactionView
-            preselectedCustomerId={selectedEntityId}
-            onNavigate={handleNavigate}
-          />
-        )}
         {currentTab === 'estimates' && <EstimatesView onNavigate={handleNavigate} />}
         {(currentTab === 'new-estimate' || currentTab === 'edit-estimate') && (
           <NewEstimateView
@@ -109,14 +90,6 @@ const MainApp: React.FC = () => {
             onNavigate={handleNavigate}
           />
         )}
-        {currentTab === 'settlements' && <SettlementsView onNavigate={handleNavigate} />}
-        {currentTab === 'new-settlement' && (
-          <NewSettlementView
-            preselectedCustomerId={selectedEntityId}
-            onNavigate={handleNavigate}
-          />
-        )}
-        {currentTab === 'reports' && <ReportsView onNavigate={handleNavigate} />}
         {currentTab === 'audit' && <AuditView onNavigate={handleNavigate} />}
         {currentTab === 'users' && <UsersView onNavigate={handleNavigate} />}
         {currentTab === 'settings' && <SettingsView onNavigate={handleNavigate} />}

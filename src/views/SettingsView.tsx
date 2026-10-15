@@ -122,13 +122,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
     setTimeout(() => setSaveAlert(false), 3000);
   };
 
-  const handleResetBankDetails = () => {
-    setAccountName(DEFAULT_BANK_DETAILS.accountName);
-    setBankName(DEFAULT_BANK_DETAILS.bankName);
-    setAccountNumber(DEFAULT_BANK_DETAILS.accountNumber);
-    setIfscCode(DEFAULT_BANK_DETAILS.ifscCode);
-    setBranch(DEFAULT_BANK_DETAILS.branch || '');
-  };
+
 
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -379,16 +373,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
               </div>
 
               {/* Action Buttons for Bank Details Card */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#DCE5E3]/60">
-                <button
-                  type="button"
-                  onClick={handleResetBankDetails}
-                  className="text-xs text-[#647777] hover:text-[#0F5C5B] font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Reset to Default Bank Details
-                </button>
-
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-[#DCE5E3]/60">
                 <SBGButton
                   variant="secondary"
                   size="sm"

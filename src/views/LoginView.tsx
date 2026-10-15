@@ -23,19 +23,17 @@ interface LoginViewProps {
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const { login, resetPassword } = useSBG();
-  const [username, setUsername] = useState('sreebalajigold@gmail.com');
-  const [password, setPassword] = useState('password');
+  const [username, setUsername] = useState(() => localStorage.getItem('sbg_remembered_user') || '');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('sbg_remembered_user'));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Password Reset Modal State
   const [isResetOpen, setIsResetOpen] = useState(false);
-  const [resetIdentifier, setResetIdentifier] = useState('sreebalajigold@gmail.com');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [resetStatus, setResetStatus] = useState<{ message: string; isError: boolean } | null>(null);
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [resetStatus, setResetStatus] = useState<{ message: string; isError: boolean; isWarning?: boolean } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +44,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       const success = login(username, password);
       setIsLoading(false);
       if (success) {
+        if (rememberMe) {
+          localStorage.setItem('sbg_remembered_user', username.trim());
+        } else {
+          localStorage.removeItem('sbg_remembered_user');
+        }
         if (onLoginSuccess) onLoginSuccess();
       } else {
         setError('Invalid username or password. Please verify your credentials.');
@@ -57,33 +60,28 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     setResetStatus(null);
 
-    if (!newPassword || newPassword.length < 4) {
-      setResetStatus({ message: 'New password must be at least 4 characters long.', isError: true });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setResetStatus({ message: 'New password and confirmation do not match.', isError: true });
-      return;
-    }
-
-    const success = resetPassword(resetIdentifier, newPassword);
-    if (success) {
-      setPassword(newPassword);
+    const result = resetPassword(resetIdentifier);
+    if (result.success) {
+      setPassword('password');
       setUsername(resetIdentifier);
       setResetStatus({
-        message: 'Password successfully updated! You can now sign in with your new password.',
+        message: result.message,
         isError: false,
       });
       setTimeout(() => {
         setIsResetOpen(false);
         setResetStatus(null);
-        setNewPassword('');
-        setConfirmPassword('');
-      }, 1500);
+        setResetIdentifier('');
+      }, 3500);
+    } else if (result.isStaffOrClient) {
+      setResetStatus({
+        message: result.message,
+        isError: false,
+        isWarning: true,
+      });
     } else {
       setResetStatus({
-        message: 'Account not found with this email or username.',
+        message: result.message,
         isError: true,
       });
     }
@@ -407,23 +405,25 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               </div>
               <div>
                 <h3 id="reset-password-title" className="text-lg font-bold text-[#173333]">
-                  Reset Account Password
+                  Reset Administrator Password
                 </h3>
                 <p className="text-xs text-[#647777]">
-                  Set a new secure password for your administrator account
+                  Restore default administrator credentials
                 </p>
               </div>
             </div>
 
             {resetStatus && (
               <div
-                className={`mb-4 p-3 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
+                className={`mb-4 p-3.5 rounded-2xl text-xs font-semibold flex items-start gap-2.5 ${
                   resetStatus.isError
                     ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    : resetStatus.isWarning
+                    ? 'bg-amber-50 text-amber-900 border border-amber-300'
                     : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                 }`}
               >
-                {!resetStatus.isError && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+                {!resetStatus.isError && !resetStatus.isWarning && <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />}
                 <span>{resetStatus.message}</span>
               </div>
             )}
@@ -431,44 +431,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-[#173333] mb-1">
-                  Registered Email / Username
+                  Registered Administrator Email / Username
                 </label>
                 <input
                   type="text"
                   required
                   value={resetIdentifier}
                   onChange={(e) => setResetIdentifier(e.target.value)}
-                  placeholder="sreebalajigold@gmail.com"
+                  placeholder="e.g. sreebalajigold@gmail.com"
                   className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-[#F6F8F7] border border-[#DCE5E3] focus:outline-none focus:ring-2 focus:ring-[#0F5C5B]/20 text-[#173333]"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#173333] mb-1">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-[#F6F8F7] border border-[#DCE5E3] focus:outline-none focus:ring-2 focus:ring-[#0F5C5B]/20 text-[#173333]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#173333] mb-1">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-[#F6F8F7] border border-[#DCE5E3] focus:outline-none focus:ring-2 focus:ring-[#0F5C5B]/20 text-[#173333]"
-                />
+                <p className="text-[11px] text-[#647777] mt-1.5 leading-normal">
+                  Note: Resetting will restore the administrator account password to default (<code className="font-mono text-[#0F5C5B] font-bold">password</code>). You can customize it inside Settings once logged in.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -486,7 +461,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white text-xs font-bold shadow-md shadow-[#0F5C5B]/20 cursor-pointer transition-all"
                 >
-                  Save New Password
+                  Restore Default Password
                 </button>
               </div>
             </form>

@@ -26,10 +26,12 @@ export const AuditView: React.FC<AuditViewProps> = ({ onNavigate }) => {
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesMod = selectedModule === 'ALL' || log.module === selectedModule;
+    const term = searchTerm.toLowerCase();
+    const userDisplayName = log.userName || (log as any).user_name || 'System';
     const matchesSearch =
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (log.details && log.details.toLowerCase().includes(searchTerm.toLowerCase()));
+      (log.action || '').toLowerCase().includes(term) ||
+      userDisplayName.toLowerCase().includes(term) ||
+      (log.details && log.details.toLowerCase().includes(term));
 
     return matchesMod && matchesSearch;
   });
@@ -43,7 +45,7 @@ export const AuditView: React.FC<AuditViewProps> = ({ onNavigate }) => {
             <ShieldCheck className="w-6 h-6 text-[#0F5C5B]" /> Audit Trail & Data Integrity
           </h2>
           <p className="text-xs text-[#647777] mt-0.5">
-            Immutable tracking of ledger transactions, estimates, settlements, and financial rate updates
+            Immutable tracking of ledger transactions, estimates, and financial updates
           </p>
         </div>
 
@@ -68,15 +70,12 @@ export const AuditView: React.FC<AuditViewProps> = ({ onNavigate }) => {
         <select
           value={selectedModule}
           onChange={(e) => setSelectedModule(e.target.value)}
-          className="text-xs bg-white border border-[#DCE5E3] rounded-xl px-3 py-2"
+          className="text-xs bg-white border border-[#DCE5E3] rounded-xl px-3 py-2 font-medium"
         >
           <option value="ALL">All Modules</option>
           <option value="LEDGER">LEDGER</option>
           <option value="ESTIMATES">ESTIMATES</option>
-          <option value="SETTLEMENTS">SETTLEMENTS</option>
           <option value="CUSTOMERS">CUSTOMERS</option>
-          <option value="ORDERS">ORDERS</option>
-          <option value="ERP">ERP</option>
           <option value="USERS">USERS</option>
           <option value="SETTINGS">SETTINGS</option>
         </select>
@@ -105,7 +104,7 @@ export const AuditView: React.FC<AuditViewProps> = ({ onNavigate }) => {
                   <td className="py-3.5 px-4 font-semibold text-[#173333]">
                     <div className="flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-[#0F5C5B]" />
-                      {log.userName}
+                      {log.userName || (log as any).user_name || 'System'}
                     </div>
                   </td>
                   <td className="py-3.5 px-4">

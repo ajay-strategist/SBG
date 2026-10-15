@@ -50,11 +50,14 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
   estimateId,
   onNavigate,
 }) => {
-  const { estimates, customers, transactions, bankDetails, companyDetails, confirmEstimate, unconfirmEstimate, updateEstimate, deleteEstimate } = useSBG();
+  const { estimates, customers, transactions, bankDetails, companyDetails, confirmEstimate, unconfirmEstimate, updateEstimate, deleteEstimate, currentUser } = useSBG();
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [showToast, setShowToast] = useState<string | null>(null);
+
+  const isClient = currentUser?.role === 'CLIENT';
+  const clientCustomerId = currentUser?.customerId || 'cust-101';
 
   const rawEstimate = estimates.find((e) => e.id === estimateId) || estimates[0];
   const customer = customers.find((c) => c.id === rawEstimate?.customerId);
@@ -116,6 +119,21 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
         <p className="text-sm text-[#647777]">Estimate cost sheet not found.</p>
         <SBGButton variant="outline" className="mt-4" onClick={() => onNavigate('estimates')}>
           Return to Estimates
+        </SBGButton>
+      </div>
+    );
+  }
+
+  // Client role RLS: Block viewing other customers' estimates
+  if (isClient && rawEstimate.customerId !== clientCustomerId) {
+    return (
+      <div className="p-8 text-center bg-white/80 rounded-3xl border border-rose-200 shadow-xs my-6">
+        <h2 className="text-base font-bold text-rose-800">Access Restricted</h2>
+        <p className="text-xs text-[#647777] mt-1 font-medium">
+          You are only authorized to view estimates belonging to your client account.
+        </p>
+        <SBGButton variant="outline" className="mt-4" onClick={() => onNavigate('estimates')}>
+          Back to My Estimates
         </SBGButton>
       </div>
     );
@@ -448,14 +466,16 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                 </SBGButton>
               )}
 
-              <SBGButton
-                variant="secondary"
-                size="sm"
-                icon={<RotateCcw className="w-4 h-4" />}
-                onClick={() => setIsReopenModalOpen(true)}
-              >
-                Reopen Draft
-              </SBGButton>
+              {!isClient && (
+                <SBGButton
+                  variant="secondary"
+                  size="sm"
+                  icon={<RotateCcw className="w-4 h-4" />}
+                  onClick={() => setIsReopenModalOpen(true)}
+                >
+                  Reopen Draft
+                </SBGButton>
+              )}
             </>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FEF5E6] text-[#B87B1D] border border-[#B87B1D]/20">
@@ -463,14 +483,16 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
             </span>
           )}
 
-          <SBGButton
-            variant="gold"
-            size="sm"
-            icon={<Edit3 className="w-4 h-4" />}
-            onClick={() => onNavigate('edit-estimate', estimate.id)}
-          >
-            Edit
-          </SBGButton>
+          {!isClient && (
+            <SBGButton
+              variant="gold"
+              size="sm"
+              icon={<Edit3 className="w-4 h-4" />}
+              onClick={() => onNavigate('edit-estimate', estimate.id)}
+            >
+              Edit
+            </SBGButton>
+          )}
 
           <SBGButton
             variant="glass"
@@ -481,7 +503,7 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
             Print
           </SBGButton>
 
-          {estimate.status === 'DRAFT' && (
+          {!isClient && estimate.status === 'DRAFT' && (
             <SBGButton
               variant="primary"
               size="sm"
@@ -492,16 +514,18 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
             </SBGButton>
           )}
 
-          <SBGButton
-            variant="outline"
-            size="sm"
-            icon={<Trash2 className="w-4 h-4 text-rose-600" />}
-            className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300"
-            onClick={() => setIsDeleteModalOpen(true)}
-            title="Delete this estimate"
-          >
-            Delete
-          </SBGButton>
+          {!isClient && (
+            <SBGButton
+              variant="outline"
+              size="sm"
+              icon={<Trash2 className="w-4 h-4 text-rose-600" />}
+              className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300"
+              onClick={() => setIsDeleteModalOpen(true)}
+              title="Delete this estimate"
+            >
+              Delete
+            </SBGButton>
+          )}
         </div>
       </div>
 
@@ -536,9 +560,13 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                   <span className="font-black text-[#0F5C5B] text-sm print:text-xs">
                     {customer?.name || estimate.customerName}
                   </span>
-                  {customer?.gstin && (
-                    <span className="font-mono text-[10.5px] print:text-[9px] font-bold text-[#173333] bg-[#0F5C5B]/5 border border-[#0F5C5B]/20 px-1.5 py-0.5 rounded">
-                      GSTIN: {customer.gstin}
+                  {(customer?.gstin || (estimate as any).customerGSTIN || (estimate as any).gstin) ? (
+                    <span className="font-mono text-[10.5px] print:text-[9.5px] font-bold text-[#0F5C5B] bg-[#0F5C5B]/10 border border-[#0F5C5B]/30 px-2 py-0.5 rounded shadow-2xs">
+                      GSTIN: {customer?.gstin || (estimate as any).customerGSTIN || (estimate as any).gstin}
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[10px] print:text-[9px] text-[#888] bg-gray-100 px-1.5 py-0.5 rounded">
+                      GSTIN: Unregistered
                     </span>
                   )}
                   {(customer?.city || customer?.phone) && (
@@ -967,7 +995,14 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                     <td className="py-2 px-3 font-semibold text-[#173333]">Gold Metal Value</td>
                     <td className="py-2 px-3">
                       <span className="hidden print:inline-block text-[9.5px] font-semibold text-[#0F5C5B] bg-[#0F5C5B]/10 px-2 py-0.5 rounded">
-                        {currentMetalMode === 'GOLD' ? 'In Gold (100%)' : currentMetalMode === 'CASH' ? 'In Cash (100%)' : 'Split'}
+                        {currentMetalMode === 'GOLD'
+                          ? 'In Gold (100%)'
+                          : currentMetalMode === 'CASH'
+                          ? 'In Cash (100%)'
+                          : `Split: ${(customSettlement.goldPaidInMetalGrams || 0).toFixed(3)}g Metal + Remaining Cash: ₹${Math.max(
+                              0,
+                              goldMetalValue - (customSettlement.goldPaidInMetalGrams || 0) * effectiveGoldRate
+                            ).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       </span>
                       <div className="no-print">
                         <select
@@ -982,13 +1017,19 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                       </div>
 
                       {currentMetalMode === 'SPLIT' && (
-                        <div className="mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200 space-y-1.5 max-w-sm no-print">
-                          <span className="text-[10px] font-bold text-amber-900 block uppercase">
-                            Split Settlement (Enter Wt or ₹):
-                          </span>
+                        <div className="mt-2.5 p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2 max-w-md no-print">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider">
+                              Split Settlement (Enter Wt or ₹)
+                            </span>
+                            <span className="text-[10px] font-mono text-[#0F5C5B] font-bold bg-[#0F5C5B]/10 px-2 py-0.5 rounded">
+                              Rate: ₹{effectiveGoldRate.toLocaleString('en-IN')}/g
+                            </span>
+                          </div>
+
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-[9px] text-[#647777] block font-bold">Gold Wt to Pay (g):</label>
+                              <label className="text-[10px] text-[#647777] block font-bold mb-0.5">Gold Wt to Pay (g):</label>
                               <input
                                 type="number"
                                 step="0.001"
@@ -1015,11 +1056,11 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                                     });
                                   }
                                 }}
-                                className="w-full text-xs font-mono font-bold py-1 px-1.5 bg-white rounded border border-amber-300 text-amber-900 focus:outline-none"
+                                className="w-full text-xs font-mono font-bold py-1.5 px-2 bg-white rounded-lg border border-amber-300 text-amber-900 focus:outline-none focus:ring-1 focus:ring-amber-400"
                               />
                             </div>
                             <div>
-                              <label className="text-[9px] text-[#647777] block font-bold">Gold ₹ to Pay:</label>
+                              <label className="text-[10px] text-[#647777] block font-bold mb-0.5">Gold ₹ to Pay:</label>
                               <input
                                 type="number"
                                 step="1"
@@ -1046,10 +1087,38 @@ export const EstimateDetailsView: React.FC<EstimateDetailsViewProps> = ({
                                     });
                                   }
                                 }}
-                                className="w-full text-xs font-mono font-bold py-1 px-1.5 bg-white rounded border border-amber-300 text-amber-900 focus:outline-none"
+                                className="w-full text-xs font-mono font-bold py-1.5 px-2 bg-white rounded-lg border border-amber-300 text-amber-900 focus:outline-none focus:ring-1 focus:ring-amber-400"
                               />
                             </div>
                           </div>
+
+                          {/* Commercial Calculation Summary: Remaining Cash to Pay */}
+                          {(() => {
+                            const paidGrams = customSettlement.goldPaidInMetalGrams || 0;
+                            const paidCash = paidGrams * effectiveGoldRate;
+                            const remainingGrams = Math.max(0, Number((goldPureToAdjust - paidGrams).toFixed(3)));
+                            const remainingCash = Math.max(0, Number((goldMetalValue - paidCash).toFixed(2)));
+                            return (
+                              <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px] font-sans">
+                                <div>
+                                  <span className="text-[#647777] font-semibold block text-[10px]">
+                                    Remaining Gold Metal:
+                                  </span>
+                                  <span className="font-mono font-bold text-amber-900">
+                                    {remainingGrams.toFixed(3)}g
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[#647777] font-semibold block text-[10px]">
+                                    Remaining Amount After Gold (in Cash):
+                                  </span>
+                                  <span className="font-mono font-bold text-emerald-800 text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                                    ₹ {remainingCash.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </td>

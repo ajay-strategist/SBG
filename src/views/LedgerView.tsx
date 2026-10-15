@@ -27,12 +27,14 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
+import { TransactionModal } from '../components/ui';
 
 interface LedgerViewProps {
   onNavigate: (tab: ActiveTab, entityId?: string) => void;
 }
 
 export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
+  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const { customers, transactions } = useSBG();
   const [searchTerm, setSearchTerm] = useState('');
   const [customerFilter, setCustomerFilter] = useState('ALL');
@@ -97,6 +99,65 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
     );
   };
 
+  const handleExportCSV = () => {
+    if (displayTransactions.length === 0) {
+      alert('No ledger transactions to export.');
+      return;
+    }
+
+    const headers = [
+      'Date',
+      'Transaction ID',
+      'ERP Ref',
+      'Customer Code',
+      'Customer Name',
+      'Direction',
+      'Particulars',
+      'Description',
+      'Gross Weight (g)',
+      'Stone Weight (g)',
+      'Net Weight (g)',
+      'Touch (%)',
+      'Pure Gold Weight (g)',
+      'Total MC Amount (INR)',
+      'Balance Gold Weight (g)',
+      'Balance Making Charge (INR)',
+      'Status',
+    ];
+
+    const rows = displayTransactions.map((tx) => [
+      tx.date,
+      tx.id,
+      tx.erpRef || '',
+      tx.customerCode,
+      `"${tx.customerName.replace(/"/g, '""')}"`,
+      tx.dir,
+      tx.particulars,
+      `"${(tx.description || '').replace(/"/g, '""')}"`,
+      tx.grossWT ? Number(tx.grossWT.toFixed(3)) : 0,
+      tx.stoneWT ? Number(tx.stoneWT.toFixed(3)) : 0,
+      tx.netWT ? Number(tx.netWT.toFixed(3)) : 0,
+      tx.touch ? Number(tx.touch.toFixed(2)) : 0,
+      tx.pureWT ? Number(tx.pureWT.toFixed(3)) : 0,
+      tx.totalMC ? Number(tx.totalMC.toFixed(2)) : 0,
+      tx.balWT ? Number(tx.balWT.toFixed(3)) : 0,
+      tx.balMC ? Number(tx.balMC.toFixed(2)) : 0,
+      tx.status,
+    ]);
+
+    const csvContent =
+      '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `SBG_Store_Ledger_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
@@ -137,7 +198,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
 
             {/* Record New Transaction Button */}
             <button
-              onClick={() => onNavigate('new-transaction')}
+              onClick={() => setIsTxModalOpen(true)}
               className="px-5 py-2.5 rounded-2xl bg-[#0F5C5B] hover:bg-[#0A4847] text-white font-semibold text-xs shadow-md shadow-[#0F5C5B]/20 flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
             >
               <Plus className="w-4 h-4" />
@@ -393,10 +454,13 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
               <span>Columns</span>
             </button>
 
-            <button className="px-3 py-1.5 rounded-xl border border-[#DCE5E3] bg-white hover:bg-[#FAF9F6] text-xs font-semibold text-[#173333] flex items-center gap-1.5 cursor-pointer shadow-2xs">
-              <Download className="w-3.5 h-3.5 text-[#647777]" />
-              <span>Export</span>
-              <ChevronDown className="w-3 h-3 text-[#647777]" />
+            <button
+              onClick={handleExportCSV}
+              className="px-3.5 py-1.5 rounded-xl border border-[#DCE5E3] bg-white hover:bg-[#FAF9F6] text-xs font-semibold text-[#173333] flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+              title="Export filtered transactions to CSV (UTF-8 BOM)"
+            >
+              <Download className="w-3.5 h-3.5 text-[#0F5C5B]" />
+              <span>Export CSV</span>
             </button>
 
             <button className="p-2 rounded-xl border border-[#DCE5E3] bg-white hover:bg-[#FAF9F6] text-[#647777] hover:text-[#173333] cursor-pointer shadow-2xs">
@@ -586,6 +650,11 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      <TransactionModal
+        isOpen={isTxModalOpen}
+        onClose={() => setIsTxModalOpen(false)}
+      />
     </div>
   );
 };

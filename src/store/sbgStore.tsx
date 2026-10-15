@@ -45,7 +45,7 @@ interface SBGContextType {
   isAuthenticated: boolean;
   login: (username?: string, password?: string) => boolean;
   logout: () => void;
-  resetPassword: (identifier: string, newPassword: string) => boolean;
+  resetPassword: (identifier: string) => { success: boolean; message: string; isStaffOrClient?: boolean };
   currentUser: UserAccount;
   setCurrentUser: (user: UserAccount) => void;
   availableUsers: UserAccount[];
@@ -148,13 +148,54 @@ const defaultUsers: UserAccount[] = [
     avatarColor: '#0F5C5B',
     permissions: {
       customers: true,
-      orders: true,
+      orders: false,
       transactions: true,
       estimates: true,
-      settlements: true,
-      reports: true,
+      settlements: false,
+      reports: false,
       users: true,
-      erp: true,
+      erp: false,
+    },
+  },
+  {
+    id: 'usr-staff-1',
+    username: 'mail@thestrategist.co.in',
+    name: 'Operations Staff',
+    email: 'mail@thestrategist.co.in',
+    role: 'STAFF',
+    status: 'ACTIVE',
+    password: 'password',
+    avatarColor: '#0E7490',
+    permissions: {
+      customers: true,
+      orders: false,
+      transactions: true,
+      estimates: true,
+      settlements: false,
+      reports: false,
+      users: false,
+      erp: false,
+    },
+  },
+  {
+    id: 'usr-client-1',
+    username: 'admin@tikvah.com',
+    name: 'Admin Tikvah',
+    email: 'admin@tikvah.com',
+    role: 'CLIENT',
+    customerId: 'cust-101',
+    status: 'ACTIVE',
+    password: 'password',
+    avatarColor: '#D97706',
+    permissions: {
+      customers: false,
+      orders: false,
+      transactions: false,
+      estimates: true,
+      settlements: false,
+      reports: false,
+      users: false,
+      erp: false,
     },
   },
 ];
@@ -178,7 +219,7 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const parsed: UserAccount[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Surgically remove legacy mock demo accounts without wiping legitimate staff accounts (e.g. Ajay Thomas)
+          // Remove legacy mock demo accounts
           const filtered = parsed.filter(
             (u) =>
               u.id !== 'usr-1' &&
@@ -188,16 +229,21 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               u.username?.toLowerCase() !== 'client'
           );
 
-          // Guarantee that the primary admin account exists
-          const adminExists = filtered.some(
-            (u) =>
-              u.email?.toLowerCase() === 'sreebalajigold@gmail.com' ||
-              u.username?.toLowerCase() === 'sreebalajigold@gmail.com'
-          );
+          // Guarantee standard seed accounts are always available on any device
+          const merged = [...filtered];
+          defaultUsers.forEach((def) => {
+            const exists = merged.some(
+              (u) =>
+                u.email?.toLowerCase() === def.email.toLowerCase() ||
+                u.username?.toLowerCase() === def.username.toLowerCase()
+            );
+            if (!exists) {
+              merged.push(def);
+            }
+          });
 
-          const finalUsers = adminExists ? filtered : [defaultUsers[0], ...filtered];
-          localStorage.setItem('sbg_users', JSON.stringify(finalUsers));
-          return finalUsers;
+          localStorage.setItem('sbg_users', JSON.stringify(merged));
+          return merged;
         }
       } catch (e) {
         console.warn('Failed to parse cached users', e);
@@ -1385,8 +1431,8 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const resetPassword = (identifier: string, newPassword: string): boolean => {
-    if (!identifier || !newPassword) return false;
+  const resetPassword = (identifier: string): { success: boolean; message: string; isStaffOrClient?: boolean } => {
+    if (!identifier) return { success: false, message: 'Please enter a registered email or username.' };
     const cleanId = identifier.trim().toLowerCase();
     const userIndex = availableUsers.findIndex(
       (u) =>
@@ -1395,11 +1441,23 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         (cleanId === 'admin' && u.role === 'ADMIN')
     );
 
-    if (userIndex === -1) return false;
+    if (userIndex === -1) {
+      return { success: false, message: 'No registered account found with this email or username.' };
+    }
 
+    const targetUser = availableUsers[userIndex];
+    if (targetUser.role !== 'ADMIN') {
+      return {
+        success: false,
+        isStaffOrClient: true,
+        message: 'Password self-reset is restricted to Administrator accounts. For Staff or Client credentials, please contact the Sree Balaji Gold Administrator.',
+      };
+    }
+
+    // Restore Administrator password to default "password"
     const updatedUser: UserAccount = {
-      ...availableUsers[userIndex],
-      password: newPassword.trim(),
+      ...targetUser,
+      password: 'password',
     };
 
     const nextUsers = [...availableUsers];
@@ -1416,8 +1474,11 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('sbg_user', JSON.stringify(updatedUser));
     }
 
-    logAudit('RESET_PASSWORD', 'USERS', updatedUser.id, `Password updated for ${updatedUser.email}`);
-    return true;
+    logAudit('RESET_PASSWORD', 'USERS', updatedUser.id, `Password restored to default for Administrator (${updatedUser.email})`);
+    return {
+      success: true,
+      message: 'Administrator password has been successfully restored to default ("password"). You can now log in.',
+    };
   };
 
   const switchUserRole = (_role: UserAccount['role']) => {
@@ -1690,6 +1751,33 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteTransaction = async (id: string) => {
     const existing = transactions.find((t) => t.id === id);
     if (!existing) return;
+
+    // Check if this transaction is linked to an estimate
+    const linkedEst = estimates.find(
+      (e) => (existing.estimateId && e.id === existing.estimateId) || (existing.erpRef && e.estimateNo === existing.erpRef)
+    );
+
+    if (linkedEst && linkedEst.status === 'CONFIRMED') {
+      const revertedEstimate: EstimateCostSheet = {
+        ...linkedEst,
+        status: 'DRAFT',
+        updatedAt: new Date().toISOString(),
+      };
+      setEstimates((prev) => prev.map((e) => (e.id === linkedEst.id ? revertedEstimate : e)));
+      logAudit(
+        'REVERT_ESTIMATE_DRAFT',
+        'ESTIMATES',
+        linkedEst.id,
+        `Reverted estimate ${linkedEst.estimateNo} to DRAFT status due to deletion of linked GC Account row`
+      );
+      if (isSupabaseConfigured) {
+        try {
+          await supabase.from('estimates').update(revertedEstimate).eq('id', linkedEst.id);
+        } catch (e) {
+          console.error('Supabase revert estimate error:', e);
+        }
+      }
+    }
 
     const newTxList = transactions.filter((t) => t.id !== id);
     await recalculateAndSaveCustomerBalances(existing.customerId, newTxList);

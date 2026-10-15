@@ -23,11 +23,17 @@ interface EstimatesViewProps {
 }
 
 export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
-  const { estimates, customers, confirmEstimate, deleteEstimate } = useSBG();
+  const { estimates, customers, confirmEstimate, deleteEstimate, currentUser } = useSBG();
   const [searchTerm, setSearchTerm] = useState('');
+
+  const isClient = currentUser?.role === 'CLIENT';
+  const clientCustomerId = currentUser?.customerId || 'cust-101';
 
   const filteredEstimates = estimates
     .filter((e) => {
+      if (isClient && e.customerId !== clientCustomerId) {
+        return false;
+      }
       const cust = customers.find((c) => c.id === e.customerId);
       return (
         e.estimateNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -48,10 +54,12 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-[#143B39] tracking-tight">
-                SBG Estimates & Cost Sheets
+                {isClient ? 'My Estimates & Invoices' : 'SBG Estimates & Cost Sheets'}
               </h1>
               <p className="text-xs text-[#526B6A] mt-1 font-medium">
-                Multi-tier dynamic item rates, making charge formulas, and automatic balance reconciliation
+                {isClient
+                  ? 'Official commercial cost sheets and purchase bills from Sree Balaji Gold'
+                  : 'Multi-tier dynamic item rates, making charge formulas, and automatic balance reconciliation'}
               </p>
             </div>
           </div>
@@ -62,13 +70,15 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
               <span className="text-xs font-bold text-[#C69234] block">Zero Discrepancy</span>
             </div>
 
-            <button
-              onClick={() => onNavigate('new-estimate')}
-              className="px-5 py-2.5 rounded-2xl bg-[#E5C378] hover:bg-[#D9B76C] text-[#3D2D0C] font-bold text-xs shadow-md shadow-[#D9B76C]/20 flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create New Estimate</span>
-            </button>
+            {!isClient && (
+              <button
+                onClick={() => onNavigate('new-estimate')}
+                className="px-5 py-2.5 rounded-2xl bg-[#E5C378] hover:bg-[#D9B76C] text-[#3D2D0C] font-bold text-xs shadow-md shadow-[#D9B76C]/20 flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create New Estimate</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -240,7 +250,7 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-center gap-1.5">
-                        {est.status === 'DRAFT' && (
+                        {!isClient && est.status === 'DRAFT' && (
                           <button
                             onClick={async () => {
                               await confirmEstimate(est.id);
@@ -252,30 +262,34 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
                             <span>Confirm</span>
                           </button>
                         )}
-                        <button
-                          onClick={() => onNavigate('edit-estimate', est.id)}
-                          className="px-2.5 py-1 rounded-xl bg-[#FAF6EE] hover:bg-[#F3ECE0] border border-[#D9B76C]/40 text-xs font-semibold text-[#8C6D23] flex items-center gap-1 cursor-pointer transition-all"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                          <span>Edit</span>
-                        </button>
+                        {!isClient && (
+                          <button
+                            onClick={() => onNavigate('edit-estimate', est.id)}
+                            className="px-2.5 py-1 rounded-xl bg-[#FAF6EE] hover:bg-[#F3ECE0] border border-[#D9B76C]/40 text-xs font-semibold text-[#8C6D23] flex items-center gap-1 cursor-pointer transition-all"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => onNavigate('estimate-details', est.id)}
                           className="px-2.5 py-1 rounded-xl bg-white border border-[#DCE5E3] hover:bg-[#FAF9F6] text-xs font-semibold text-[#0F5C5B] cursor-pointer transition-all"
                         >
-                          Details
+                          {isClient ? 'View & Print' : 'Details'}
                         </button>
-                        <button
-                          onClick={async () => {
-                            if (window.confirm(`Are you sure you want to delete estimate ${est.estimateNo}?`)) {
-                              await deleteEstimate(est.id);
-                            }
-                          }}
-                          className="p-1 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 cursor-pointer transition-all"
-                          title="Delete Estimate"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!isClient && (
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(`Are you sure you want to delete estimate ${est.estimateNo}?`)) {
+                                await deleteEstimate(est.id);
+                              }
+                            }}
+                            className="p-1 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 cursor-pointer transition-all"
+                            title="Delete Estimate"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
