@@ -311,3 +311,29 @@ export interface UserAccount {
     erp: boolean;
   };
 }
+
+export interface BankDetails {
+  accountName: string;
+  accountNumber: string;
+  bankName: string;
+  ifscCode: string;
+  branch?: string;
+}
+
+export const DEFAULT_BANK_DETAILS: BankDetails = {
+  accountName: 'SREE BALAJI GOLD',
+  accountNumber: '50200088992211',
+  bankName: 'HDFC Bank',
+  ifscCode: 'HDFC0000123',
+  branch: '',
+};
+
+export interface CompanySettings {
+  companyName: string;
+  gstin: string;
+}
+
+export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
+  companyName: 'SBG Enterprises & Jewellery Corp',
+  gstin: '27AAACR9910K1Z4',
+};

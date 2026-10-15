@@ -168,6 +168,16 @@
   padding-top: max(0.5rem, env(safe-area-inset-top));
 }
 
+/* Exact Print Margins (Top: 5mm, Right: 5.5mm, Bottom: 5mm, Left: 5.5mm) */
+@page {
+  size: A4 portrait;
+  margin: 5mm 5.5mm 5mm 5.5mm;
+  margin-top: 5mm;
+  margin-right: 5.5mm;
+  margin-bottom: 5mm;
+  margin-left: 5.5mm;
+}
+
 /* Professional Print Styling */
 @media print {
   /* Hide all non-printable app UI elements */
@@ -187,10 +197,14 @@
     print-color-adjust: exact !important;
   }
 
-  /* Standard A4 portrait margins */
+  /* Standard A4 portrait margins matching print specification (Top: 5mm, Right: 5.5mm, Bottom: 5mm, Left: 5.5mm) */
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm;
+    margin: 5mm 5.5mm 5mm 5.5mm;
+    margin-top: 5mm;
+    margin-right: 5.5mm;
+    margin-bottom: 5mm;
+    margin-left: 5.5mm;
   }
 
   html,

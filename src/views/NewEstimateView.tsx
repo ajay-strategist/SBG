@@ -50,6 +50,7 @@ import {
   CheckCircle2,
   Pencil,
   BookOpen,
+  Building,
   Building2,
   Settings,
   FileText,
@@ -76,6 +77,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
     estimates,
     goldMarketRate,
     defaultGSTRate,
+    bankDetails,
+    companyDetails,
     addEstimate,
     updateEstimate,
     confirmEstimate,
@@ -793,8 +796,11 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
               <img src="/sbg-brand-logo.png" alt="Sree Balaji Gold" className="w-full h-full object-contain" />
             </div>
             <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xl font-bold tracking-wider text-[#0F5C5B]">SREE BALAJI GOLD</span>
+                <span className="font-mono text-[10px] font-bold text-[#0F5C5B] bg-[#0F5C5B]/10 border border-[#0F5C5B]/25 px-2 py-0.5 rounded tracking-wide">
+                  GSTIN: {companyDetails?.gstin || '27AAACR9910K1Z4'}
+                </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#0F5C5B]/10 text-[#0F5C5B] uppercase">
                   {isPurchase ? 'PURCHASE / RECEIPT' : 'SALE / ISSUE'}
                 </span>
@@ -820,14 +826,18 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
             <span className="text-[9px] font-bold text-[#647777] uppercase tracking-wider block">
               Billed To Customer
             </span>
-            <h4 className="text-sm font-bold text-[#0F5C5B]">
-              {selectedCustomer?.name || 'Customer'} ({selectedCustomer?.code || 'ACC'})
+            <h4 className="text-sm font-bold text-[#0F5C5B] flex items-center gap-2 flex-wrap">
+              <span>{selectedCustomer?.name || 'Customer'}</span>
+              {selectedCustomer?.gstin && (
+                <span className="font-mono text-[10.5px] font-bold text-[#173333] bg-white border border-[#DCE5E3] px-1.5 py-0.5 rounded shadow-2xs">
+                  GSTIN: {selectedCustomer.gstin}
+                </span>
+              )}
             </h4>
-            <p className="text-[#647777] text-[11px]">
-              {[selectedCustomer?.phone, selectedCustomer?.city || 'Mumbai, Maharashtra'].filter(Boolean).join(' | ')}
-            </p>
-            {selectedCustomer?.gstin && (
-              <p className="font-mono text-[10px] text-[#173333]">GSTIN: {selectedCustomer.gstin}</p>
+            {(selectedCustomer?.phone || selectedCustomer?.city) && (
+              <p className="text-[#647777] text-[11px]">
+                {[selectedCustomer?.phone, selectedCustomer?.city].filter(Boolean).join(' | ')}
+              </p>
             )}
           </div>
 
@@ -1694,11 +1704,11 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 </span>
               </div>
             </div>
-            <div className="bg-[#FFF9EA] rounded-lg px-2.5 py-2 flex items-baseline justify-between gap-1.5 border border-[#ECD9A5]">
-              <span className="text-[11px] font-bold text-[#173333] whitespace-nowrap">
+            <div className="bg-[#FFF9EA] rounded-lg px-2.5 py-1.5 flex flex-col justify-center border border-[#ECD9A5]">
+              <span className="text-[10px] font-black text-[#8C6D23] uppercase tracking-wider block">
                 Total Amount (Incl. GST)
               </span>
-              <span className="text-sm font-black font-mono text-[#173333] whitespace-nowrap">
+              <span className="text-base font-black font-mono text-[#0F5C5B] mt-0.5 tracking-tight truncate">
                 ₹ {calculatedEstimate.totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
@@ -1706,25 +1716,10 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
         </div>
       </div>
 
-      {/* Amount in Words Commercial Banner */}
-      <div className="p-3.5 bg-[#FAF8F2] rounded-xl border border-[#ECD9A5] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs break-inside-avoid shadow-2xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C6D23] bg-[#ECD9A5]/50 px-2.5 py-0.5 rounded">
-            Amount in Words (INR)
-          </span>
-          <span className="font-bold text-[#0F5C5B] italic text-xs sm:text-[13px]">
-            {numberToIndianWords(calculatedEstimate.totals.grandTotal)}
-          </span>
-        </div>
-        <div className="text-[11px] font-mono text-[#647777] shrink-0">
-          GSTIN: <strong className="text-[#173333]">27AAAAA0000A1Z5</strong> (State: 27 - Maharashtra)
-        </div>
-      </div>
-
-      {/* Settlement Configuration and Customer Ledger Balance - Side by Side on Screen, Stacked Full-Width in Print */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 print:grid-cols-1 gap-4 print:gap-4 items-stretch break-inside-avoid">
-        {/* Left Card: Settlement Configuration */}
-        <div className="lg:col-span-7 print:w-full bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
+      {/* Settlement Configuration and Customer Ledger Balance - Stacked Full-Width */}
+      <div className="space-y-4 print:space-y-3 break-inside-avoid">
+        {/* Card 1: Settlement Configuration */}
+        <div className="w-full bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-[#DCE5E3]">
             <div className="flex items-center gap-2 shrink-0">
               <div className="w-7 h-7 rounded-lg bg-[#0F5C5B] text-white flex items-center justify-center shrink-0">
@@ -2052,8 +2047,8 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
           </div>
         </div>
 
-        {/* Right Card: Customer Ledger Balance Adjustment */}
-        <div className="lg:col-span-5 print:w-full bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
+        {/* Card 2: Customer Ledger Balance Adjustment */}
+        <div className="w-full bg-white rounded-xl border border-[#DCE5E3] shadow-xs p-4 print:p-3 flex flex-col justify-between space-y-3">
           <div className="space-y-3 flex-1 flex flex-col justify-between">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#DCE5E3]">
@@ -2066,7 +2061,7 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
 
               <div className="flex items-center gap-2 text-xs flex-wrap">
                 <span className="text-[#647777] text-[11px]">
-                  Account: <strong className="text-[#173333] font-bold">{selectedCustomer?.name || 'Customer'} ({selectedCustomer?.code || 'ACC'})</strong>
+                  Account: <strong className="text-[#173333] font-bold">{selectedCustomer?.name || 'Customer'}</strong>
                 </span>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                   isPurchase ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-[#E6F4F1] text-[#0F5C5B] border border-[#0F5C5B]/20'
@@ -2140,17 +2135,6 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
                 </tbody>
               </table>
             </div>
-
-            {/* Status Verification Footer */}
-            <div className="pt-2.5 border-t border-[#DCE5E3]/70 flex items-center justify-between text-[11px] text-[#647777]">
-              <div className="flex items-center gap-1.5 font-medium">
-                <span className="w-2 h-2 rounded-full bg-[#1A825B]"></span>
-                <span>Ledger Impact: <strong className="text-[#173333]">{isPurchase ? 'Negative Adjustment (−)' : 'Positive Adjustment (+)'}</strong></span>
-              </div>
-              <span className="text-[10px] font-mono text-[#8C6D23] font-bold bg-[#FFF8EA] px-2 py-0.5 rounded border border-[#ECD9A5]/60">
-                Dual-Ledger Sync
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -2189,47 +2173,28 @@ export const NewEstimateView: React.FC<NewEstimateViewProps> = ({
 
       {/* Commercial Print Footer (Visible Only When Printing) */}
       <div className="hidden print:block pt-4 border-t-2 border-[#0F5C5B]/20 break-inside-avoid space-y-4">
-        {/* Bank Details & Terms Grid for Print */}
-        <div className="grid grid-cols-2 gap-4 text-xs">
-          {/* Left Box: Bank Details for Settlement */}
-          <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#ECD9A5]/70 space-y-1 text-[11px] print:text-[9px]">
-            <span className="font-bold text-[#0F5C5B] uppercase tracking-wide flex items-center gap-1.5">
-              <Scale className="w-3.5 h-3.5 text-[#D9B76C]" />
-              Bank Details for Electronic Settlement (RTGS / NEFT)
-            </span>
-            <div className="grid grid-cols-2 gap-x-2 pt-0.5 text-[#173333] font-mono">
-              <div><span className="text-[#647777] font-sans">A/C Name:</span> <strong>SREE BALAJI GOLD</strong></div>
-              <div><span className="text-[#647777] font-sans">Bank:</span> <strong>HDFC Bank</strong></div>
-              <div><span className="text-[#647777] font-sans">A/C No:</span> <strong>50200088992211</strong></div>
-              <div><span className="text-[#647777] font-sans">IFSC:</span> <strong>HDFC0000123</strong></div>
-            </div>
-          </div>
-
-          {/* Right Box: Commercial Terms */}
-          <div className="p-3 bg-gray-50 rounded-xl border border-[#DCE5E3] space-y-1 text-[10px] print:text-[8.5px] text-[#647777]">
-            <span className="font-bold text-[#173333] uppercase tracking-wide block">
-              Terms & Conditions
-            </span>
-            <p>1. Metal purity & fine gold weight certified benchmarked against 99.9% 24K bullion.</p>
-            <p>2. Confirmed estimates post directly to the customer GC Account and Cash Ledger.</p>
-            <p>3. Disputes subject to Mumbai / local commercial jurisdiction.</p>
+        {/* Bank Details for Settlement for Print */}
+        <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#ECD9A5]/70 space-y-1.5 text-[11px] print:text-[9.5px]">
+          <span className="font-bold text-[#0F5C5B] uppercase tracking-wide flex items-center gap-1.5">
+            <Building className="w-3.5 h-3.5 text-[#D9B76C]" />
+            Bank Details for Electronic Settlement (RTGS / NEFT)
+          </span>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 pt-0.5 text-[#173333] font-mono">
+            <div><span className="text-[#647777] font-sans">A/C Name:</span> <strong>{bankDetails.accountName || 'SREE BALAJI GOLD'}</strong></div>
+            <div><span className="text-[#647777] font-sans">Bank:</span> <strong>{bankDetails.bankName || 'HDFC Bank'}</strong></div>
+            <div><span className="text-[#647777] font-sans">A/C No:</span> <strong>{bankDetails.accountNumber || '50200088992211'}</strong></div>
+            <div><span className="text-[#647777] font-sans">IFSC:</span> <strong>{bankDetails.ifscCode || 'HDFC0000123'}</strong></div>
+            {bankDetails.branch && (
+              <div className="col-span-2"><span className="text-[#647777] font-sans">Branch:</span> <strong>{bankDetails.branch}</strong></div>
+            )}
           </div>
         </div>
 
-        {/* Signature Blocks */}
-        <div className="grid grid-cols-2 gap-8 items-end pt-2 text-xs">
+        {/* Signature Block (Authorized Signatory) */}
+        <div className="flex justify-end pt-2 text-xs">
           <div className="space-y-10 text-center">
             <div className="text-[10px] print:text-[9px] text-[#647777] font-medium">
-              Customer Confirmation & Acceptance
-            </div>
-            <div className="border-t border-[#173333]/50 pt-1.5 mx-auto w-48 text-center text-[10px] print:text-[9px] font-semibold text-[#173333]">
-              Receiver / Customer's Signature
-            </div>
-          </div>
-
-          <div className="space-y-10 text-center">
-            <div className="text-[10px] print:text-[9px] text-[#647777] font-medium">
-              For <strong className="text-[#0F5C5B] font-bold">SREE BALAJI GOLD</strong>
+              For <strong className="text-[#0F5C5B] font-bold">{companyDetails?.companyName || 'SREE BALAJI GOLD'}</strong>
             </div>
             <div className="border-t border-[#173333]/50 pt-1.5 mx-auto w-52 text-center text-[10px] print:text-[9px] font-bold text-[#0F5C5B]">
               Authorized Signatory & Stamp

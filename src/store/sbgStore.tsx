@@ -7,6 +7,10 @@ import {
   SettlementRecord,
   AuditLogEntry,
   UserAccount,
+  BankDetails,
+  DEFAULT_BANK_DETAILS,
+  CompanySettings,
+  DEFAULT_COMPANY_SETTINGS,
   calculateNetWT,
   calculatePureWT,
   calculateTotalAmount,
@@ -123,6 +127,10 @@ interface SBGContextType {
   setGoldMarketRate: (rate: number) => void;
   defaultGSTRate: number;
   setDefaultGSTRate: (rate: number) => void;
+  bankDetails: BankDetails;
+  updateBankDetails: (details: Partial<BankDetails>) => void;
+  companyDetails: CompanySettings;
+  updateCompanyDetails: (details: Partial<CompanySettings>) => void;
   lastRateUpdate: string;
   refreshFromDatabase: () => Promise<void>;
   clearAllData: () => void;
@@ -924,6 +932,56 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [lastRateUpdate, setLastRateUpdate] = useState<string>('—');
   const [defaultGSTRate, setDefaultGSTRate] = useState<number>(3.0);
+  const [bankDetails, setBankDetailsState] = useState<BankDetails>(() => {
+    try {
+      const saved = localStorage.getItem('sbg_bank_details');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_BANK_DETAILS, ...parsed };
+      }
+    } catch {
+      // fallback to default
+    }
+    return DEFAULT_BANK_DETAILS;
+  });
+
+  const updateBankDetails = (details: Partial<BankDetails>) => {
+    setBankDetailsState((prev) => {
+      const updated = { ...prev, ...details };
+      try {
+        localStorage.setItem('sbg_bank_details', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to save bank details:', err);
+      }
+      return updated;
+    });
+  };
+
+  const [companyDetails, setCompanyDetailsState] = useState<CompanySettings>(() => {
+    try {
+      const saved = localStorage.getItem('sbg_company_details');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_COMPANY_SETTINGS, ...parsed };
+      }
+    } catch {
+      // fallback to default
+    }
+    return DEFAULT_COMPANY_SETTINGS;
+  });
+
+  const updateCompanyDetails = (details: Partial<CompanySettings>) => {
+    setCompanyDetailsState((prev) => {
+      const updated = { ...prev, ...details };
+      try {
+        localStorage.setItem('sbg_company_details', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to save company details:', err);
+      }
+      return updated;
+    });
+  };
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'SYNCED' | 'SYNCING' | 'OFFLINE'>('SYNCED');
 
@@ -2074,6 +2132,10 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('sbg_live_transactions');
     localStorage.removeItem('sbg_live_estimates');
     localStorage.removeItem('sbg_live_settlements');
+    setBankDetailsState(DEFAULT_BANK_DETAILS);
+    setCompanyDetailsState(DEFAULT_COMPANY_SETTINGS);
+    localStorage.removeItem('sbg_bank_details');
+    localStorage.removeItem('sbg_company_details');
   };
 
   return (
@@ -2134,6 +2196,10 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setGoldMarketRate,
         defaultGSTRate,
         setDefaultGSTRate,
+        bankDetails,
+        updateBankDetails,
+        companyDetails,
+        updateCompanyDetails,
         lastRateUpdate,
         refreshFromDatabase,
         clearAllData,

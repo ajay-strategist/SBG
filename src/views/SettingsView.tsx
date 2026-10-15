@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSBG } from '../store/sbgStore';
 import {
   SBGCard,
@@ -15,7 +15,9 @@ import {
   Building,
   ShieldCheck,
   KeyRound,
+  Landmark,
 } from 'lucide-react';
+import { DEFAULT_BANK_DETAILS } from '../core/calculations/types';
 import { ActiveTab } from '../components/layout/AppShell';
 
 interface SettingsViewProps {
@@ -28,20 +30,47 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
     setGoldMarketRate,
     defaultGSTRate,
     setDefaultGSTRate,
+    bankDetails,
+    updateBankDetails,
+    companyDetails,
+    updateCompanyDetails,
     refreshFromDatabase,
     clearAllData,
     syncStatus,
     isLoading,
     currentUser,
     updateUser,
+    logAudit,
   } = useSBG();
 
   const [rateInput, setRateInput] = useState(goldMarketRate.toString());
   const [gstInput, setGstInput] = useState(defaultGSTRate.toString());
-  const [companyName, setCompanyName] = useState('SBG Enterprises & Jewellery Corp');
-  const [companyGST, setCompanyGST] = useState('27AAACR9910K1Z4');
+  const [companyName, setCompanyName] = useState(companyDetails.companyName);
+  const [companyGST, setCompanyGST] = useState(companyDetails.gstin);
+
+  // Bank Account State
+  const [accountName, setAccountName] = useState(bankDetails.accountName);
+  const [bankName, setBankName] = useState(bankDetails.bankName);
+  const [accountNumber, setAccountNumber] = useState(bankDetails.accountNumber);
+  const [ifscCode, setIfscCode] = useState(bankDetails.ifscCode);
+  const [branch, setBranch] = useState(bankDetails.branch || '');
+
   const [saveAlert, setSaveAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('Settings updated successfully!');
+
+  // Sync state if store updates from external changes
+  useEffect(() => {
+    setAccountName(bankDetails.accountName);
+    setBankName(bankDetails.bankName);
+    setAccountNumber(bankDetails.accountNumber);
+    setIfscCode(bankDetails.ifscCode);
+    setBranch(bankDetails.branch || '');
+  }, [bankDetails]);
+
+  useEffect(() => {
+    setCompanyName(companyDetails.companyName);
+    setCompanyGST(companyDetails.gstin);
+  }, [companyDetails]);
 
   // Password Update State
   const [newPassword, setNewPassword] = useState('');
@@ -68,6 +97,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
     setTimeout(() => setPasswordFeedback(null), 4000);
   };
 
+  const handleSaveBankDetails = () => {
+    if (!isAdmin) return;
+    const trimmedBank = {
+      accountName: accountName.trim() || DEFAULT_BANK_DETAILS.accountName,
+      bankName: bankName.trim() || DEFAULT_BANK_DETAILS.bankName,
+      accountNumber: accountNumber.trim() || DEFAULT_BANK_DETAILS.accountNumber,
+      ifscCode: ifscCode.trim().toUpperCase() || DEFAULT_BANK_DETAILS.ifscCode,
+      branch: branch.trim(),
+    };
+
+    updateBankDetails(trimmedBank);
+    logAudit(
+      'UPDATE_BANK_DETAILS',
+      'SETTINGS',
+      'bank_details',
+      `Updated bank details to ${trimmedBank.bankName} (${trimmedBank.accountNumber})`,
+      bankDetails,
+      trimmedBank
+    );
+
+    setAlertMessage('Bank account details updated successfully!');
+    setSaveAlert(true);
+    setTimeout(() => setSaveAlert(false), 3000);
+  };
+
+  const handleResetBankDetails = () => {
+    setAccountName(DEFAULT_BANK_DETAILS.accountName);
+    setBankName(DEFAULT_BANK_DETAILS.bankName);
+    setAccountNumber(DEFAULT_BANK_DETAILS.accountNumber);
+    setIfscCode(DEFAULT_BANK_DETAILS.ifscCode);
+    setBranch(DEFAULT_BANK_DETAILS.branch || '');
+  };
+
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!isAdmin) return;
@@ -82,7 +144,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
       setDefaultGSTRate(parsedGST);
     }
 
-    setAlertMessage('Settings updated successfully!');
+    // Save Company Details
+    updateCompanyDetails({
+      companyName: companyName.trim() || companyDetails.companyName,
+      gstin: companyGST.trim().toUpperCase() || companyDetails.gstin,
+    });
+
+    // Save Bank Details
+    const trimmedBank = {
+      accountName: accountName.trim() || DEFAULT_BANK_DETAILS.accountName,
+      bankName: bankName.trim() || DEFAULT_BANK_DETAILS.bankName,
+      accountNumber: accountNumber.trim() || DEFAULT_BANK_DETAILS.accountNumber,
+      ifscCode: ifscCode.trim().toUpperCase() || DEFAULT_BANK_DETAILS.ifscCode,
+      branch: branch.trim(),
+    };
+    updateBankDetails(trimmedBank);
+
+    logAudit(
+      'UPDATE_SETTINGS',
+      'SETTINGS',
+      'system_configuration',
+      'Updated market rates, financial defaults, company details, and bank account details'
+    );
+
+    setAlertMessage('Settings & Bank Details updated successfully!');
     setSaveAlert(true);
     setTimeout(() => setSaveAlert(false), 3000);
   };
@@ -116,7 +201,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
           </h2>
           <p className="text-xs text-[#647777] mt-0.5">
             {isAdmin
-              ? 'Global market rates, default GST percentages, company entity details, and state maintenance'
+              ? 'Global market rates, default GST percentages, company entity details, and settlement bank accounts'
               : `Manage personal credentials and password security for ${currentUser.name} (${currentUser.role})`}
           </p>
         </div>
@@ -173,17 +258,151 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
                   label="Company Name"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
+                  helperText="Official registered business trading name"
                 />
 
                 <SBGInput
                   label="GSTIN / Corporate Tax ID"
                   value={companyGST}
                   onChange={(e) => setCompanyGST(e.target.value)}
+                  helperText="Goods and Services Tax Identification Number"
                 />
+              </div>
+            </SBGCard>
+
+            {/* Bank Account Details for Settlement (RTGS / NEFT) — Admin Only */}
+            <SBGCard variant="glass" className="p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DCE5E3]/70 pb-3">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F5C5B] flex items-center gap-2">
+                    <Landmark className="w-4 h-4 text-[#0F5C5B]" /> Bank Account Details for Settlement (RTGS / NEFT)
+                  </h3>
+                  <p className="text-xs text-[#647777] mt-0.5">
+                    Official banking details displayed on printable estimates, tax invoices, and settlement vouchers
+                  </p>
+                </div>
+                <span className="text-[11px] font-semibold text-[#0F5C5B] bg-[#0F5C5B]/10 px-2.5 py-1 rounded-full border border-[#0F5C5B]/20 w-fit">
+                  RTGS / NEFT Ready
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SBGInput
+                  label="Beneficiary / A/C Name"
+                  placeholder="e.g. SREE BALAJI GOLD"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  helperText="Exact account title registered with the bank"
+                  required
+                />
+
+                <SBGInput
+                  label="Bank Name"
+                  placeholder="e.g. HDFC Bank"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  helperText="Commercial or retail banking institution"
+                  required
+                />
+
+                <SBGInput
+                  label="Account Number (A/C No)"
+                  placeholder="e.g. 50200088992211"
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  helperText="Current, CC, or settlement bank account number"
+                  required
+                />
+
+                <SBGInput
+                  label="IFSC Code"
+                  placeholder="e.g. HDFC0000123"
+                  value={ifscCode}
+                  onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                  helperText="11-character Indian Financial System Code"
+                  required
+                />
+
+                <div className="sm:col-span-2">
+                  <SBGInput
+                    label="Branch Location (Optional)"
+                    placeholder="e.g. Main Branch / Zaveri Bazaar"
+                    value={branch}
+                    onChange={(e) => setBranch(e.target.value)}
+                    helperText="Branch address or area for RTGS/NEFT routing verification"
+                  />
+                </div>
+              </div>
+
+              {/* Live Preview Matching Print Card Specification */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#647777] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#D9B76C]" />
+                    Live Print & Settlement Voucher Preview
+                  </span>
+                  <span className="text-[10px] text-[#3E8B68] font-semibold bg-[#3E8B68]/10 px-2 py-0.5 rounded-md border border-[#3E8B68]/20">
+                    Live Preview
+                  </span>
+                </div>
+
+                <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-[#ECD9A5]/80 shadow-xs space-y-2">
+                  <div className="font-bold text-[#0F5C5B] uppercase tracking-wide flex items-center gap-2 text-xs sm:text-sm">
+                    <Building className="w-4 h-4 text-[#D9B76C] shrink-0" />
+                    <span>BANK DETAILS FOR ELECTRONIC SETTLEMENT (RTGS / NEFT)</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 pt-1 text-xs text-[#173333] font-mono">
+                    <div>
+                      <span className="text-[#647777] font-sans">A/C Name:</span>{' '}
+                      <strong className="text-[#173333] font-bold">{accountName || '—'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[#647777] font-sans">Bank:</span>{' '}
+                      <strong className="text-[#173333] font-bold">{bankName || '—'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[#647777] font-sans">A/C No:</span>{' '}
+                      <strong className="text-[#173333] font-bold tracking-wider">{accountNumber || '—'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[#647777] font-sans">IFSC:</span>{' '}
+                      <strong className="text-[#173333] font-bold tracking-wider">{ifscCode || '—'}</strong>
+                    </div>
+                    {branch && (
+                      <div className="sm:col-span-2">
+                        <span className="text-[#647777] font-sans">Branch:</span>{' '}
+                        <strong className="text-[#173333] font-bold">{branch}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons for Bank Details Card */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#DCE5E3]/60">
+                <button
+                  type="button"
+                  onClick={handleResetBankDetails}
+                  className="text-xs text-[#647777] hover:text-[#0F5C5B] font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset to Default Bank Details
+                </button>
+
+                <SBGButton
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={handleSaveBankDetails}
+                  icon={<Save className="w-3.5 h-3.5" />}
+                >
+                  Save Bank Details
+                </SBGButton>
               </div>
             </SBGCard>
           </div>
         )}
+
 
         {/* Account Security & Password Management — Permitted for Both Admin & Staff */}
         <SBGCard variant="glass" className="p-6 space-y-4">
