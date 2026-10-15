@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSBG } from '../store/sbgStore';
 import {
   Users,
@@ -40,7 +40,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [selectedTxCustId, setSelectedTxCustId] = useState<string | undefined>();
-  const [activeMenuCustId, setActiveMenuCustId] = useState<string | null>(null);
+  const [activeMenuCust, setActiveMenuCust] = useState<Customer | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{ top: number; right: number } | null>(null);
 
   // Edit Customer Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -143,6 +144,36 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
     });
   };
 
+  useEffect(() => {
+    const handleDismiss = () => {
+      setActiveMenuCust(null);
+      setMenuCoords(null);
+    };
+    window.addEventListener('scroll', handleDismiss, { passive: true });
+    window.addEventListener('resize', handleDismiss, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleDismiss);
+      window.removeEventListener('resize', handleDismiss);
+    };
+  }, []);
+
+  const handleToggleMenu = (e: React.MouseEvent, customer: Customer) => {
+    e.stopPropagation();
+    if (activeMenuCust?.id === customer.id) {
+      setActiveMenuCust(null);
+      setMenuCoords(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < 170;
+    setMenuCoords({
+      top: openUp ? Math.max(10, rect.top - 145) : rect.bottom + 6,
+      right: Math.max(10, window.innerWidth - rect.right),
+    });
+    setActiveMenuCust(customer);
+  };
+
   const handleOpenEdit = (customer: Customer) => {
     setEditingCustomer(customer);
     setEditFormData({
@@ -153,7 +184,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
       gstin: customer.gstin || '',
       status: customer.status,
     });
-    setActiveMenuCustId(null);
+    setActiveMenuCust(null);
+    setMenuCoords(null);
     setIsEditModalOpen(true);
   };
 
@@ -175,13 +207,15 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
   };
 
   const handleToggleStatus = async (customer: Customer) => {
-    setActiveMenuCustId(null);
+    setActiveMenuCust(null);
+    setMenuCoords(null);
     const newStatus = customer.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     await updateCustomer(customer.id, { status: newStatus });
   };
 
   const handleDeleteCustomer = async (customer: Customer) => {
-    setActiveMenuCustId(null);
+    setActiveMenuCust(null);
+    setMenuCoords(null);
     if (
       window.confirm(
         `Are you sure you want to delete ${customer.name} (${customer.code})?\n\nThis will permanently delete the customer profile and their commercial ledger.`
@@ -192,7 +226,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       {/* Header Banner */}
       <div className="relative rounded-3xl bg-gradient-to-r from-white/90 via-white/80 to-[#F5ECE0]/80 p-6 sm:p-8 border border-white/80 shadow-sm overflow-hidden backdrop-blur-md">
         {/* Background luxury jewelry artwork */}
@@ -426,7 +460,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* Customer List Card & Table */}
-      <div className="rounded-3xl bg-white/85 border border-[#E2E8E6] shadow-xs backdrop-blur-md overflow-hidden">
+      <div className="rounded-3xl bg-white/85 border border-[#E2E8E6] shadow-xs backdrop-blur-md">
         {/* Table Top Header */}
         <div className="px-6 py-4 border-b border-[#E2E8E6] flex items-center justify-between">
           <div>
@@ -472,7 +506,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
         {/* View Mode Switching: Table vs Grid */}
         {viewMode === 'list' ? (
           /* Table View */
-          <div className="overflow-x-auto touch-scroll">
+          <div className="overflow-x-auto min-h-[220px]">
             <table className="w-full min-w-[760px] text-left text-xs">
               <thead className="bg-[#FAF9F6] text-[#647777] border-b border-[#E2E8E6] uppercase font-bold text-[10px] tracking-wider">
                 <tr>
@@ -568,7 +602,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
                           </span>
                         </td>
                         <td
-                          className="py-4 px-4 text-center relative"
+                          className="py-4 px-4 text-center"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center justify-center gap-1.5 text-[#647777]">
@@ -579,54 +613,18 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <div className="relative">
-                              <button
-                                onClick={() =>
-                                  setActiveMenuCustId(
-                                    activeMenuCustId === cust.id ? null : cust.id
-                                  )
-                                }
-                                className="p-1.5 rounded-lg hover:bg-white hover:text-[#173333] transition-colors cursor-pointer"
-                                title="Customer Actions"
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </button>
-
-                              {activeMenuCustId === cust.id && (
-                                <>
-                                  <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setActiveMenuCustId(null)}
-                                  />
-                                  <div className="absolute right-0 top-full mt-1 w-44 rounded-xl bg-white border border-[#DCE5E3] shadow-xl py-1.5 z-50 text-left animate-in fade-in zoom-in-95 duration-100">
-                                    <button
-                                      onClick={() => handleOpenEdit(cust)}
-                                      className="w-full px-3 py-1.5 text-xs text-[#173333] hover:bg-[#FAF9F6] flex items-center gap-2 font-medium cursor-pointer"
-                                    >
-                                      <Edit3 className="w-3.5 h-3.5 text-[#0F5C5B]" />
-                                      <span>Edit Customer</span>
-                                    </button>
-                                    <button
-                                      onClick={() => handleToggleStatus(cust)}
-                                      className="w-full px-3 py-1.5 text-xs text-[#173333] hover:bg-[#FAF9F6] flex items-center gap-2 font-medium cursor-pointer"
-                                    >
-                                      <Check className="w-3.5 h-3.5 text-amber-600" />
-                                      <span>
-                                        Mark as {cust.status === 'ACTIVE' ? 'Inactive' : 'Active'}
-                                      </span>
-                                    </button>
-                                    <div className="border-t border-[#EFECE6] my-1" />
-                                    <button
-                                      onClick={() => handleDeleteCustomer(cust)}
-                                      className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      <span>Delete Customer</span>
-                                    </button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleMenu(e, cust)}
+                              className={`p-1.5 rounded-lg hover:bg-white hover:text-[#173333] transition-colors cursor-pointer ${
+                                activeMenuCust?.id === cust.id
+                                  ? 'bg-white text-[#0F5C5B] shadow-xs ring-1 ring-[#0F5C5B]/30'
+                                  : ''
+                              }`}
+                              title="Customer Actions"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -759,55 +757,16 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
                             + Transact
                           </button>
 
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setActiveMenuCustId(
-                                  activeMenuCustId === `grid-${cust.id}` ? null : `grid-${cust.id}`
-                                )
-                              }
-                              className="p-1 rounded-lg hover:bg-white hover:text-[#173333] text-[#647777] transition-colors cursor-pointer"
-                              title="Customer Options"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </button>
-
-                            {activeMenuCustId === `grid-${cust.id}` && (
-                              <>
-                                <div
-                                  className="fixed inset-0 z-40"
-                                  onClick={() => setActiveMenuCustId(null)}
-                                />
-                                <div className="absolute right-0 bottom-full mb-1 w-44 rounded-xl bg-white border border-[#DCE5E3] shadow-xl py-1.5 z-50 text-left animate-in fade-in zoom-in-95 duration-100">
-                                  <button
-                                    onClick={() => handleOpenEdit(cust)}
-                                    className="w-full px-3 py-1.5 text-xs text-[#173333] hover:bg-[#FAF9F6] flex items-center gap-2 font-medium cursor-pointer"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5 text-[#0F5C5B]" />
-                                    <span>Edit Customer</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleToggleStatus(cust)}
-                                    className="w-full px-3 py-1.5 text-xs text-[#173333] hover:bg-[#FAF9F6] flex items-center gap-2 font-medium cursor-pointer"
-                                  >
-                                    <Check className="w-3.5 h-3.5 text-amber-600" />
-                                    <span>
-                                      Mark as {cust.status === 'ACTIVE' ? 'Inactive' : 'Active'}
-                                    </span>
-                                  </button>
-                                  <div className="border-t border-[#EFECE6] my-1" />
-                                  <button
-                                    onClick={() => handleDeleteCustomer(cust)}
-                                    className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span>Delete Customer</span>
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleMenu(e, cust)}
+                            className={`p-1 rounded-lg hover:bg-white hover:text-[#173333] text-[#647777] transition-colors cursor-pointer ${
+                              activeMenuCust?.id === cust.id ? 'bg-white text-[#0F5C5B] shadow-xs' : ''
+                            }`}
+                            title="Customer Options"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -855,6 +814,67 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      {/* Floating 3-Dots Action Popover (Escapes all overflow clipping) */}
+      {activeMenuCust && menuCoords && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-transparent"
+            onClick={() => {
+              setActiveMenuCust(null);
+              setMenuCoords(null);
+            }}
+          />
+          <div
+            className="fixed z-50 w-48 rounded-2xl bg-white border border-[#DCE5E3] shadow-2xl py-1.5 text-left animate-in fade-in zoom-in-95 duration-100"
+            style={{
+              top: `${menuCoords.top}px`,
+              right: `${menuCoords.right}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#647777] border-b border-[#EFECE6] mb-1 truncate">
+              {activeMenuCust.name}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const target = activeMenuCust;
+                handleOpenEdit(target);
+              }}
+              className="w-full px-3.5 py-2 text-xs text-[#173333] hover:bg-[#FAF9F6] flex items-center gap-2.5 font-medium cursor-pointer transition-colors"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-[#0F5C5B]" />
+              <span>Edit Customer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const target = activeMenuCust;
+                handleToggleStatus(target);
+              }}
+              className="w-full px-3.5 py-2 text-xs text-[#173333] hover:bg-[#FAF9F6] flex items-center gap-2.5 font-medium cursor-pointer transition-colors"
+            >
+              <Check className="w-3.5 h-3.5 text-amber-600" />
+              <span>
+                Mark as {activeMenuCust.status === 'ACTIVE' ? 'Inactive' : 'Active'}
+              </span>
+            </button>
+            <div className="border-t border-[#EFECE6] my-1" />
+            <button
+              type="button"
+              onClick={() => {
+                const target = activeMenuCust;
+                handleDeleteCustomer(target);
+              }}
+              className="w-full px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 font-medium cursor-pointer transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Customer</span>
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Add Customer Modal */}
       <SBGModal

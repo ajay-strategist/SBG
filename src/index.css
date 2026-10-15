@@ -157,7 +157,7 @@
 /* Mobile Touch & Momentum Utilities */
 .touch-scroll {
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
+  overscroll-behavior-y: auto;
 }
 
 .safe-area-bottom {
