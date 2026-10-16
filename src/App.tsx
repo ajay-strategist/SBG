@@ -29,7 +29,7 @@ const ViewSkeleton: React.FC = () => (
 );
 
 const MainApp: React.FC = () => {
-  const { isAuthenticated } = useSBG();
+  const { isAuthenticated, estimates } = useSBG();
   const [currentTab, setCurrentTab] = useState<ActiveTab>(() => {
     const params = new URLSearchParams(window.location.search);
     return (params.get('tab') as ActiveTab) || 'dashboard';
@@ -86,7 +86,7 @@ const MainApp: React.FC = () => {
         )}
         {currentTab === 'estimate-details' && (
           <EstimateDetailsView
-            estimateId={selectedEntityId || 'est-301'}
+            estimateId={selectedEntityId || estimates[0]?.id || ''}
             onNavigate={handleNavigate}
           />
         )}

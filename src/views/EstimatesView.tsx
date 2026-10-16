@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useSBG } from '../store/sbgStore';
 import { formatDateDDMMYYYY } from '../core/calculations';
+import { EstimateCostSheet } from '../core/calculations/types';
+import { SBGModal, SBGButton } from '../components/ui';
 import {
   FileSpreadsheet,
   Plus,
@@ -25,6 +27,8 @@ interface EstimatesViewProps {
 export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
   const { estimates, customers, confirmEstimate, deleteEstimate, currentUser } = useSBG();
   const [searchTerm, setSearchTerm] = useState('');
+  const [estimateToDelete, setEstimateToDelete] = useState<EstimateCostSheet | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isClient = currentUser?.role === 'CLIENT';
   const clientCustomerId = currentUser?.customerId || 'cust-101';
@@ -202,103 +206,184 @@ export const EstimatesView: React.FC<EstimatesViewProps> = ({ onNavigate }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EFECE6]">
-              {filteredEstimates.map((est) => {
-                const customer = customers.find((c) => c.id === est.customerId);
-
-                return (
-                  <tr
-                    key={est.id}
-                    onClick={() => onNavigate('estimate-details', est.id)}
-                    className="hover:bg-[#FAF8F5] transition-colors cursor-pointer"
-                  >
-                    <td className="py-4 px-4 font-mono font-bold text-[#0F5C5B]">
-                      {est.estimateNo}
-                    </td>
-                    <td className="py-4 px-4 font-semibold text-[#173333]">
-                      {customer?.name || est.customerName || 'Customer'}
-                    </td>
-                    <td className="py-4 px-4 text-[#647777] font-mono">
-                      {formatDateDDMMYYYY(est.estimateDate)}
-                    </td>
-                    <td className="py-4 px-4 text-right font-mono font-bold text-[#0F5C5B]">
-                      {est.totals.totalPureWT.toFixed(3)} g
-                    </td>
-                    <td className="py-4 px-4 text-right font-mono font-semibold text-[#173333]">
-                      ₹ {est.totals.taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-4 px-4 text-right font-mono text-[#647777]">
-                      ₹ {est.totals.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-4 px-4 text-right font-mono font-bold text-sm text-[#0F5C5B]">
-                      ₹ {est.totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wide ${
-                          est.status === 'CONFIRMED'
-                            ? 'bg-[#E6F8F2] text-[#1A825B]'
-                            : est.status === 'PENDING'
-                            ? 'bg-[#FEF5E6] text-[#B87B1D]'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {est.status}
-                      </span>
-                    </td>
-                    <td
-                      className="py-4 px-4 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        {!isClient && est.status === 'DRAFT' && (
-                          <button
-                            onClick={async () => {
-                              await confirmEstimate(est.id);
-                            }}
-                            className="px-2.5 py-1 rounded-xl bg-[#0F5C5B] hover:bg-[#0D4E4D] text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
-                            title="Confirm & Post to Customer Ledger"
-                          >
-                            <FileCheck className="w-3 h-3 text-[#E5C378]" />
-                            <span>Confirm</span>
-                          </button>
-                        )}
-                        {!isClient && (
-                          <button
-                            onClick={() => onNavigate('edit-estimate', est.id)}
-                            className="px-2.5 py-1 rounded-xl bg-[#FAF6EE] hover:bg-[#F3ECE0] border border-[#D9B76C]/40 text-xs font-semibold text-[#8C6D23] flex items-center gap-1 cursor-pointer transition-all"
-                          >
-                            <Edit3 className="w-3 h-3" />
-                            <span>Edit</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => onNavigate('estimate-details', est.id)}
-                          className="px-2.5 py-1 rounded-xl bg-white border border-[#DCE5E3] hover:bg-[#FAF9F6] text-xs font-semibold text-[#0F5C5B] cursor-pointer transition-all"
-                        >
-                          {isClient ? 'View & Print' : 'Details'}
-                        </button>
-                        {!isClient && (
-                          <button
-                            onClick={async () => {
-                              if (window.confirm(`Are you sure you want to delete estimate ${est.estimateNo}?`)) {
-                                await deleteEstimate(est.id);
-                              }
-                            }}
-                            className="p-1 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 cursor-pointer transition-all"
-                            title="Delete Estimate"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+              {filteredEstimates.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 px-4 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                      <div className="w-12 h-12 rounded-2xl bg-[#0F5C5B]/10 border border-[#0F5C5B]/20 flex items-center justify-center text-[#0F5C5B]">
+                        <FileSpreadsheet className="w-6 h-6" />
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      <p className="font-serif font-bold text-base text-[#143B39]">No estimates found</p>
+                      <p className="text-xs text-[#526B6A]">
+                        {searchTerm
+                          ? `No estimate matches "${searchTerm}". Try another search term.`
+                          : 'There are currently no estimates in the system. Click "Create New Estimate" above to generate your first cost sheet.'}
+                      </p>
+                      {!isClient && !searchTerm && (
+                        <button
+                          onClick={() => onNavigate('new-estimate')}
+                          className="mt-2 px-4 py-2 rounded-xl bg-[#E5C378] hover:bg-[#D9B76C] text-[#3D2D0C] font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Create New Estimate</span>
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredEstimates.map((est) => {
+                  const customer = customers.find((c) => c.id === est.customerId);
+
+                  return (
+                    <tr
+                      key={est.id}
+                      onClick={() => onNavigate('estimate-details', est.id)}
+                      className="hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+                    >
+                      <td className="py-4 px-4 font-mono font-bold text-[#0F5C5B]">
+                        {est.estimateNo}
+                      </td>
+                      <td className="py-4 px-4 font-semibold text-[#173333]">
+                        {customer?.name || est.customerName || 'Customer'}
+                      </td>
+                      <td className="py-4 px-4 text-[#647777] font-mono">
+                        {formatDateDDMMYYYY(est.estimateDate)}
+                      </td>
+                      <td className="py-4 px-4 text-right font-mono font-bold text-[#0F5C5B]">
+                        {est.totals.totalPureWT.toFixed(3)} g
+                      </td>
+                      <td className="py-4 px-4 text-right font-mono font-semibold text-[#173333]">
+                        ₹ {est.totals.taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-4 px-4 text-right font-mono text-[#647777]">
+                        ₹ {est.totals.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-4 px-4 text-right font-mono font-bold text-sm text-[#0F5C5B]">
+                        ₹ {est.totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <span
+                          className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wide ${
+                            est.status === 'CONFIRMED'
+                              ? 'bg-[#E6F8F2] text-[#1A825B]'
+                              : est.status === 'PENDING'
+                              ? 'bg-[#FEF5E6] text-[#B87B1D]'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {est.status}
+                        </span>
+                      </td>
+                      <td
+                        className="py-4 px-4 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          {!isClient && est.status === 'DRAFT' && (
+                            <button
+                              onClick={async () => {
+                                await confirmEstimate(est.id);
+                              }}
+                              className="px-2.5 py-1 rounded-xl bg-[#0F5C5B] hover:bg-[#0D4E4D] text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                              title="Confirm & Post to Customer Ledger"
+                            >
+                              <FileCheck className="w-3 h-3 text-[#E5C378]" />
+                              <span>Confirm</span>
+                            </button>
+                          )}
+                          {!isClient && (
+                            <button
+                              onClick={() => onNavigate('edit-estimate', est.id)}
+                              className="px-2.5 py-1 rounded-xl bg-[#FAF6EE] hover:bg-[#F3ECE0] border border-[#D9B76C]/40 text-xs font-semibold text-[#8C6D23] flex items-center gap-1 cursor-pointer transition-all"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => onNavigate('estimate-details', est.id)}
+                            className="px-2.5 py-1 rounded-xl bg-white border border-[#DCE5E3] hover:bg-[#FAF9F6] text-xs font-semibold text-[#0F5C5B] cursor-pointer transition-all"
+                          >
+                            {isClient ? 'View & Print' : 'Details'}
+                          </button>
+                          {!isClient && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEstimateToDelete(est);
+                              }}
+                              className="p-1 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 cursor-pointer transition-all"
+                              title="Delete Estimate"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <SBGModal
+        isOpen={Boolean(estimateToDelete)}
+        onClose={() => setEstimateToDelete(null)}
+        title="Delete Estimate Cost Sheet"
+      >
+        {estimateToDelete && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-sm text-rose-700">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>Confirm Permanent Deletion</span>
+              </div>
+              <p>
+                Are you sure you want to permanently delete estimate <strong className="font-mono font-bold text-[#143B39]">{estimateToDelete.estimateNo}</strong> for customer{' '}
+                <strong className="text-[#143B39]">{customers.find((c) => c.id === estimateToDelete.customerId)?.name || estimateToDelete.customerName}</strong>?
+              </p>
+              {estimateToDelete.status === 'CONFIRMED' && (
+                <p className="font-semibold text-rose-800 pt-1 border-t border-rose-200">
+                  Notice: This estimate is currently CONFIRMED. Deleting it will also remove its corresponding transaction from the Customer Ledger and restore customer balances automatically.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <SBGButton
+                variant="outline"
+                size="sm"
+                onClick={() => setEstimateToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </SBGButton>
+              <SBGButton
+                variant="danger"
+                size="sm"
+                icon={<Trash2 className="w-4 h-4" />}
+                onClick={async () => {
+                  try {
+                    setIsDeleting(true);
+                    await deleteEstimate(estimateToDelete.id);
+                    setEstimateToDelete(null);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Estimate'}
+              </SBGButton>
+            </div>
+          </div>
+        )}
+      </SBGModal>
     </div>
   );
 };

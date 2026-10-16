@@ -674,17 +674,41 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Live Database States
   const [customers, setCustomers] = useState<Customer[]>(() => {
     const saved = localStorage.getItem('sbg_live_customers');
-    return saved && JSON.parse(saved).length > 0 ? JSON.parse(saved) : defaultCustomersList;
+    if (saved !== null) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error('Failed to parse sbg_live_customers from localStorage:', e);
+      }
+    }
+    return defaultCustomersList;
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('sbg_live_orders');
-    return saved ? JSON.parse(saved) : [];
+    if (saved !== null) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error('Failed to parse sbg_live_orders from localStorage:', e);
+      }
+    }
+    return [];
   });
 
   const [transactions, setTransactions] = useState<LedgerTransaction[]>(() => {
     const saved = localStorage.getItem('sbg_live_transactions');
-    return saved && JSON.parse(saved).length > 0 ? JSON.parse(saved) : defaultTransactionsList;
+    if (saved !== null) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error('Failed to parse sbg_live_transactions from localStorage:', e);
+      }
+    }
+    return defaultTransactionsList;
   });
 
   const defaultEstimatesList: EstimateCostSheet[] = [
@@ -941,12 +965,28 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [estimates, setEstimates] = useState<EstimateCostSheet[]>(() => {
     const saved = localStorage.getItem('sbg_live_estimates');
-    return saved && JSON.parse(saved).length > 0 ? JSON.parse(saved) : defaultEstimatesList;
+    if (saved !== null) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error('Failed to parse sbg_live_estimates from localStorage:', e);
+      }
+    }
+    return defaultEstimatesList;
   });
 
   const [settlements, setSettlements] = useState<SettlementRecord[]>(() => {
     const saved = localStorage.getItem('sbg_live_settlements');
-    return saved ? JSON.parse(saved) : [];
+    if (saved !== null) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error('Failed to parse sbg_live_settlements from localStorage:', e);
+      }
+    }
+    return [];
   });
 
   const [erpSyncItems, setErpSyncItems] = useState<ERPCommercialSyncItem[]>([]);
@@ -2106,14 +2146,18 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteEstimate = async (id: string) => {
     const est = estimates.find((e) => e.id === id);
-    setEstimates((prev) => prev.filter((e) => e.id !== id));
+    const updatedEstimates = estimates.filter((e) => e.id !== id);
+    setEstimates(updatedEstimates);
+    localStorage.setItem('sbg_live_estimates', JSON.stringify(updatedEstimates));
     logAudit('DELETE_ESTIMATE', 'ESTIMATES', id, `Deleted estimate ${id}`);
 
     if (est) {
       const updatedTxList = transactions.filter(
         (t) => t.estimateId !== id && !(t.erpRef && t.erpRef === est.estimateNo)
       );
-      await recalculateAndSaveCustomerBalances(est.customerId, updatedTxList);
+      if (updatedTxList.length !== transactions.length) {
+        await recalculateAndSaveCustomerBalances(est.customerId, updatedTxList);
+      }
     }
 
     if (isSupabaseConfigured) {
@@ -2215,11 +2259,11 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSettlements([]);
     setErpSyncItems([]);
     setAuditLogs([]);
-    localStorage.removeItem('sbg_live_customers');
-    localStorage.removeItem('sbg_live_orders');
-    localStorage.removeItem('sbg_live_transactions');
-    localStorage.removeItem('sbg_live_estimates');
-    localStorage.removeItem('sbg_live_settlements');
+    localStorage.setItem('sbg_live_customers', '[]');
+    localStorage.setItem('sbg_live_orders', '[]');
+    localStorage.setItem('sbg_live_transactions', '[]');
+    localStorage.setItem('sbg_live_estimates', '[]');
+    localStorage.setItem('sbg_live_settlements', '[]');
     setBankDetailsState(DEFAULT_BANK_DETAILS);
     setCompanyDetailsState(DEFAULT_COMPANY_SETTINGS);
     localStorage.removeItem('sbg_bank_details');
