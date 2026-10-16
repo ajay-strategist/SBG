@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronsRight,
   MoreHorizontal,
+  Edit3,
   Scale,
   Wallet,
   FileText,
@@ -27,7 +28,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { ActiveTab } from '../components/layout/AppShell';
-import { TransactionModal } from '../components/ui';
+import { TransactionModal, EditTransactionModal } from '../components/ui';
+import { LedgerTransaction } from '../core/calculations';
 
 interface LedgerViewProps {
   onNavigate: (tab: ActiveTab, entityId?: string) => void;
@@ -35,6 +37,7 @@ interface LedgerViewProps {
 
 export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<LedgerTransaction | null>(null);
   const { customers, transactions } = useSBG();
   const [searchTerm, setSearchTerm] = useState('');
   const [customerFilter, setCustomerFilter] = useState('ALL');
@@ -614,8 +617,16 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
                         </span>
                       </td>
                       <td className="py-3.5 px-2 text-center text-[#647777]">
-                        <button className="p-1 hover:text-[#173333] cursor-pointer">
-                          <MoreHorizontal className="w-4 h-4" />
+                        <button
+                          type="button"
+                          title="Edit transaction entry"
+                          onClick={() => {
+                            const rawTx = transactions.find((t) => t.id === tx.id);
+                            if (rawTx) setEditingTx(rawTx);
+                          }}
+                          className="p-1.5 rounded-lg hover:bg-[#0F5C5B]/10 hover:text-[#0F5C5B] transition-colors cursor-pointer inline-flex items-center gap-1 text-xs font-semibold"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -654,6 +665,18 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
       <TransactionModal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
+      />
+
+      {/* Edit Transaction Modal */}
+      <EditTransactionModal
+        isOpen={Boolean(editingTx)}
+        onClose={() => setEditingTx(null)}
+        transaction={editingTx}
+        customerName={
+          editingTx
+            ? customers.find((c) => c.id === editingTx.customerId)?.name
+            : undefined
+        }
       />
     </div>
   );

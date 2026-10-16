@@ -592,6 +592,82 @@ describe('SBG Core Calculation Engine', () => {
     });
   });
 
+  describe('Opening Balance and Transaction Entry Recalculations', () => {
+    const baseTx1: LedgerTransaction = {
+      id: 'tx-1',
+      customerId: 'cust-1',
+      date: '2026-03-01',
+      direction: 'ISSUE',
+      particulars: 'ISSUE',
+      grossWT: 10.0,
+      stoneWT: 0,
+      netWT: 10.0,
+      touch: 76.0,
+      pureWT: 7.6,
+      mcAmount: 5000,
+      totalAmount: 5000,
+      balanceWT: 0,
+      balanceMC: 0,
+      status: 'CONFIRMED',
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    };
+
+    const baseTx2: LedgerTransaction = {
+      id: 'tx-2',
+      customerId: 'cust-1',
+      date: '2026-03-02',
+      direction: 'RECEIPT',
+      particulars: 'RECEIPT',
+      grossWT: -5.0,
+      stoneWT: 0,
+      netWT: -5.0,
+      touch: 76.0,
+      pureWT: -3.8,
+      mcAmount: 2000,
+      totalAmount: -2000,
+      balanceWT: 0,
+      balanceMC: 0,
+      status: 'CONFIRMED',
+      createdAt: '2026-03-02T10:00:00Z',
+      updatedAt: '2026-03-02T10:00:00Z',
+    };
+
+    it('recalculates running balances when opening balances change', () => {
+      // Baseline with 0 opening balance
+      const initial = calculateRunningBalances([baseTx1, baseTx2], 0, 0);
+      expect(initial[0].balanceWT).toBe(7.6);
+      expect(initial[0].balanceMC).toBe(5000);
+      expect(initial[1].balanceWT).toBe(3.8);
+      expect(initial[1].balanceMC).toBe(3000);
+
+      // User edits Opening Balances to 100g pure gold and ₹50,000 MC
+      const updated = calculateRunningBalances([baseTx1, baseTx2], 100.0, 50000);
+      expect(updated[0].balanceWT).toBe(107.6);
+      expect(updated[0].balanceMC).toBe(55000);
+      expect(updated[1].balanceWT).toBe(103.8);
+      expect(updated[1].balanceMC).toBe(53000);
+    });
+
+    it('recalculates running balances when a transaction entry is edited', () => {
+      // Suppose tx1 is edited: grossWT changed from 10g to 20g (touch 76% => pureWT 15.2g), MC changed to ₹10,000
+      const editedTx1: LedgerTransaction = {
+        ...baseTx1,
+        grossWT: 20.0,
+        netWT: 20.0,
+        pureWT: 15.2,
+        mcAmount: 10000,
+        totalAmount: 10000,
+      };
+
+      const result = calculateRunningBalances([editedTx1, baseTx2], 10.0, 20000);
+      expect(result[0].balanceWT).toBe(25.2); // 10.0 + 15.2
+      expect(result[0].balanceMC).toBe(30000); // 20000 + 10000
+      expect(result[1].balanceWT).toBe(21.4); // 25.2 - 3.8
+      expect(result[1].balanceMC).toBe(28000); // 30000 - 2000
+    });
+  });
+
   describe('Indian Currency Words Engine', () => {
     it('converts amounts to standard Indian numbering words', () => {
       expect(numberToIndianWords(0)).toBe('Zero Rupees Only');
@@ -602,3 +678,5 @@ describe('SBG Core Calculation Engine', () => {
     });
   });
 });
+
+

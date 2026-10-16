@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSBG } from '../store/sbgStore';
+import { LedgerTransaction } from '../core/calculations';
 import {
   SBGCard,
   SBGButton,
@@ -9,6 +10,8 @@ import {
   SBGBalanceCard,
   TransactionModal,
   GoogleSheetImportModal,
+  EditOpeningBalancesModal,
+  EditTransactionModal,
 } from '../components/ui';
 import {
   ArrowLeft,
@@ -24,6 +27,7 @@ import {
   ArrowDownLeft,
   Download,
   Trash2,
+  Edit3,
   Palette,
   ExternalLink,
   CheckCircle,
@@ -70,6 +74,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
   const [useSheetTheme, setUseSheetTheme] = useState(true);
+  const [isOpeningModalOpen, setIsOpeningModalOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<LedgerTransaction | null>(null);
 
   const isClient = currentUser?.role === 'CLIENT';
   const effectiveCustomerId = isClient ? (currentUser?.customerId || 'cust-101') : customerId;
@@ -350,14 +356,25 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
           </div>
 
           {!isClient && (
-            <SBGButton
-              variant="primary"
-              size="sm"
-              icon={<PlusCircle className="w-4 h-4" />}
-              onClick={() => setIsTxModalOpen(true)}
-            >
-              Record Payment (Gold & Cash)
-            </SBGButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <SBGButton
+                variant="outline"
+                size="sm"
+                icon={<Edit3 className="w-4 h-4 text-[#0F5C5B]" />}
+                onClick={() => setIsOpeningModalOpen(true)}
+                title="Edit Opening Balances (Pure Gold WT & Making Charges)"
+              >
+                Edit Opening Balances
+              </SBGButton>
+              <SBGButton
+                variant="primary"
+                size="sm"
+                icon={<PlusCircle className="w-4 h-4" />}
+                onClick={() => setIsTxModalOpen(true)}
+              >
+                Record Payment (Gold & Cash)
+              </SBGButton>
+            </div>
           )}
         </div>
       </div>
@@ -595,7 +612,19 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <td className="py-2.5 px-3 text-right font-bold bg-[#0F5C5B]/5 text-[#173333]">
                       {customer.openingWT.toFixed(3)}
                     </td>
-                    {!isClient && <td className="py-2.5 px-3 text-center">-</td>}
+                    {!isClient && (
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setIsOpeningModalOpen(true)}
+                          title="Edit Opening Balances"
+                          className="px-2 py-1 rounded bg-[#0F5C5B]/10 hover:bg-[#0F5C5B]/20 text-[#0F5C5B] transition-colors cursor-pointer inline-flex items-center gap-1 text-[11px] font-sans font-semibold"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                      </td>
+                    )}
                   </tr>
 
                   {customerLedger.map((tx) => {
@@ -682,24 +711,34 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                         </td>
                         {!isClient && (
                           <td className="py-2.5 px-3 text-center">
-                            <button
-                              type="button"
-                              title="Delete transaction"
-                              onClick={async () => {
-                                const isLinked = Boolean(
-                                  tx.estimateId || (tx.erpRef && estimates.some((e) => e.estimateNo === tx.erpRef))
-                                );
-                                const confirmMsg = isLinked
-                                  ? `Warning: This transaction is linked to an Estimate (${tx.erpRef || tx.estimateId}).\n\nDeleting this row will automatically revert the linked Estimate to DRAFT status and remove its entry from the Cash Ledger.\n\nAre you sure you want to proceed?`
-                                  : `Delete transaction from ${tx.date} (${tx.particulars})?`;
-                                if (window.confirm(confirmMsg)) {
-                                  await deleteTransaction(tx.id);
-                                }
-                              }}
-                              className="p-1 rounded text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                title="Edit transaction entry"
+                                onClick={() => setEditingTx(tx)}
+                                className="p-1 rounded text-[#0F5C5B] hover:bg-[#0F5C5B]/15 transition-colors cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete transaction"
+                                onClick={async () => {
+                                  const isLinked = Boolean(
+                                    tx.estimateId || (tx.erpRef && estimates.some((e) => e.estimateNo === tx.erpRef))
+                                  );
+                                  const confirmMsg = isLinked
+                                    ? `Warning: This transaction is linked to an Estimate (${tx.erpRef || tx.estimateId}).\n\nDeleting this row will automatically revert the linked Estimate to DRAFT status and remove its entry from the Cash Ledger.\n\nAre you sure you want to proceed?`
+                                    : `Delete transaction from ${tx.date} (${tx.particulars})?`;
+                                  if (window.confirm(confirmMsg)) {
+                                    await deleteTransaction(tx.id);
+                                  }
+                                }}
+                                className="p-1 rounded text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -754,6 +793,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <th className="py-3 px-3.5 text-right font-bold text-[#0F5C5B] bg-[#0F5C5B]/10">
                       RUNNING BALANCE (₹)
                     </th>
+                    {!isClient && <th className="py-3 px-3 text-center">ACTION</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#DCE5E3]/60 font-mono">
@@ -776,12 +816,25 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                     <td className="py-2.5 px-3.5 text-right font-bold bg-[#0F5C5B]/5 text-[#173333]">
                       ₹{openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
+                    {!isClient && (
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setIsOpeningModalOpen(true)}
+                          title="Edit Opening Balances"
+                          className="px-2 py-1 rounded bg-[#0F5C5B]/10 hover:bg-[#0F5C5B]/20 text-[#0F5C5B] transition-colors cursor-pointer inline-flex items-center gap-1 text-[11px] font-sans font-semibold"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                      </td>
+                    )}
                   </tr>
 
                   {/* Cash Ledger Event Rows */}
                   {cashLedgerRows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-[#647777] font-sans">
+                      <td colSpan={isClient ? 7 : 8} className="py-12 text-center text-[#647777] font-sans">
                         <Banknote className="w-8 h-8 mx-auto text-[#647777]/30 mb-2" />
                         <p className="font-semibold text-xs">No commercial transactions recorded yet.</p>
                         <p className="text-[11px] text-[#647777] mt-0.5">
@@ -847,6 +900,25 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                               ₹{row.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </span>
                           </td>
+                          {!isClient && (
+                            <td className="py-3 px-3 text-center">
+                              {!row.id.startsWith('est-') ? (
+                                <button
+                                  type="button"
+                                  title="Edit payment transaction entry"
+                                  onClick={() => {
+                                    const targetTx = customerLedger.find((t) => t.id === row.id);
+                                    if (targetTx) setEditingTx(targetTx);
+                                  }}
+                                  className="p-1 rounded text-[#0F5C5B] hover:bg-[#0F5C5B]/15 transition-colors cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <span className="text-[#647777]">-</span>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })
@@ -992,6 +1064,21 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
         isOpen={isGoogleSheetModalOpen}
         onClose={() => setIsGoogleSheetModalOpen(false)}
         customerId={customer.id}
+        customerName={customer.name}
+      />
+
+      {/* Edit Opening Balances Modal */}
+      <EditOpeningBalancesModal
+        isOpen={isOpeningModalOpen}
+        onClose={() => setIsOpeningModalOpen(false)}
+        customer={customer}
+      />
+
+      {/* Edit Transaction Modal */}
+      <EditTransactionModal
+        isOpen={Boolean(editingTx)}
+        onClose={() => setEditingTx(null)}
+        transaction={editingTx}
         customerName={customer.name}
       />
     </div>

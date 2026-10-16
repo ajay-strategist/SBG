@@ -360,4 +360,7 @@ export * from './SBGBalanceCard';
 export * from './SBGStatCard';
 export * from './TransactionModal';
 export * from './GoogleSheetImportModal';
+export * from './EditOpeningBalancesModal';
+export * from './EditTransactionModal';
+
 

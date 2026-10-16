@@ -52,6 +52,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
     email: '',
     city: '',
     gstin: '',
+    openingWT: 0,
+    openingMC: 0,
+    openingLedgerMC: 0,
     status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
   });
 
@@ -182,6 +185,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
       email: customer.email || '',
       city: customer.city || '',
       gstin: customer.gstin || '',
+      openingWT: customer.openingWT ?? 0,
+      openingMC: customer.openingMC ?? 0,
+      openingLedgerMC: customer.openingLedgerMC ?? customer.openingMC ?? 0,
       status: customer.status,
     });
     setActiveMenuCust(null);
@@ -199,6 +205,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
       email: editFormData.email,
       city: editFormData.city,
       gstin: editFormData.gstin,
+      openingWT: Number(editFormData.openingWT) || 0,
+      openingMC: Number(editFormData.openingMC) || 0,
+      openingLedgerMC: Number(editFormData.openingLedgerMC) || 0,
       status: editFormData.status,
     });
 
@@ -1020,6 +1029,30 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onNavigate }) => {
                 <option value="INACTIVE">INACTIVE</option>
               </select>
             </div>
+            <SBGInput
+              label="Opening Pure Gold Weight (g)"
+              placeholder="0.000"
+              type="number"
+              step="0.001"
+              value={editFormData.openingWT}
+              onChange={(e) => setEditFormData({ ...editFormData, openingWT: parseFloat(e.target.value) || 0 })}
+            />
+            <SBGInput
+              label="Opening MC / GC Balance (₹)"
+              placeholder="0.00"
+              type="number"
+              step="0.01"
+              value={editFormData.openingMC}
+              onChange={(e) => setEditFormData({ ...editFormData, openingMC: parseFloat(e.target.value) || 0 })}
+            />
+            <SBGInput
+              label="Opening Cash Ledger Balance (₹)"
+              placeholder="0.00"
+              type="number"
+              step="0.01"
+              value={editFormData.openingLedgerMC}
+              onChange={(e) => setEditFormData({ ...editFormData, openingLedgerMC: parseFloat(e.target.value) || 0 })}
+            />
           </div>
 
           <div className="pt-4 border-t border-[#DCE5E3] flex justify-end gap-3">

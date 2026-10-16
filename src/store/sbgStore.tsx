@@ -1571,6 +1571,26 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCustomer = async (id: string, updates: Partial<Customer>) => {
+    const existingCustomer = customers.find((c) => c.id === id);
+
+    // If opening balances are being updated, recalculate all running balances for this customer
+    if (updates.openingWT !== undefined || updates.openingMC !== undefined) {
+      const effectiveOpeningWT = updates.openingWT !== undefined ? updates.openingWT : (existingCustomer?.openingWT ?? 0);
+      const effectiveOpeningMC = updates.openingMC !== undefined ? updates.openingMC : (existingCustomer?.openingMC ?? 0);
+
+      const customerTxs = transactions.filter((tx) => tx.customerId === id);
+      const recalculatedTxs = calculateRunningBalances(customerTxs, effectiveOpeningWT, effectiveOpeningMC);
+      const otherTxs = transactions.filter((tx) => tx.customerId !== id);
+      const finalTxList = [...otherTxs, ...recalculatedTxs].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      setTransactions(finalTxList);
+
+      const summary = calculateCustomerSummaryBalances(recalculatedTxs, effectiveOpeningWT, effectiveOpeningMC);
+      updates.currentWT = summary.currentWT;
+      updates.currentMC = summary.currentMC;
+    }
+
     setCustomers((prev) =>
       prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c))
     );
@@ -1583,6 +1603,9 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (updates.phone !== undefined) payload.phone = updates.phone;
         if (updates.email !== undefined) payload.email = updates.email;
         if (updates.city !== undefined) payload.city = updates.city;
+        if (updates.openingWT !== undefined) payload.opening_wt = updates.openingWT;
+        if (updates.openingMC !== undefined) payload.opening_mc = updates.openingMC;
+        if (updates.openingLedgerMC !== undefined) payload.opening_ledger_mc = updates.openingLedgerMC;
         if (updates.currentWT !== undefined) payload.current_wt = updates.currentWT;
         if (updates.currentMC !== undefined) payload.current_mc = updates.currentMC;
         if (updates.status !== undefined) payload.status = updates.status;
@@ -1763,9 +1786,15 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!existing) return;
 
     const merged = { ...existing, ...updates, updatedAt: new Date().toISOString() };
-    const netWT = calculateNetWT(merged.grossWT, merged.stoneWT, merged.direction);
-    const pureWT = calculatePureWT(netWT, merged.touch);
-    const totalAmount = calculateTotalAmount(merged.stoneAmountCal, merged.mcAmountCal);
+    const netWT = updates.netWT !== undefined
+      ? updates.netWT
+      : calculateNetWT(merged.grossWT, merged.stoneWT, merged.direction);
+    const pureWT = updates.pureWT !== undefined
+      ? updates.pureWT
+      : calculatePureWT(netWT, merged.touch);
+    const totalAmount = updates.totalAmount !== undefined
+      ? updates.totalAmount
+      : calculateTotalAmount(merged.stoneAmountCal, merged.mcAmountCal);
 
     const finalizedTx: LedgerTransaction = {
       ...merged,
@@ -1781,7 +1810,28 @@ export const SBGProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('transactions').update(finalizedTx).eq('id', id);
+        const dbPayload: any = {
+          customer_id: finalizedTx.customerId,
+          order_id: finalizedTx.orderId,
+          date: finalizedTx.date,
+          direction: finalizedTx.direction,
+          particulars: finalizedTx.particulars,
+          description: finalizedTx.description,
+          nos: finalizedTx.nos,
+          gross_wt: finalizedTx.grossWT,
+          stone_wt: finalizedTx.stoneWT,
+          net_wt: finalizedTx.netWT,
+          touch: finalizedTx.touch,
+          pure_wt: finalizedTx.pureWT,
+          mc_amount: finalizedTx.mcAmount,
+          total_amount: finalizedTx.totalAmount,
+          balance_wt: finalizedTx.balanceWT,
+          balance_mc: finalizedTx.balanceMC,
+          status: finalizedTx.status,
+          erp_ref: finalizedTx.erpRef,
+          updated_at: finalizedTx.updatedAt,
+        };
+        await supabase.from('transactions').update(dbPayload).eq('id', id);
       } catch (e) {
         console.error('Supabase transaction update error:', e);
       }
